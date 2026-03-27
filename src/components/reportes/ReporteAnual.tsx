@@ -114,6 +114,7 @@ export default function ReporteAnual({ entidadId, anio, entidades, onClose }: Pr
           </div>
         ) : (
           <>
+            <AIAnalysisCard tipo="narrativa" datos={{ tipo_reporte: "anual", entidad: entidadNombre, anio, actividades: actividades.length, registros: registros.length }} label="Generar análisis IA" />
             {/* Executive summary */}
             <div>
               <h3 className="font-semibold text-sm uppercase text-muted-foreground mb-3">Resumen Ejecutivo</h3>

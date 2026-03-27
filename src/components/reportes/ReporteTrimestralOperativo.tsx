@@ -146,6 +146,7 @@ export default function ReporteTrimestralOperativo({ entidadId, trimestre, anio,
               </TableBody>
             </Table>
           </div>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -102,6 +102,7 @@ export default function ReporteSemestral({ entidadId, semestre, anio, entidades,
           </div>
         ) : (
           <>
+            <AIAnalysisCard tipo="narrativa" datos={{ tipo_reporte: "semestral", entidad: entidadNombre, periodo: `${semestre} ${anio}`, registros: registros.length, gastos: gastos.length }} label="Generar análisis IA" />
             {/* Financial summary */}
             <div>
               <h3 className="font-semibold text-sm uppercase text-muted-foreground mb-3">Resumen Financiero del Semestre</h3>
