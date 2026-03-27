@@ -38,17 +38,20 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   coordinador_regional: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
+    { label: "Reportes Regionales", path: "/reportes-regionales", icon: BarChart3 },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   gestor_mec_a: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
+    { label: "Reportes Mec A", path: "/reportes-mec-a", icon: BarChart3 },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   coordinador_mec_b: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
+    { label: "Reportes Mec B", path: "/reportes-mec-b", icon: BarChart3 },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   monitoreo: [
@@ -65,11 +68,13 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Desembolsos", path: "/desembolsos", icon: Banknote },
     { label: "Viáticos", path: "/viaticos", icon: Plane },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
+    { label: "Reportes Financieros", path: "/reportes-financieros", icon: BarChart3 },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   direccion: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Aprobaciones", path: "/aprobaciones", icon: ClipboardCheck },
+    { label: "Reportes Ejecutivos", path: "/reportes-ejecutivos", icon: BarChart3 },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],

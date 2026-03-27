@@ -20,6 +20,11 @@ import NotificacionesPage from "./pages/NotificacionesPage";
 import IndicadoresMonitoreoPage from "./pages/IndicadoresMonitoreoPage";
 import VerificacionPage from "./pages/VerificacionPage";
 import GenerarReportesPage from "./pages/GenerarReportesPage";
+import ReportesFinancierosPage from "./pages/ReportesFinancierosPage";
+import ReportesEjecutivosPage from "./pages/ReportesEjecutivosPage";
+import ReportesMecBPage from "./pages/ReportesMecBPage";
+import ReportesMecAPage from "./pages/ReportesMecAPage";
+import ReportesRegionalesPage from "./pages/ReportesRegionalesPage";
 
 const queryClient = new QueryClient();
 
