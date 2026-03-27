@@ -191,6 +191,8 @@ export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }
         dbRow.empleos_mejorados_total += r.total;
         dbRow.empleos_mejorados_masculino += r.masculino;
         dbRow.empleos_mejorados_femenino += r.femenino;
+        const f = actFieldMap[r.tipo_actividad];
+        if (f) dbRow[`empleos_mejorados_${f}`] = (dbRow[`empleos_mejorados_${f}`] || 0) + r.total;
         if (r.region) dbRow.region_empleo_mejorado = r.region;
       }
     }
