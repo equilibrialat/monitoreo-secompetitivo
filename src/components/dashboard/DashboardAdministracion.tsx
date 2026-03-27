@@ -35,7 +35,9 @@ export default function DashboardAdministracion() {
       </div>
 
       <Card className="mb-6">
-        <CardContent className="pt-4 overflow-x-auto">
+        <CardContent className="pt-4 px-0 sm:px-6">
+          <div className="overflow-x-auto">
+            <p className="text-[10px] text-muted-foreground text-center mb-1 sm:hidden">← desliza →</p>
           <Table>
             <TableHeader>
               <TableRow>
