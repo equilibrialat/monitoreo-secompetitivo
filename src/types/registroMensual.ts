@@ -93,7 +93,7 @@ export const ESTADOS_AVANCE = [
   { value: "no_iniciada", label: "No iniciada" },
   { value: "iniciado_1_35", label: "Iniciado (1-35%)" },
   { value: "en_proceso_36_65", label: "En proceso (36-65%)" },
-  { value: "avanzado_66_99", label: "Avanzado (66-99%)" },
+  { value: "proceso_avanzado_66_99", label: "Avanzado (66-99%)" },
   { value: "culminado_100", label: "Culminado (100%)" },
 ];
 
