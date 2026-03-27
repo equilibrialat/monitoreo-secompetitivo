@@ -377,8 +377,8 @@ export default function ReportesFinancierosPage() {
                       ))}
                       <TableRow className="font-bold bg-muted/50">
                         <TableCell>TOTAL</TableCell>
-                        <TableCell className="text-right">{formatCurrency(Object.values(igvByEntidad).reduce((s: number, v: any) => s + v.total_igv, 0))}</TableCell>
-                        <TableCell className="text-right">{Object.values(igvByEntidad).reduce((s: number, v: any) => s + v.count, 0)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency((Object.values(igvByEntidad) as any[]).reduce((s: number, v: any) => s + v.total_igv, 0))}</TableCell>
+                        <TableCell className="text-right">{(Object.values(igvByEntidad) as any[]).reduce((s: number, v: any) => s + v.count, 0)}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>

@@ -67,7 +67,7 @@ export default function ReportesEjecutivosPage() {
 
   async function handleAI() {
     setAiLoading(true);
-    const res = await invocarAnalisis("ejecutivo", {
+    const res = await invokeAnalysis("ejecutivo", {
       periodo: periodoLabel,
       kpis: { avanceGlobal, pctSeco, completadas, totalActividades, sobregiros, desfases },
       entidades: dashboard.map(d => ({ nombre: d.nombre_corto, avance: d.pct_ejecucion_seco, sobregiros: d.sobregiros_seco })),
