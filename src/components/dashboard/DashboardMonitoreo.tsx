@@ -84,10 +84,41 @@ export default function DashboardMonitoreo({
 
   entidades.forEach((e) => {
     const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
-    if (e.sobregiros_seco > 0) alertasCriticas.push({ text: `${e.sobregiros_seco} sobregiro(s) SECO`, entidad: e.nombre_corto });
-    if (desfase > 30) alertasCriticas.push({ text: `Desfase técnico-financiero ${desfase}%`, entidad: e.nombre_corto });
-    else if (desfase > 15) alertasAtencion.push({ text: `Desfase ${desfase}%`, entidad: e.nombre_corto });
-    else if (e.sobregiros_seco === 0 && (e.pendientes_revision || 0) === 0) entidadesAlDia.push(e.nombre_corto);
+    let hasIssue = false;
+
+    if (e.sobregiros_seco > 0) {
+      alertasCriticas.push({ text: `${e.sobregiros_seco} sobregiro(s) SECO`, entidad: e.nombre_corto });
+      hasIssue = true;
+    }
+    if (e.tiene_observado) {
+      alertasCriticas.push({ text: `Registro(s) observado(s) — ${e.observaciones_detalle.join("; ") || "requiere corrección"}`, entidad: e.nombre_corto });
+      hasIssue = true;
+    }
+    if (e.actividades_sin_iniciar > 0) {
+      alertasAtencion.push({ text: `${e.actividades_sin_iniciar} actividad(es) sin iniciar`, entidad: e.nombre_corto });
+      hasIssue = true;
+    }
+    if (e.meses_sin_reporte.length > 0) {
+      alertasAtencion.push({ text: `Sin reporte: ${e.meses_sin_reporte.join(", ")}`, entidad: e.nombre_corto });
+      hasIssue = true;
+    }
+    if (e.registros_borrador > 0) {
+      alertasAtencion.push({ text: `${e.registros_borrador} registro(s) en borrador`, entidad: e.nombre_corto });
+      hasIssue = true;
+    }
+    if (e.registros_en_revision > 0) {
+      alertasAtencion.push({ text: `${e.registros_en_revision} registro(s) en revisión`, entidad: e.nombre_corto });
+      hasIssue = true;
+    }
+    if (desfase > 30) {
+      alertasCriticas.push({ text: `Desfase técnico-financiero ${desfase}%`, entidad: e.nombre_corto });
+      hasIssue = true;
+    } else if (desfase > 15) {
+      alertasAtencion.push({ text: `Desfase ${desfase}%`, entidad: e.nombre_corto });
+      hasIssue = true;
+    }
+
+    if (!hasIssue) entidadesAlDia.push(e.nombre_corto);
   });
 
   // Chart data
