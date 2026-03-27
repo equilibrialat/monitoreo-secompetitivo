@@ -132,7 +132,7 @@ export async function saveRegistroMensual(
   gastos: Omit<EjecucionFinancieraInsert, "registro_mensual_id">[]
 ): Promise<{ success: boolean; error?: string }> {
   // 1. Insert registro mensual
-  const { data: regData, error: regError } = await supabase
+  const { data: regData, error: regError } = await (supabase as any)
     .from("registros_mensuales")
     .insert(registro)
     .select("id")
