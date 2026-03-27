@@ -51,13 +51,13 @@ export default function DashboardEntidad() {
 
 export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="flex items-center gap-3 mb-6">
-      <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
-        <LayoutDashboard className="h-5 w-5 text-primary" />
+    <div className="flex items-center gap-3 mb-4 md:mb-6">
+      <div className="flex items-center justify-center h-9 w-9 md:h-10 md:w-10 rounded-lg bg-primary/10 shrink-0">
+        <LayoutDashboard className="h-4 w-4 md:h-5 md:w-5 text-primary" />
       </div>
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-        {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+      <div className="min-w-0">
+        <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">{title}</h1>
+        {subtitle && <p className="text-xs md:text-sm text-muted-foreground truncate">{subtitle}</p>}
       </div>
     </div>
   );
