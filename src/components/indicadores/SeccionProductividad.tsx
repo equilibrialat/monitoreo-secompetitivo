@@ -68,7 +68,15 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
   }, [entidadId, anio]);
 
   const update = (i: number, field: keyof ProdRow, value: any) => {
-    setRows((prev) => { const c = [...prev]; c[i] = { ...c[i], [field]: value }; return c; });
+    setRows((prev) => {
+      const c = [...prev];
+      c[i] = { ...c[i], [field]: value };
+      if (field === "num_productores_masculino" || field === "num_productores_femenino") {
+        c[i].num_productores = (c[i].num_productores_masculino || 0) + (c[i].num_productores_femenino || 0);
+      }
+      return c;
+    });
+  };
   };
   const addRow = () => setRows((p) => [...p, emptyRow()]);
   const removeRow = (i: number) => {
