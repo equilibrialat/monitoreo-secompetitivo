@@ -81,6 +81,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
       setDescripcion(existing.descripcion_avance ?? "");
       setFechaEjecucion(existing.fecha_ejecucion ? parseISO(existing.fecha_ejecucion) : undefined);
       setIsEdit(true);
+      setObservaciones(existing.observaciones_revision ?? null);
     } else {
       setValorAvance(0);
       setEstado("");
