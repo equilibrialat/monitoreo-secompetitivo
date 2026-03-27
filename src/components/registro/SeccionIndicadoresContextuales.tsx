@@ -20,6 +20,7 @@ import type {
   RegistroGei, RegistroNuevoProducto,
 } from "@/types/registroMensual";
 import { createEmptyParticipante } from "@/types/registroMensual";
+import { BulkUploadParticipantes } from "./BulkUploadParticipantes";
 
 // ─── Capacitación ───────────────────────────────────────
 
