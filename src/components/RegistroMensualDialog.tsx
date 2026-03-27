@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Save, Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +11,7 @@ import { SeccionEjecucionFinanciera } from "./registro/SeccionEjecucionFinancier
 import { SeccionIndicadoresContextuales } from "./registro/SeccionIndicadoresContextuales";
 import { useRole } from "@/contexts/RoleContext";
 import type { ActividadDB } from "@/lib/supabaseQueries";
-import { saveRegistroMensual } from "@/lib/supabaseQueries";
+import { saveRegistroMensual, fetchRegistroExistente } from "@/lib/supabaseQueries";
 import type { FuenteFinanciera, RegistroCapacitacion } from "@/types/registroMensual";
 
 interface RegistroMensualDialogProps {
@@ -45,6 +45,9 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [fuentes, setFuentes] = useState<FuenteFinanciera[]>([]);
   const [capacitacion, setCapacitacion] = useState<RegistroCapacitacion>({ ...EMPTY_CAPACITACION });
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const [lastActId, setLastActId] = useState<string | null>(null);
   if (actividad && actividad.id !== lastActId) {
@@ -55,9 +58,51 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
     setDescripcion("");
     setFechaEjecucion(undefined);
     setCapacitacion({ ...EMPTY_CAPACITACION });
+    setIsEdit(false);
+    setValidationErrors({});
   }
 
+  // Preload existing registro when activity or month/year changes
+  const loadExisting = useCallback(async () => {
+    if (!actividad) return;
+    setLoading(true);
+    const existing = await fetchRegistroExistente(actividad.id, anio, mes + 1);
+    if (existing) {
+      setValorAvance(existing.avance_valor ?? 0);
+      setEstado(existing.estado ?? "");
+      setDescripcion(existing.descripcion_avance ?? "");
+      setFechaEjecucion(existing.fecha_ejecucion ? parseISO(existing.fecha_ejecucion) : undefined);
+      setIsEdit(true);
+    } else {
+      setValorAvance(0);
+      setEstado("");
+      setDescripcion("");
+      setFechaEjecucion(undefined);
+      setIsEdit(false);
+    }
+    setValidationErrors({});
+    setLoading(false);
+  }, [actividad?.id, anio, mes]);
+
+  useEffect(() => {
+    if (open && actividad) {
+      loadExisting();
+    }
+  }, [open, actividad?.id, anio, mes, loadExisting]);
+
   if (!actividad) return null;
+
+  const validate = (draft: boolean): boolean => {
+    const errors: Record<string, string> = {};
+    if (!draft) {
+      if (valorAvance <= 0) errors.avance = "El valor de avance es obligatorio";
+      if (!estado) errors.estado = "Selecciona un estado";
+    }
+    // Always require estado for any save
+    if (!estado) errors.estado = "Selecciona un estado";
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSave = async (draft: boolean) => {
     if (!entidadId) {
@@ -65,9 +110,13 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
       return;
     }
 
+    if (!validate(draft)) {
+      toast.error("Completa los campos obligatorios");
+      return;
+    }
+
     setSaving(true);
 
-    // Collect all gastos from all fuentes
     const allGastos = fuentes.flatMap((f) =>
       f.gastos
         .filter((g) => g.monto > 0 && g.tipo_gasto)
@@ -85,7 +134,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
         actividad_id: actividad.id,
         entidad_id: entidadId,
         anio,
-        mes: mes + 1, // 1-indexed for DB
+        mes: mes + 1,
         avance_valor: valorAvance,
         estado,
         descripcion_avance: descripcion,
@@ -98,7 +147,9 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
 
     if (result.success) {
       toast.success(
-        draft ? "Borrador guardado exitosamente" : "Registro enviado para revisión",
+        draft
+          ? (isEdit ? "Borrador actualizado" : "Borrador guardado exitosamente")
+          : "Registro enviado para revisión",
         { description: `${actividad.codigo} — ${actividad.nombre}` }
       );
       onClose();
@@ -114,39 +165,49 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
           <div className="flex items-start justify-between">
             <div className="min-w-0 pr-4">
               <p className="text-xs font-mono text-muted-foreground mb-0.5">{actividad.codigo}</p>
-              <SheetTitle className="text-base font-semibold leading-snug text-left">Registro Mensual</SheetTitle>
+              <SheetTitle className="text-base font-semibold leading-snug text-left">
+                {isEdit ? "Editar Registro Mensual" : "Registro Mensual"}
+              </SheetTitle>
               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{actividad.nombre}</p>
             </div>
           </div>
         </SheetHeader>
 
         <ScrollArea className="flex-1 px-5">
-          <div className="py-4 space-y-6">
-            <SeccionAvanceOperativo
-              mes={mes} anio={anio} valorAvance={valorAvance} estado={estado}
-              descripcion={descripcion} fechaEjecucion={fechaEjecucion}
-              unidadMedida={actividad.meta_unidad_medida}
-              onMesChange={setMes} onAnioChange={setAnio}
-              onValorAvanceChange={setValorAvance} onEstadoChange={setEstado}
-              onDescripcionChange={setDescripcion} onFechaEjecucionChange={setFechaEjecucion}
-            />
-            <Separator />
-            <SeccionEjecucionFinanciera fuentes={fuentes} onFuentesChange={setFuentes} />
-            <Separator />
-            <SeccionIndicadoresContextuales
-              tags={actividad.tags ?? []}
-              capacitacion={capacitacion}
-              onCapacitacionChange={setCapacitacion}
-            />
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Cargando registro...</span>
+            </div>
+          ) : (
+            <div className="py-4 space-y-6">
+              <SeccionAvanceOperativo
+                mes={mes} anio={anio} valorAvance={valorAvance} estado={estado}
+                descripcion={descripcion} fechaEjecucion={fechaEjecucion}
+                unidadMedida={actividad.meta_unidad_medida}
+                onMesChange={setMes} onAnioChange={setAnio}
+                onValorAvanceChange={setValorAvance} onEstadoChange={setEstado}
+                onDescripcionChange={setDescripcion} onFechaEjecucionChange={setFechaEjecucion}
+                errors={validationErrors}
+              />
+              <Separator />
+              <SeccionEjecucionFinanciera fuentes={fuentes} onFuentesChange={setFuentes} />
+              <Separator />
+              <SeccionIndicadoresContextuales
+                tags={actividad.tags ?? []}
+                capacitacion={capacitacion}
+                onCapacitacionChange={setCapacitacion}
+              />
+            </div>
+          )}
         </ScrollArea>
 
         <div className="border-t px-5 py-3 flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => handleSave(true)} disabled={saving}>
+          <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => handleSave(true)} disabled={saving || loading}>
             {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
             Guardar borrador
           </Button>
-          <Button size="sm" className="flex-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => handleSave(false)} disabled={saving}>
+          <Button size="sm" className="flex-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => handleSave(false)} disabled={saving || loading}>
             {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
             Enviar para revisión
           </Button>

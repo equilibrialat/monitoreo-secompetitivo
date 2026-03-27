@@ -127,14 +127,40 @@ export interface EjecucionFinancieraInsert {
   fecha_gasto: string;
 }
 
+export interface RegistroMensualExistente {
+  id: string;
+  avance_valor: number | null;
+  estado: string | null;
+  descripcion_avance: string | null;
+  fecha_ejecucion: string | null;
+  estado_registro: string | null;
+}
+
+export async function fetchRegistroExistente(
+  actividadId: string,
+  anio: number,
+  mes: number
+): Promise<RegistroMensualExistente | null> {
+  const { data, error } = await (supabase as any)
+    .from("registros_mensuales")
+    .select("id, avance_valor, estado, descripcion_avance, fecha_ejecucion, estado_registro")
+    .eq("actividad_id", actividadId)
+    .eq("anio", anio)
+    .eq("mes", mes)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as RegistroMensualExistente;
+}
+
 export async function saveRegistroMensual(
   registro: RegistroMensualInsert,
   gastos: Omit<EjecucionFinancieraInsert, "registro_mensual_id">[]
 ): Promise<{ success: boolean; error?: string }> {
-  // 1. Insert registro mensual
+  // 1. Upsert registro mensual (update if actividad_id+anio+mes exists)
   const { data: regData, error: regError } = await (supabase as any)
     .from("registros_mensuales")
-    .insert(registro)
+    .upsert(registro, { onConflict: "actividad_id,anio,mes" })
     .select("id")
     .maybeSingle();
 
@@ -143,11 +169,18 @@ export async function saveRegistroMensual(
     return { success: false, error: regError?.message ?? "Error al guardar registro" };
   }
 
-  // 2. Insert gastos if any
+  // 2. Delete old gastos for this registro, then insert new ones
   if (gastos.length > 0) {
+    // Remove previous gastos for this registro
+    await (supabase as any)
+      .from("ejecucion_financiera")
+      .delete()
+      .eq("registro_mensual_id", regData.id);
+
     const gastosWithId = gastos.map((g) => ({
       ...g,
       registro_mensual_id: regData.id,
+      entidad_id: registro.entidad_id,
     }));
 
     const { error: gastosError } = await (supabase as any)
