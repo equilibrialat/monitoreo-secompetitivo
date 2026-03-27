@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertTriangle } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Header, KpiCard, fmt, DashboardSkeleton } from "./DashboardEntidad";
+import { SeccionRevision } from "./SeccionRevision";
 
 export default function DashboardAdministracion() {
   const { data: entidades, isLoading } = useDashboardData();
