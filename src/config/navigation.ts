@@ -56,6 +56,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Indicadores", path: "/indicadores", icon: BarChart3 },
     { label: "Verificación", path: "/verificacion", icon: Eye },
     { label: "Reportes", path: "/reportes", icon: FolderOpen },
+    { label: "Generar Reportes", path: "/generar-reportes", icon: FileDown },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   administracion: [
