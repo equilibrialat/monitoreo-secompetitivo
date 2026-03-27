@@ -37,14 +37,17 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   gestor_mec_a: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   coordinador_mec_b: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   monitoreo: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
