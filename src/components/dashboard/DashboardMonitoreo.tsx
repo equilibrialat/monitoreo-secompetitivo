@@ -9,6 +9,7 @@ import { SeccionRevision } from "./SeccionRevision";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
+import DashboardFilters from "@/components/DashboardFilters";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, Cell, ReferenceLine, Legend,
