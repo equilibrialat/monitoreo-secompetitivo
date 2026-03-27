@@ -104,7 +104,7 @@ export default function ViaticosPage() {
 
   async function handleLiquidar() {
     if (!liquidarId) return;
-    const { error } = await (supabase as any).from("viaticos").update({ monto_liquidado: montoLiquidado, estado: "liquidado" }).eq("id", liquidarId);
+    const { error } = await (supabase as any).from("viaticos").update({ monto_liquidado: montoLiquidado, estado: "liquidado", fecha_liquidacion: new Date().toISOString().slice(0, 10) }).eq("id", liquidarId);
     if (error) { toast.error("Error", { description: error.message }); return; }
     toast.success("Viático liquidado");
     setLiquidarId(null);
