@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FinanceBar } from "@/components/FinanceBar";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { ClipboardPlus, CheckCircle2, Clock, Send, AlertTriangle, Minus } from "lucide-react";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import type { RegistroPendiente } from "@/lib/registroAprobacion";
