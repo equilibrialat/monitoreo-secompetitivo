@@ -71,6 +71,7 @@ export async function fetchActividadesByEntidad(entidadId: string): Promise<Acti
     avance_operativo_pct: row.avance_operativo_pct ?? 0,
     estado_actual: row.estado_actual ?? "pendiente",
     tags: row.tags ?? [],
+    indicadores_vinculados: row.indicadores_vinculados ?? [],
     producto_id: row.producto_id,
     entidad_id: row.entidad_id,
     producto_codigo: row.productos?.codigo ?? "",
