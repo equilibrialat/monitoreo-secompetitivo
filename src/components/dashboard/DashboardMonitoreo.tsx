@@ -184,6 +184,9 @@ export default function DashboardMonitoreo({
         filterFn={reviewFilterFn}
       />
 
+      {/* Regional summary (only for coordinador_regional) */}
+      {title.includes("Regional") && <ResumenRegional />}
+
       {/* KPIs */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
         <Card>
