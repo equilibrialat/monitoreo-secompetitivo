@@ -82,16 +82,15 @@ export default function ViaticosPage() {
     const row = {
       entidad_id: entidadId,
       nombre_viajero: form.nombre_viajero,
-      destino_ciudad: form.destino_ciudad,
+      destino: form.destino_ciudad,
       motivo: form.motivo,
       fecha_salida: form.fecha_salida || null,
       fecha_retorno: form.fecha_retorno || null,
       actividad_id: form.actividad_id || null,
-      tarifa_alojamiento: form.tarifa_alojamiento,
-      tarifa_alimentacion: form.tarifa_alimentacion,
-      tarifa_transporte: form.tarifa_transporte,
-      num_dias: numDias,
-      monto_estimado: montoEstimado,
+      alojamiento_diario: form.tarifa_alojamiento,
+      alimentacion_diaria: form.tarifa_alimentacion,
+      transporte_local: form.tarifa_transporte,
+      monto_solicitado: montoEstimado,
       estado: "solicitado",
     };
     const { error } = await (supabase as any).from("viaticos").insert(row);
