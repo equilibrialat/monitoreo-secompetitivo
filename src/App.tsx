@@ -17,6 +17,9 @@ import DesembolsosPage from "./pages/DesembolsosPage";
 import ViaticosPage from "./pages/ViaticosPage";
 import ReasignacionesPage from "./pages/ReasignacionesPage";
 import NotificacionesPage from "./pages/NotificacionesPage";
+import IndicadoresMonitoreoPage from "./pages/IndicadoresMonitoreoPage";
+import VerificacionPage from "./pages/VerificacionPage";
+import GenerarReportesPage from "./pages/GenerarReportesPage";
 
 const queryClient = new QueryClient();
 
@@ -43,8 +46,9 @@ const App = () => (
               <Route path="/notificaciones" element={<NotificacionesPage />} />
 
               {/* Monitoreo routes */}
-              <Route path="/indicadores" element={<PlaceholderPage title="Indicadores" />} />
-              <Route path="/verificacion" element={<PlaceholderPage title="Verificación" />} />
+              <Route path="/indicadores" element={<IndicadoresMonitoreoPage />} />
+              <Route path="/verificacion" element={<VerificacionPage />} />
+              <Route path="/generar-reportes" element={<GenerarReportesPage />} />
 
               {/* Administracion routes */}
               <Route path="/contratos" element={<ContratosPage />} />

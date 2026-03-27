@@ -12,6 +12,7 @@ import {
   Plane,
   Shuffle,
   Bell,
+  FileDown,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
@@ -32,6 +33,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Viáticos", path: "/viaticos", icon: Plane },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
     { label: "Reportes", path: "/reportes", icon: BarChart3 },
+    { label: "Generar Reportes", path: "/generar-reportes", icon: FileDown },
   ],
   coordinador_regional: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -54,6 +56,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Indicadores", path: "/indicadores", icon: BarChart3 },
     { label: "Verificación", path: "/verificacion", icon: Eye },
     { label: "Reportes", path: "/reportes", icon: FolderOpen },
+    { label: "Generar Reportes", path: "/generar-reportes", icon: FileDown },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   administracion: [
