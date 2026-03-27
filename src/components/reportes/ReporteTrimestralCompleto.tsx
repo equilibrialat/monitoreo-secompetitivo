@@ -609,7 +609,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 5 — EJECUCIÓN FINANCIERA */}
-        <SectionTitle icon={DollarSign} title="EJECUCIÓN FINANCIERA" number={5} />
+        <SectionTitle icon={DollarSign} title="EJECUCIÓN FINANCIERA" number={6} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2 space-y-4">
           <Tabs defaultValue="seco">
             <TabsList className="flex flex-wrap h-auto gap-1">
