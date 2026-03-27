@@ -16,13 +16,66 @@ export interface FuenteFinanciera {
 }
 
 export interface RegistroCapacitacion {
+  nombre_accion_formativa: string;
+  tipo_accion_formativa: string;
   tema: string;
-  num_participantes_hombres: number;
-  num_participantes_mujeres: number;
-  horas_capacitacion: number;
-  lugar: string;
-  fecha: Date | undefined;
-  metodologia: string;
+  fecha_inicio: Date | undefined;
+  fecha_fin: Date | undefined;
+  departamento: string;
+  modalidad: string;
+  participantes: ParticipanteCapacitacion[];
+}
+
+export interface ParticipanteCapacitacion {
+  id: string;
+  num_documento: string;
+  apellidos: string;
+  nombres: string;
+  genero: "M" | "F" | "";
+  nombre_organizacion: string;
+  aplico_aprendizaje: boolean | null;
+}
+
+export interface RegistroInnovacion {
+  activo: boolean;
+  nombre_innovacion: string;
+  optimizacion_recursos: boolean;
+  optimizacion_procesos: boolean;
+  tecnificacion_mecanizacion: boolean;
+  digitalizacion_trazabilidad: boolean;
+  sostenibilidad_certificaciones: boolean;
+  valor_agregado_calidad: boolean;
+  ruc_organizacion: string;
+  nombre_organizacion: string;
+}
+
+export interface RegistroGei {
+  activo: boolean;
+  tipo_accion: string;
+  nombre_practica: string;
+  categoria: string;
+  etapa_implementacion: string;
+  ruc_organizacion: string;
+  nombre_organizacion: string;
+}
+
+export interface RegistroNuevoProducto {
+  activo: boolean;
+  nombre_producto: string;
+  cadena_valor: string;
+  transformacion_primario: boolean;
+  mejora_empaque: boolean;
+  diferenciacion_origen: boolean;
+  incorpora_innovacion: boolean;
+  ruc_organizacion: string;
+  nombre_organizacion: string;
+}
+
+export interface ContextualData {
+  capacitacion?: RegistroCapacitacion;
+  innovacion?: RegistroInnovacion;
+  gei?: RegistroGei;
+  nuevo_producto?: RegistroNuevoProducto;
 }
 
 export interface RegistroMensualForm {
@@ -33,7 +86,7 @@ export interface RegistroMensualForm {
   descripcion: string;
   fecha_ejecucion: Date | undefined;
   fuentes: FuenteFinanciera[];
-  capacitacion?: RegistroCapacitacion;
+  contextual: ContextualData;
 }
 
 export const ESTADOS_AVANCE = [
@@ -59,8 +112,6 @@ export const MESES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-export const TAGS_CON_INDICADORES = ["capacitacion"] as const;
-
 export function createEmptyGasto(): GastoItem {
   return {
     id: crypto.randomUUID(),
@@ -69,5 +120,47 @@ export function createEmptyGasto(): GastoItem {
     detalle: "",
     fecha: undefined,
     referencia_comprobante: "",
+  };
+}
+
+export function createEmptyCapacitacion(): RegistroCapacitacion {
+  return {
+    nombre_accion_formativa: "", tipo_accion_formativa: "", tema: "",
+    fecha_inicio: undefined, fecha_fin: undefined, departamento: "", modalidad: "",
+    participantes: [],
+  };
+}
+
+export function createEmptyParticipante(): ParticipanteCapacitacion {
+  return {
+    id: crypto.randomUUID(),
+    num_documento: "", apellidos: "", nombres: "", genero: "",
+    nombre_organizacion: "", aplico_aprendizaje: null,
+  };
+}
+
+export function createEmptyInnovacion(): RegistroInnovacion {
+  return {
+    activo: false, nombre_innovacion: "",
+    optimizacion_recursos: false, optimizacion_procesos: false,
+    tecnificacion_mecanizacion: false, digitalizacion_trazabilidad: false,
+    sostenibilidad_certificaciones: false, valor_agregado_calidad: false,
+    ruc_organizacion: "", nombre_organizacion: "",
+  };
+}
+
+export function createEmptyGei(): RegistroGei {
+  return {
+    activo: false, tipo_accion: "", nombre_practica: "", categoria: "",
+    etapa_implementacion: "", ruc_organizacion: "", nombre_organizacion: "",
+  };
+}
+
+export function createEmptyNuevoProducto(): RegistroNuevoProducto {
+  return {
+    activo: false, nombre_producto: "", cadena_valor: "",
+    transformacion_primario: false, mejora_empaque: false,
+    diferenciacion_origen: false, incorpora_innovacion: false,
+    ruc_organizacion: "", nombre_organizacion: "",
   };
 }
