@@ -3,6 +3,7 @@ import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRole } from "@/contexts/RoleContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchNotificacionesForEntidad, countUnread, markAsRead, type Notificacion } from "@/lib/notificaciones";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -18,6 +19,7 @@ const TIPO_ICON: Record<string, string> = {
 
 export function NotificationBell() {
   const { entidadId, role } = useRole();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -68,48 +70,50 @@ export function NotificationBell() {
       <Button
         variant="ghost"
         size="icon"
-        className="relative h-9 w-9"
+        className="relative min-h-[44px] min-w-[44px]"
         onClick={() => { setOpen(!open); setSelected(null); }}
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1">
+          <span className="absolute -top-0.5 -right-0.5 h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center px-1">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </Button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-lg border bg-card shadow-xl z-50">
+        <div className={`absolute top-full mt-2 rounded-lg border bg-card shadow-xl z-50 ${
+          isMobile ? "fixed left-2 right-2 top-auto w-auto" : "right-0 w-96"
+        }`}>
           <div className="px-4 py-3 border-b">
             <h3 className="text-sm font-semibold">Notificaciones</h3>
-            <p className="text-[10px] text-muted-foreground">{unreadCount} sin leer</p>
+            <p className="text-[11px] text-muted-foreground">{unreadCount} sin leer</p>
           </div>
 
           {selected ? (
             <div className="p-4 space-y-2">
-              <Button variant="ghost" size="sm" className="text-xs mb-1 -ml-2" onClick={() => setSelected(null)}>
+              <Button variant="ghost" size="sm" className="text-xs mb-1 -ml-2 min-h-[44px]" onClick={() => setSelected(null)}>
                 ← Volver
               </Button>
               <div className="flex items-center gap-2">
                 <span>{TIPO_ICON[selected.tipo] ?? "📢"}</span>
                 <span className="text-sm font-semibold">{selected.asunto}</span>
               </div>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 {format(new Date(selected.created_at), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
               </p>
-              <p className="text-xs text-foreground whitespace-pre-wrap mt-2">{selected.mensaje}</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap mt-2">{selected.mensaje}</p>
             </div>
           ) : (
             <ScrollArea className="max-h-80">
               {notifs.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-8">No hay notificaciones</p>
+                <p className="text-sm text-muted-foreground text-center py-8">No hay notificaciones</p>
               ) : (
                 <div className="divide-y">
                   {notifs.slice(0, 30).map((n) => (
                     <button
                       key={n.id}
-                      className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors ${!n.leido ? "bg-primary/5" : ""}`}
+                      className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors min-h-[48px] ${!n.leido ? "bg-primary/5" : ""}`}
                       onClick={() => handleClick(n)}
                     >
                       <div className="flex items-start gap-2">
@@ -119,10 +123,10 @@ export function NotificationBell() {
                             <span className={`text-xs font-medium truncate ${!n.leido ? "text-foreground" : "text-muted-foreground"}`}>
                               {n.asunto}
                             </span>
-                            {!n.leido && <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
+                            {!n.leido && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
                           </div>
-                          <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{n.mensaje}</p>
-                          <p className="text-[9px] text-muted-foreground mt-0.5">
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{n.mensaje}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
                             {format(new Date(n.created_at), "dd MMM HH:mm", { locale: es })}
                           </p>
                         </div>

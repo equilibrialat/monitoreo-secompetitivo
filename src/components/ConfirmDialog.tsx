@@ -18,14 +18,17 @@ interface Props {
 export function ConfirmDialog({ open, onConfirm, onCancel, title, description, confirmLabel = "Confirmar", cancelLabel = "Cancelar", variant = "default" }: Props) {
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onCancel()}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <AlertDialogTitle className="text-base">{title}</AlertDialogTitle>
+          <AlertDialogDescription className="text-sm">{description}</AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>{cancelLabel}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className={variant === "destructive" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}>
+        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+          <AlertDialogCancel onClick={onCancel} className="min-h-[44px] w-full sm:w-auto">{cancelLabel}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className={`min-h-[44px] w-full sm:w-auto ${variant === "destructive" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}`}
+          >
             {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -51,13 +51,13 @@ export default function DashboardEntidad() {
 
 export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="flex items-center gap-3 mb-6">
-      <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
-        <LayoutDashboard className="h-5 w-5 text-primary" />
+    <div className="flex items-center gap-3 mb-4 md:mb-6">
+      <div className="flex items-center justify-center h-9 w-9 md:h-10 md:w-10 rounded-lg bg-primary/10 shrink-0">
+        <LayoutDashboard className="h-4 w-4 md:h-5 md:w-5 text-primary" />
       </div>
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-        {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+      <div className="min-w-0">
+        <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">{title}</h1>
+        {subtitle && <p className="text-xs md:text-sm text-muted-foreground truncate">{subtitle}</p>}
       </div>
     </div>
   );
@@ -66,10 +66,10 @@ export function Header({ title, subtitle }: { title: string; subtitle?: string }
 export function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <Card>
-      <CardContent className="pt-5 pb-4">
+      <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
         <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+        <p className="text-xl md:text-2xl font-bold text-foreground">{value}</p>
+        {sub && <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
       </CardContent>
     </Card>
   );

@@ -227,7 +227,8 @@ export default function TramaFisicoFinanciera() {
           </select>
         </div>
 
-        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+        <p className="text-[10px] text-muted-foreground text-center mb-1 sm:hidden">← desliza →</p>
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto -mx-2 px-2">
           <Table>
             <TableHeader>
               <TableRow>

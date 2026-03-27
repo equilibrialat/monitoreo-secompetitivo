@@ -99,13 +99,13 @@ export default function ContratosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-foreground">Contratos</h1><p className="text-muted-foreground">Gestión de contratos y adquisiciones</p></div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div><h1 className="text-lg md:text-2xl font-bold text-foreground">Contratos</h1><p className="text-sm text-muted-foreground">Gestión de contratos y adquisiciones</p></div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nuevo contrato</Button></DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogTrigger asChild><Button size="sm" className="min-h-[44px]"><Plus className="h-4 w-4 mr-1" /> Nuevo contrato</Button></DialogTrigger>
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Nuevo Contrato</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {isAdmin && (
                 <div className="space-y-1 col-span-2">
                   <Label className="text-xs">Entidad</Label>
@@ -197,7 +197,9 @@ export default function ContratosPage() {
       <Card>
         <CardContent className="p-0">
           {loading ? <p className="text-center py-8 text-muted-foreground">Cargando…</p> : (
-            <div className="overflow-x-auto">
+            <>
+              <p className="text-[10px] text-muted-foreground text-center py-1 sm:hidden">← desliza →</p>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
                   {isAdmin && <TableHead>Entidad</TableHead>}
@@ -226,6 +228,7 @@ export default function ContratosPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
