@@ -12,7 +12,6 @@ const ESTADO_CONFIG: Record<string, { label: string; className: string }> = {
 };
 
 function getSemaforoColor(avance: number): string {
-  // Green < 15% gap, Yellow 15-30%, Red > 30%
   const gap = 100 - avance;
   if (gap <= 15) return "bg-success";
   if (gap <= 30) return "bg-warning";
@@ -21,9 +20,10 @@ function getSemaforoColor(avance: number): string {
 
 interface ActivityCardProps {
   actividad: Actividad;
+  onRegistrar?: (actividad: Actividad) => void;
 }
 
-export function ActivityCard({ actividad }: ActivityCardProps) {
+export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
   const estado = ESTADO_CONFIG[actividad.estado_actual] ?? ESTADO_CONFIG.pendiente;
   const semaforoColor = getSemaforoColor(actividad.avance_operativo_pct);
 
@@ -41,7 +41,6 @@ export function ActivityCard({ actividad }: ActivityCardProps) {
         </Badge>
       </div>
 
-      {/* Progress bar with semáforo */}
       <div className="mb-4">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
           <span>Avance operativo</span>
@@ -58,29 +57,18 @@ export function ActivityCard({ actividad }: ActivityCardProps) {
         </p>
       </div>
 
-      {/* Finance mini-bars */}
       <div className="space-y-2 mb-4">
-        <FinanceBar
-          label="SECO"
-          executed={actividad.ejecutado_seco_acum}
-          budget={actividad.presupuesto_seco}
-          colorClass="bg-primary"
-        />
-        <FinanceBar
-          label="CM"
-          executed={actividad.ejecutado_cm_acum}
-          budget={actividad.presupuesto_contrapartida_monetaria}
-          colorClass="bg-accent"
-        />
-        <FinanceBar
-          label="CNM"
-          executed={actividad.ejecutado_cnm_acum}
-          budget={actividad.presupuesto_contrapartida_no_monetaria}
-          colorClass="bg-sidebar-primary"
-        />
+        <FinanceBar label="SECO" executed={actividad.ejecutado_seco_acum} budget={actividad.presupuesto_seco} colorClass="bg-primary" />
+        <FinanceBar label="CM" executed={actividad.ejecutado_cm_acum} budget={actividad.presupuesto_contrapartida_monetaria} colorClass="bg-accent" />
+        <FinanceBar label="CNM" executed={actividad.ejecutado_cnm_acum} budget={actividad.presupuesto_contrapartida_no_monetaria} colorClass="bg-sidebar-primary" />
       </div>
 
-      <Button size="sm" variant="outline" className="w-full text-xs">
+      <Button
+        size="sm"
+        variant="outline"
+        className="w-full text-xs"
+        onClick={() => onRegistrar?.(actividad)}
+      >
         <ClipboardPlus className="h-3.5 w-3.5 mr-1.5" />
         Registrar avance
       </Button>

@@ -53,7 +53,7 @@ export const MOCK_ACTIVIDADES: Actividad[] = [
     ejecutado_cnm_acum: 1500,
     avance_operativo_pct: 35,
     estado_actual: "en_ejecucion",
-    tags: ["postcosecha", "calidad"],
+    tags: ["postcosecha", "calidad", "capacitacion"],
     resultado: "R1 - Incremento de productividad del cacao",
     producto: "P1 - Productores capacitados en MIP",
   },
