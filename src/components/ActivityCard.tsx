@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FinanceBar } from "@/components/FinanceBar";
 import { ClipboardPlus } from "lucide-react";
-import type { Actividad } from "@/data/mockActividades";
+import type { ActividadDB } from "@/lib/supabaseQueries";
 
 const ESTADO_CONFIG: Record<string, { label: string; className: string }> = {
   pendiente: { label: "Pendiente", className: "bg-muted text-muted-foreground" },
@@ -19,8 +19,8 @@ function getSemaforoColor(avance: number): string {
 }
 
 interface ActivityCardProps {
-  actividad: Actividad;
-  onRegistrar?: (actividad: Actividad) => void;
+  actividad: ActividadDB;
+  onRegistrar?: (actividad: ActividadDB) => void;
 }
 
 export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
@@ -32,13 +32,9 @@ export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
           <p className="text-xs font-mono text-muted-foreground mb-1">{actividad.codigo}</p>
-          <h4 className="text-sm font-semibold text-card-foreground leading-snug">
-            {actividad.nombre}
-          </h4>
+          <h4 className="text-sm font-semibold text-card-foreground leading-snug">{actividad.nombre}</h4>
         </div>
-        <Badge className={`shrink-0 text-xs ${estado.className}`}>
-          {estado.label}
-        </Badge>
+        <Badge className={`shrink-0 text-xs ${estado.className}`}>{estado.label}</Badge>
       </div>
 
       <div className="mb-4">
@@ -47,10 +43,7 @@ export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
           <span className="font-medium">{actividad.avance_operativo_pct}%</span>
         </div>
         <div className="h-2 w-full rounded-full bg-muted">
-          <div
-            className={`h-full rounded-full transition-all ${semaforoColor}`}
-            style={{ width: `${actividad.avance_operativo_pct}%` }}
-          />
+          <div className={`h-full rounded-full transition-all ${semaforoColor}`} style={{ width: `${actividad.avance_operativo_pct}%` }} />
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">
           Meta: {actividad.meta_valor} {actividad.meta_unidad_medida}
@@ -63,12 +56,7 @@ export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
         <FinanceBar label="CNM" executed={actividad.ejecutado_cnm_acum} budget={actividad.presupuesto_contrapartida_no_monetaria} colorClass="bg-sidebar-primary" />
       </div>
 
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full text-xs"
-        onClick={() => onRegistrar?.(actividad)}
-      >
+      <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => onRegistrar?.(actividad)}>
         <ClipboardPlus className="h-3.5 w-3.5 mr-1.5" />
         Registrar avance
       </Button>
