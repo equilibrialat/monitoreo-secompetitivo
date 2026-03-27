@@ -135,11 +135,13 @@ export default function IndicadoresImpactoPage() {
     toast.success("✅ Reporte completo enviado para revisión");
   };
 
+  const isMobile = useIsMobile();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-semibold">
+        <h1 className="text-base md:text-lg font-semibold">
           Reporte de Indicadores de Impacto — {getSemestre(semestre)} {anio}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
@@ -151,11 +153,11 @@ export default function IndicadoresImpactoPage() {
       <AutoSaveIndicator isSaving={autoSaving} lastSaved={lastSaved} isDirty={isDirty} />
 
       {/* Period selectors */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Año:</span>
           <Select value={String(anio)} onValueChange={(v) => { setAnio(Number(v)); setCurrentSection(0); setSavedSections(new Set()); }}>
-            <SelectTrigger className="h-8 w-24 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-10 w-24 text-xs min-h-[44px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {ANIOS.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
             </SelectContent>
@@ -164,7 +166,7 @@ export default function IndicadoresImpactoPage() {
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Semestre:</span>
           <Select value={semestre} onValueChange={(v) => { setSemestre(v); setCurrentSection(0); setSavedSections(new Set()); }}>
-            <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-10 w-44 text-xs min-h-[44px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="S1">S1: Enero – Junio</SelectItem>
               <SelectItem value="S2">S2: Julio – Diciembre</SelectItem>
@@ -173,35 +175,51 @@ export default function IndicadoresImpactoPage() {
         </div>
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar / stepper */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Sección {currentSection + 1} de {totalSections}: <span className="font-medium text-foreground">{sections[currentSection].label}</span></span>
-          <div className="flex gap-1">
+          {!isMobile && (
+            <div className="flex gap-1">
+              {sections.map((s, i) => (
+                <Badge
+                  key={s.key}
+                  variant={i === currentSection ? "default" : savedSections.has(s.key) ? "secondary" : "outline"}
+                  className="text-[9px] cursor-pointer"
+                  onClick={() => handleSectionChange(i)}
+                >
+                  {s.label}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        <Progress value={progressPct} className="h-2" />
+        {isMobile && (
+          <div className="flex gap-1 overflow-x-auto pb-1">
             {sections.map((s, i) => (
               <Badge
                 key={s.key}
                 variant={i === currentSection ? "default" : savedSections.has(s.key) ? "secondary" : "outline"}
-                className="text-[9px] cursor-pointer"
+                className="text-[10px] cursor-pointer shrink-0 min-h-[32px] px-2.5"
                 onClick={() => handleSectionChange(i)}
               >
                 {s.label}
               </Badge>
             ))}
           </div>
-        </div>
-        <Progress value={progressPct} className="h-1.5" />
+        )}
       </div>
 
       {/* Current section */}
       {sections[currentSection].component}
 
       {/* Navigation */}
-      <div className="flex justify-between pt-2">
+      <div className="flex flex-col sm:flex-row justify-between gap-2 pt-2">
         <Button
           variant="outline"
           size="sm"
-          className="text-xs"
+          className="text-xs min-h-[44px] w-full sm:w-auto"
           disabled={currentSection === 0}
           onClick={() => handleSectionChange(currentSection - 1)}
         >
@@ -210,12 +228,12 @@ export default function IndicadoresImpactoPage() {
 
         <div className="flex gap-2">
           {!isLast && (
-            <Button size="sm" className="text-xs" onClick={() => handleSectionChange(currentSection + 1)}>
+            <Button size="sm" className="text-xs min-h-[44px] w-full sm:w-auto" onClick={() => handleSectionChange(currentSection + 1)}>
               Siguiente <ChevronRight className="h-3.5 w-3.5 ml-1" />
             </Button>
           )}
           {isLast && (
-            <Button size="sm" className="text-xs bg-success text-success-foreground hover:bg-success/90" onClick={() => setShowSendConfirm(true)}>
+            <Button size="sm" className="text-xs bg-success text-success-foreground hover:bg-success/90 min-h-[44px] w-full sm:w-auto" onClick={() => setShowSendConfirm(true)}>
               <Send className="h-3.5 w-3.5 mr-1.5" /> Enviar reporte completo
             </Button>
           )}
