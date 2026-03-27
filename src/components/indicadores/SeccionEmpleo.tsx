@@ -110,11 +110,9 @@ export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }
         if (uiRows.length > 0) setRows(uiRows);
       }
       if (rows.length === 0 && data.length === 0) {
-        // Init default rows
         const defaults: EmpleoRow[] = [];
         for (const tipo of TIPOS_EMPLEO) {
           for (const act of TIPOS_ACTIVIDAD) {
-            if (tipo.key === "mejorado" && act !== "Manejo de finca") continue;
             defaults.push({ tipo_empleo: tipo.key, tipo_actividad: act, total: 0, masculino: 0, femenino: 0, region: "" });
           }
         }
@@ -159,9 +157,13 @@ export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }
         : 0,
       empleos_creados_total: 0, empleos_creados_masculino: 0, empleos_creados_femenino: 0,
       empleos_creados_manejo_finca: 0, empleos_creados_post_cosecha: 0, empleos_creados_agroindustria: 0, empleos_creados_turismo: 0,
+      region_empleo_creado: "",
       empleos_retenidos_total: 0, empleos_retenidos_masculino: 0, empleos_retenidos_femenino: 0,
-      empleos_retenidos_manejo_finca: 0, empleos_retenidos_turismo: 0,
+      empleos_retenidos_manejo_finca: 0, empleos_retenidos_post_cosecha: 0, empleos_retenidos_agroindustria: 0, empleos_retenidos_turismo: 0,
+      region_empleo_retenido: "",
       empleos_mejorados_total: 0, empleos_mejorados_masculino: 0, empleos_mejorados_femenino: 0,
+      empleos_mejorados_manejo_finca: 0, empleos_mejorados_post_cosecha: 0, empleos_mejorados_agroindustria: 0, empleos_mejorados_turismo: 0,
+      region_empleo_mejorado: "",
       total_empleos: 0,
     };
 
@@ -189,6 +191,8 @@ export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }
         dbRow.empleos_mejorados_total += r.total;
         dbRow.empleos_mejorados_masculino += r.masculino;
         dbRow.empleos_mejorados_femenino += r.femenino;
+        const f = actFieldMap[r.tipo_actividad];
+        if (f) dbRow[`empleos_mejorados_${f}`] = (dbRow[`empleos_mejorados_${f}`] || 0) + r.total;
         if (r.region) dbRow.region_empleo_mejorado = r.region;
       }
     }

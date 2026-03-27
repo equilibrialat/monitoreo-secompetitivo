@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Save, Loader2, Plus, Trash2 } from "lucide-react";
@@ -13,7 +12,8 @@ interface ProdRow {
   organizacion_productores: string;
   region: string;
   num_productores: number;
-  genero_productores: string;
+  num_productores_masculino: number;
+  num_productores_femenino: number;
   superficie_has: number;
   produccion_campo_tn: number;
   descarte_campo_tn: number;
@@ -36,7 +36,7 @@ function calc(r: ProdRow) {
 }
 
 const emptyRow = (): ProdRow => ({
-  organizacion_productores: "", region: "", num_productores: 0, genero_productores: "",
+  organizacion_productores: "", region: "", num_productores: 0, num_productores_masculino: 0, num_productores_femenino: 0,
   superficie_has: 0, produccion_campo_tn: 0, descarte_campo_tn: 0, descarte_proceso_tn: 0,
 });
 
@@ -54,7 +54,8 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
           organizacion_productores: d.organizacion_productores ?? "",
           region: d.region ?? "",
           num_productores: d.num_productores ?? 0,
-          genero_productores: d.genero_productores ?? "",
+          num_productores_masculino: d.num_productores_masculino ?? 0,
+          num_productores_femenino: d.num_productores_femenino ?? 0,
           superficie_has: d.superficie_has ?? 0,
           produccion_campo_tn: d.produccion_campo_tn ?? 0,
           descarte_campo_tn: d.descarte_campo_tn ?? 0,
@@ -66,7 +67,15 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
   }, [entidadId, anio]);
 
   const update = (i: number, field: keyof ProdRow, value: any) => {
-    setRows((prev) => { const c = [...prev]; c[i] = { ...c[i], [field]: value }; return c; });
+    setRows((prev) => {
+      const c = [...prev];
+      c[i] = { ...c[i], [field]: value };
+      if (field === "num_productores_masculino" || field === "num_productores_femenino") {
+        c[i].num_productores = (c[i].num_productores_masculino || 0) + (c[i].num_productores_femenino || 0);
+      }
+      return c;
+    });
+  };
   };
   const addRow = () => setRows((p) => [...p, emptyRow()]);
   const removeRow = (i: number) => {
@@ -76,6 +85,12 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
   };
 
   const handleSave = async () => {
+    for (const r of rows) {
+      if (r.num_productores > 0 && r.num_productores !== r.num_productores_masculino + r.num_productores_femenino) {
+        toast.error("Validación", { description: `Total productores debe ser = Hombres + Mujeres en "${r.organizacion_productores}"` });
+        return;
+      }
+    }
     setSaving(true);
     await deleteRows("reporte_productividad", deletedIds);
     const dbRows = rows.filter((r) => r.organizacion_productores.trim()).map((r) => {
@@ -88,7 +103,8 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
         organizacion_productores: r.organizacion_productores,
         region: r.region,
         num_productores: r.num_productores,
-        genero_productores: r.genero_productores,
+        num_productores_masculino: r.num_productores_masculino,
+        num_productores_femenino: r.num_productores_femenino,
         superficie_has: r.superficie_has,
         produccion_campo_tn: r.produccion_campo_tn,
         productividad_tn_ha: c.productividad,
@@ -118,7 +134,9 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
               <TableRow>
                 <TableHead className="text-[10px]">Organización</TableHead>
                 <TableHead className="text-[10px]">Región</TableHead>
-                <TableHead className="text-[10px] text-right">Productores</TableHead>
+                <TableHead className="text-[10px] text-right">Hombres</TableHead>
+                <TableHead className="text-[10px] text-right">Mujeres</TableHead>
+                <TableHead className="text-[10px] text-right">Total Prod.</TableHead>
                 <TableHead className="text-[10px] text-right">Sup. (ha)</TableHead>
                 <TableHead className="text-[10px] text-right">Prod. (TN)</TableHead>
                 <TableHead className="text-[10px] text-right">TN/ha</TableHead>
@@ -131,11 +149,14 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
             <TableBody>
               {rows.map((r, i) => {
                 const c = calc(r);
+                const mismatch = r.num_productores > 0 && r.num_productores !== r.num_productores_masculino + r.num_productores_femenino;
                 return (
                   <TableRow key={i}>
                     <TableCell><Input className="h-7 text-xs min-w-[140px]" value={r.organizacion_productores} onChange={(e) => update(i, "organizacion_productores", e.target.value)} placeholder="Nombre" /></TableCell>
                     <TableCell><Input className="h-7 text-xs w-24" value={r.region} onChange={(e) => update(i, "region", e.target.value)} /></TableCell>
-                    <TableCell className="text-right"><Input type="number" min={0} className="h-7 w-16 text-xs text-right ml-auto" value={r.num_productores || ""} onChange={(e) => update(i, "num_productores", Number(e.target.value))} /></TableCell>
+                    <TableCell className="text-right"><Input type="number" min={0} className="h-7 w-16 text-xs text-right ml-auto" value={r.num_productores_masculino || ""} onChange={(e) => update(i, "num_productores_masculino", Number(e.target.value))} /></TableCell>
+                    <TableCell className="text-right"><Input type="number" min={0} className="h-7 w-16 text-xs text-right ml-auto" value={r.num_productores_femenino || ""} onChange={(e) => update(i, "num_productores_femenino", Number(e.target.value))} /></TableCell>
+                    <TableCell className={`text-right text-xs font-bold ${mismatch ? "text-destructive" : ""}`}>{r.num_productores}</TableCell>
                     <TableCell className="text-right"><Input type="number" min={0} step="any" className="h-7 w-20 text-xs text-right ml-auto" value={r.superficie_has || ""} onChange={(e) => update(i, "superficie_has", Number(e.target.value))} /></TableCell>
                     <TableCell className="text-right"><Input type="number" min={0} step="any" className="h-7 w-20 text-xs text-right ml-auto" value={r.produccion_campo_tn || ""} onChange={(e) => update(i, "produccion_campo_tn", Number(e.target.value))} /></TableCell>
                     <TableCell className="text-right text-xs font-bold text-primary">{c.productividad}</TableCell>
