@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Send, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { getSemestre, updateEstadoRegistro } from "@/lib/indicadoresImpacto";
 import { SeccionEmpleo } from "@/components/indicadores/SeccionEmpleo";
