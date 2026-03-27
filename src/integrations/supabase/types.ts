@@ -2558,6 +2558,7 @@ export type Database = {
       v_dashboard_entidad: {
         Row: {
           actividades_completadas: number | null
+          cadena_valor: string | null
           codigo: string | null
           desfases_tecnico_financiero: number | null
           ejecutado_cm_total: number | null
@@ -2570,6 +2571,7 @@ export type Database = {
           presupuesto_cm_total: number | null
           presupuesto_cnm_total: number | null
           presupuesto_seco_total: number | null
+          region: string | null
           sobregiros_seco: number | null
           tipo_entidad: Database["public"]["Enums"]["tipo_entidad"] | null
           total_actividades: number | null
