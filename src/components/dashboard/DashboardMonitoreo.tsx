@@ -9,6 +9,11 @@ interface Props {
   filterFn?: (e: DashboardEntidad) => boolean;
   title?: string;
   subtitle?: string;
+  reviewEstado?: string;
+  reviewNextEstado?: string;
+  reviewTitle?: string;
+  reviewLabel?: string;
+  reviewFilterFn?: (r: any) => boolean;
 }
 
 export default function DashboardMonitoreo({ filterFn, title = "Dashboard de Monitoreo", subtitle }: Props) {
