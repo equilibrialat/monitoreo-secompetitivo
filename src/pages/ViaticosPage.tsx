@@ -191,7 +191,7 @@ export default function ViaticosPage() {
                       <TableCell><Badge variant="outline">{ESTADO_LABELS[v.estado] ?? v.estado}</Badge></TableCell>
                       <TableCell>
                         {v.estado === "aprobado" && !isAdmin && (
-                          <Button variant="outline" size="sm" className="text-xs" onClick={() => { setLiquidarId(v.id); setMontoLiquidado(v.monto_estimado ?? 0); }}>
+                          <Button variant="outline" size="sm" className="text-xs" onClick={() => { setLiquidarId(v.id); setMontoLiquidado(v.monto_solicitado ?? 0); }}>
                             <Receipt className="h-3 w-3 mr-1" /> Liquidar
                           </Button>
                         )}
