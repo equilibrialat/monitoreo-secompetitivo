@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download, ArrowUpDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Download, ArrowUpDown, Search, Loader2, Bot, ChevronDown } from "lucide-react";
+import { invokeAnalysis } from "@/lib/aiAnalysis";
 
 interface TramaRow {
   item: number | null;
