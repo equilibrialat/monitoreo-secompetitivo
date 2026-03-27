@@ -601,6 +601,191 @@ function TabUsuarios() {
   );
 }
 
+// --- Tab 6: Registro Financiero Mec A ---
+function TabRegistroFinancieroMecA() {
+  const { entidades } = useRole();
+  const mecAEntidades = entidades.filter(e => e.mecanismo === "A" || e.tipo_entidad === "mec_a");
+  const [selectedEntidad, setSelectedEntidad] = useState<string>("");
+  const [mes, setMes] = useState(String(new Date().getMonth() + 1));
+  const [anio, setAnio] = useState(String(new Date().getFullYear()));
+  const [actividades, setActividades] = useState<any[]>([]);
+  const [registros, setRegistros] = useState<any[]>([]);
+  const [gastos, setGastos] = useState<Record<string, { monto: number; tipo_gasto: string; detalle: string }>>({});
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  useEffect(() => {
+    if (!selectedEntidad) return;
+    loadData();
+  }, [selectedEntidad, mes, anio]);
+
+  async function loadData() {
+    setLoading(true);
+    const [actsResult, regsResult] = await Promise.all([
+      (supabase as any).from("actividades").select("id, codigo, nombre, presupuesto_seco, ejecutado_seco_acum").eq("entidad_id", selectedEntidad).order("codigo"),
+      (supabase as any).from("registros_mensuales").select("id, actividad_id, estado_registro").eq("entidad_id", selectedEntidad).eq("mes", Number(mes)).eq("anio", Number(anio)),
+    ]);
+    setActividades(actsResult.data || []);
+    setRegistros(regsResult.data || []);
+
+    // Load existing SECO gastos for this month
+    const regIds = (regsResult.data || []).map((r: any) => r.id);
+    if (regIds.length > 0) {
+      const { data: efData } = await (supabase as any)
+        .from("ejecucion_financiera")
+        .select("actividad_id, monto, tipo_gasto, detalle_gasto")
+        .in("registro_mensual_id", regIds)
+        .eq("fuente", "cofinanciamiento_seco");
+
+      const g: Record<string, { monto: number; tipo_gasto: string; detalle: string }> = {};
+      (efData || []).forEach((ef: any) => {
+        g[ef.actividad_id] = { monto: ef.monto, tipo_gasto: ef.tipo_gasto || "", detalle: ef.detalle_gasto || "" };
+      });
+      setGastos(g);
+    } else {
+      setGastos({});
+    }
+    setLoading(false);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    let saved = 0;
+    for (const [actId, gasto] of Object.entries(gastos)) {
+      if (!gasto.monto || gasto.monto <= 0) continue;
+      const reg = registros.find((r: any) => r.actividad_id === actId);
+      let registroId = reg?.id;
+
+      // Create registro_mensual if not exists
+      if (!registroId) {
+        const { data: newReg } = await (supabase as any).from("registros_mensuales").insert({
+          actividad_id: actId, entidad_id: selectedEntidad, mes: Number(mes), anio: Number(anio),
+          estado_registro: "borrador",
+        }).select("id").single();
+        registroId = newReg?.id;
+      }
+
+      if (registroId) {
+        // Upsert: delete existing SECO for this registro, then insert
+        await (supabase as any).from("ejecucion_financiera")
+          .delete()
+          .eq("registro_mensual_id", registroId)
+          .eq("actividad_id", actId)
+          .eq("fuente", "cofinanciamiento_seco");
+
+        await (supabase as any).from("ejecucion_financiera").insert({
+          registro_mensual_id: registroId, actividad_id: actId, entidad_id: selectedEntidad,
+          fuente: "cofinanciamiento_seco", monto: gasto.monto,
+          tipo_gasto: gasto.tipo_gasto || null, detalle_gasto: gasto.detalle || null,
+        });
+        saved++;
+      }
+    }
+    setSaving(false);
+    toast.success(`${saved} gastos SECO registrados`);
+    loadData();
+  }
+
+  const totalGastosMes = Object.values(gastos).reduce((s, g) => s + (g.monto || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+        <p className="text-xs text-muted-foreground">
+          Las entidades del Mecanismo A no gestionan directamente el cofinanciamiento SECO.
+          Registre aquí la ejecución financiera SECO para cada actividad.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={selectedEntidad} onValueChange={setSelectedEntidad}>
+          <SelectTrigger className="w-[250px]"><SelectValue placeholder="Seleccionar entidad Mec A" /></SelectTrigger>
+          <SelectContent>
+            {mecAEntidades.map((e) => <SelectItem key={e.id} value={e.id}>{e.nombre_corto}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={mes} onValueChange={setMes}>
+          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {MESES.map((m, i) => <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={anio} onValueChange={setAnio}>
+          <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[2024, 2025, 2026].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8 text-sm text-muted-foreground">Cargando...</div>
+      ) : selectedEntidad && actividades.length > 0 ? (
+        <>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Actividad</TableHead>
+                  <TableHead className="text-right">Presup. SECO</TableHead>
+                  <TableHead className="text-right">Ejecutado acum.</TableHead>
+                  <TableHead className="text-right">Gasto este mes (USD)</TableHead>
+                  <TableHead>Tipo gasto</TableHead>
+                  <TableHead>Detalle</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {actividades.filter((a: any) => (a.presupuesto_seco || 0) > 0).map((act: any) => {
+                  const g = gastos[act.id] || { monto: 0, tipo_gasto: "", detalle: "" };
+                  return (
+                    <TableRow key={act.id}>
+                      <TableCell className="font-mono text-xs">{act.codigo}</TableCell>
+                      <TableCell className="text-xs max-w-[200px] truncate">{act.nombre}</TableCell>
+                      <TableCell className="text-right text-xs font-mono">{(act.presupuesto_seco || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right text-xs font-mono">{(act.ejecutado_seco_acum || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number" min={0} className="h-7 text-xs w-[100px] ml-auto"
+                          value={g.monto || ""}
+                          onChange={(e) => setGastos({ ...gastos, [act.id]: { ...g, monto: Number(e.target.value) } })}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input className="h-7 text-xs w-[120px]" value={g.tipo_gasto}
+                          onChange={(e) => setGastos({ ...gastos, [act.id]: { ...g, tipo_gasto: e.target.value } })}
+                          placeholder="Consultoría..." />
+                      </TableCell>
+                      <TableCell>
+                        <Input className="h-7 text-xs w-[150px]" value={g.detalle}
+                          onChange={(e) => setGastos({ ...gastos, [act.id]: { ...g, detalle: e.target.value } })}
+                          placeholder="Descripción breve" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Total gastos SECO este mes: <span className="font-bold text-foreground">US$ {totalGastosMes.toLocaleString()}</span>
+            </p>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Guardando..." : "Guardar gastos SECO"}
+            </Button>
+          </div>
+        </>
+      ) : selectedEntidad ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No hay actividades con presupuesto SECO para esta entidad.</p>
+      ) : null}
+    </div>
+  );
+}
+
 // --- Main Page ---
 export default function AdministracionPage() {
   return (
@@ -613,12 +798,14 @@ export default function AdministracionPage() {
           <TabsTrigger value="indicadores">Indicadores</TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
           <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
+          <TabsTrigger value="financiero_meca">Financiero Mec A</TabsTrigger>
         </TabsList>
         <TabsContent value="entidades"><TabEntidades /></TabsContent>
         <TabsContent value="marco"><TabMarcoLogico /></TabsContent>
         <TabsContent value="indicadores"><TabIndicadores /></TabsContent>
         <TabsContent value="config"><TabConfigIndicadores /></TabsContent>
         <TabsContent value="usuarios"><TabUsuarios /></TabsContent>
+        <TabsContent value="financiero_meca"><TabRegistroFinancieroMecA /></TabsContent>
       </Tabs>
     </div>
   );

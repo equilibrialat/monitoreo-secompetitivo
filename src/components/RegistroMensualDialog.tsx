@@ -376,7 +376,43 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
                   errors={validationErrors}
                 />
                 <Separator />
-                <SeccionEjecucionFinanciera fuentes={fuentes} onFuentesChange={(v) => { setFuentes(v); markDirty(); }} />
+                {isMecA && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-2">
+                    <p className="text-xs font-semibold text-primary">ℹ️ Ejecución financiera SECO (registrada por Administración)</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      La ejecución del cofinanciamiento SECO para iniciativas del Mecanismo A es gestionada por la Administración del programa.
+                    </p>
+                    {fuentes.filter(f => f.key === "cofinanciamiento_seco" && f.presupuesto > 0).map(f => (
+                      <div key={f.key} className="grid grid-cols-3 gap-2 text-center mt-2">
+                        <div className="rounded-md bg-muted/50 p-2">
+                          <p className="text-[10px] text-muted-foreground uppercase">Presupuesto</p>
+                          <p className="text-xs font-semibold">US$ {f.presupuesto.toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-md bg-muted/50 p-2">
+                          <p className="text-[10px] text-muted-foreground uppercase">Ejecutado acum.</p>
+                          <p className="text-xs font-semibold">US$ {f.ejecutado_acum.toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-md bg-muted/50 p-2">
+                          <p className="text-[10px] text-muted-foreground uppercase">Disponible</p>
+                          <p className="text-xs font-semibold">US$ {(f.presupuesto - f.ejecutado_acum).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <SeccionEjecucionFinanciera
+                  fuentes={isMecA ? fuentes.filter(f => f.key !== "cofinanciamiento_seco") : fuentes}
+                  onFuentesChange={(updatedFuentes) => {
+                    if (isMecA) {
+                      // Preserve SECO source untouched, only update non-SECO
+                      const secoFuente = fuentes.find(f => f.key === "cofinanciamiento_seco");
+                      setFuentes(secoFuente ? [secoFuente, ...updatedFuentes] : updatedFuentes);
+                    } else {
+                      setFuentes(updatedFuentes);
+                    }
+                    markDirty();
+                  }}
+                />
                 {(actividad.tags ?? []).some((t) => ["capacitacion", "innovacion", "gei", "nuevo_producto"].includes(t)) && (
                   <>
                     <Separator />
