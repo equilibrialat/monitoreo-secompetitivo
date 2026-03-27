@@ -36,6 +36,7 @@ interface SeccionAvanceProps {
   onEstadoChange: (v: string) => void;
   onDescripcionChange: (v: string) => void;
   onFechaEjecucionChange: (v: Date | undefined) => void;
+  errors?: Record<string, string>;
 }
 
 const currentYear = new Date().getFullYear();
@@ -44,7 +45,7 @@ const ANIOS = [currentYear - 1, currentYear, currentYear + 1];
 export function SeccionAvanceOperativo({
   mes, anio, valorAvance, estado, descripcion, fechaEjecucion, unidadMedida,
   onMesChange, onAnioChange, onValorAvanceChange, onEstadoChange,
-  onDescripcionChange, onFechaEjecucionChange,
+  onDescripcionChange, onFechaEjecucionChange, errors = {},
 }: SeccionAvanceProps) {
   return (
     <div className="space-y-4">
