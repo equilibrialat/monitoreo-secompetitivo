@@ -263,6 +263,28 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
     downloadCSV(rows, `reporte_trimestral_${entidadNombre}_${trimestre}_${anio}.csv`);
   }
 
+  async function handleDocx() {
+    toast.info("Generando documento Word...");
+    try {
+      await generateTrimestralDocx({
+        entidadNombre, entidad, trimestre, anio, mesLabels, meses,
+        actividades, registros, gastos, capacitaciones, innovaciones, gei,
+        nuevosProductos, normativo, contratos, desembolsos, aiSummary,
+        actConAvance, actCulminadas, totalSeco, totalCM, totalCNM,
+        totalPresupuestoSeco, totalEjecAcumSeco, pctEjecTotal,
+        regByActMes, grouped, gastosByActFuente, capByAct,
+      });
+      toast.success("Documento Word descargado");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al generar el documento");
+    }
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
   const noData = registros.length === 0 && !loading;
 
   if (loading) {
