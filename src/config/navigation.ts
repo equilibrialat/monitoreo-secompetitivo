@@ -33,6 +33,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Viáticos", path: "/viaticos", icon: Plane },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
     { label: "Reportes", path: "/reportes", icon: BarChart3 },
+    { label: "Generar Reportes", path: "/generar-reportes", icon: FileDown },
   ],
   coordinador_regional: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
