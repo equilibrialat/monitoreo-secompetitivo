@@ -431,7 +431,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
             </Button>
             <Button size="sm" className="flex-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90 min-h-[44px]" onClick={() => setShowSendConfirm(true)} disabled={saving || loading}>
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-              Enviar para revisión
+              {observaciones ? "Reenviar con correcciones" : "Enviar para revisión"}
             </Button>
           </div>
         </SheetContent>
