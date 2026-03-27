@@ -3,14 +3,25 @@ import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, Clock, TrendingDown } from "lucide-react";
 import { useDashboardData, type DashboardEntidad } from "@/hooks/useDashboardData";
 import { Header, KpiCard, MecanismoBadge, Semaforo, fmt, DashboardSkeleton } from "./DashboardEntidad";
+import { SeccionRevision } from "./SeccionRevision";
 
 interface Props {
   filterFn?: (e: DashboardEntidad) => boolean;
   title?: string;
   subtitle?: string;
+  reviewEstado?: string;
+  reviewNextEstado?: string;
+  reviewTitle?: string;
+  reviewLabel?: string;
+  reviewFilterFn?: (r: any) => boolean;
 }
 
-export default function DashboardMonitoreo({ filterFn, title = "Dashboard de Monitoreo", subtitle }: Props) {
+export default function DashboardMonitoreo({
+  filterFn, title = "Dashboard de Monitoreo", subtitle,
+  reviewEstado = "en_revision_tecnica", reviewNextEstado = "en_revision_financiera",
+  reviewTitle = "Revisión Técnica Pendiente", reviewLabel = "Aprobar (→ Rev. Financiera)",
+  reviewFilterFn,
+}: Props) {
   const { data: allEntidades, isLoading } = useDashboardData();
   if (isLoading) return <DashboardSkeleton />;
 
@@ -22,6 +33,15 @@ export default function DashboardMonitoreo({ filterFn, title = "Dashboard de Mon
   return (
     <div>
       <Header title={title} subtitle={subtitle} />
+
+      {/* Review section */}
+      <SeccionRevision
+        title={reviewTitle}
+        estadoFiltro={reviewEstado}
+        estadoAprobar={reviewNextEstado}
+        labelAprobar={reviewLabel}
+        filterFn={reviewFilterFn}
+      />
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">

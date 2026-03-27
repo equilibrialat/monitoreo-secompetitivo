@@ -23,6 +23,11 @@ export default function Index() {
           title="Dashboard Regional"
           subtitle="Coordinador Regional"
           filterFn={(e) => e.region !== "Nacional"}
+          reviewEstado="enviado"
+          reviewNextEstado="en_revision_tecnica"
+          reviewTitle="Revisión Pendiente"
+          reviewLabel="Aprobar (→ Rev. Técnica)"
+          reviewFilterFn={(r) => r.region !== "Nacional"}
         />
       );
 
@@ -32,6 +37,11 @@ export default function Index() {
           title="Dashboard Mecanismo B — Cadenas de Valor"
           subtitle="Coordinador MEC-B"
           filterFn={(e) => e.mecanismo === "B"}
+          reviewEstado="enviado"
+          reviewNextEstado="en_revision_tecnica"
+          reviewTitle="Revisión Pendiente"
+          reviewLabel="Aprobar (→ Rev. Técnica)"
+          reviewFilterFn={(r) => r.mecanismo === "B"}
         />
       );
 
@@ -41,6 +51,11 @@ export default function Index() {
           title="Dashboard Mecanismo A — Políticas Públicas"
           subtitle="Gestor MEC-A"
           filterFn={(e) => e.mecanismo === "A"}
+          reviewEstado="enviado"
+          reviewNextEstado="en_revision_tecnica"
+          reviewTitle="Revisión Pendiente"
+          reviewLabel="Aprobar (→ Rev. Técnica)"
+          reviewFilterFn={(r) => r.mecanismo === "A"}
         />
       );
 

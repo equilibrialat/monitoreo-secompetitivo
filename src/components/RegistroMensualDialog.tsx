@@ -56,7 +56,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [loading, setLoading] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-
+  const [observaciones, setObservaciones] = useState<string | null>(null);
   const [lastActId, setLastActId] = useState<string | null>(null);
   if (actividad && actividad.id !== lastActId) {
     setLastActId(actividad.id);
@@ -68,6 +68,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
     setFechaEjecucion(undefined);
     setIsEdit(false);
     setValidationErrors({});
+    setObservaciones(null);
   }
 
   const loadExisting = useCallback(async () => {
@@ -80,6 +81,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
       setDescripcion(existing.descripcion_avance ?? "");
       setFechaEjecucion(existing.fecha_ejecucion ? parseISO(existing.fecha_ejecucion) : undefined);
       setIsEdit(true);
+      setObservaciones(existing.observaciones_revision ?? null);
     } else {
       setValorAvance(0);
       setEstado("");
@@ -184,6 +186,13 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
             </div>
           ) : (
             <div className="py-4 space-y-6">
+              {observaciones && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3">
+                  <p className="text-xs font-semibold text-destructive mb-1">⚠️ Observaciones del revisor:</p>
+                  <p className="text-xs text-destructive/80 italic">"{observaciones}"</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Corrige y vuelve a enviar.</p>
+                </div>
+              )}
               <SeccionAvanceOperativo
                 mes={mes} anio={anio} valorAvance={valorAvance} estado={estado}
                 descripcion={descripcion} fechaEjecucion={fechaEjecucion}

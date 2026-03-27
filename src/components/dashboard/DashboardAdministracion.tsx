@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertTriangle } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Header, KpiCard, fmt, DashboardSkeleton } from "./DashboardEntidad";
+import { SeccionRevision } from "./SeccionRevision";
 
 export default function DashboardAdministracion() {
   const { data: entidades, isLoading } = useDashboardData();
@@ -17,6 +18,14 @@ export default function DashboardAdministracion() {
   return (
     <div>
       <Header title="Dashboard Financiero" subtitle="Administración" />
+
+      {/* Financial review section */}
+      <SeccionRevision
+        title="Revisión Financiera Pendiente"
+        estadoFiltro="en_revision_financiera"
+        estadoAprobar="aprobado"
+        labelAprobar="Aprobar (Final)"
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <KpiCard label="Total Ejecutado SECO" value={`USD ${fmt(totalEjecutado)}`} sub={`de USD ${fmt(totalPresupuesto)}`} />

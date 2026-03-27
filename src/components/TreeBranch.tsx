@@ -3,23 +3,26 @@ import type { TreeNode, ActividadDB } from "@/lib/supabaseQueries";
 import { ActivityCard } from "@/components/ActivityCard";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
+import type { RegistroPendiente } from "@/lib/registroAprobacion";
 
 interface TreeBranchProps {
   node: TreeNode;
   depth?: number;
   defaultOpen?: boolean;
   onRegistrar?: (actividad: ActividadDB) => void;
+  registroMap?: Map<string, RegistroPendiente>;
 }
 
-export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar }: TreeBranchProps) {
+export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar, registroMap }: TreeBranchProps) {
   const [open, setOpen] = useState(defaultOpen);
   const hasChildren = node.children && node.children.length > 0;
   const isActivity = !!node.actividad;
 
   if (isActivity) {
+    const registro = registroMap?.get(node.actividad!.id);
     return (
       <div className="ml-4">
-        <ActivityCard actividad={node.actividad!} onRegistrar={onRegistrar} />
+        <ActivityCard actividad={node.actividad!} onRegistrar={onRegistrar} ultimoRegistro={registro} />
       </div>
     );
   }
@@ -46,7 +49,7 @@ export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar }:
       {open && hasChildren && (
         <div className="space-y-1 mt-1">
           {node.children!.map((child, i) => (
-            <TreeBranch key={i} node={child} depth={depth + 1} defaultOpen={depth < 1} onRegistrar={onRegistrar} />
+            <TreeBranch key={i} node={child} depth={depth + 1} defaultOpen={depth < 1} onRegistrar={onRegistrar} registroMap={registroMap} />
           ))}
         </div>
       )}
