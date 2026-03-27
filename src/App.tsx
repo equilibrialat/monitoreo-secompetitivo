@@ -8,7 +8,8 @@ import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import MisActividades from "./pages/MisActividades";
 import NotFound from "./pages/NotFound";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import RegistroMensualPage from "./pages/RegistroMensualPage";
+import AprobacionesPage from "./pages/AprobacionesPage";
 import RevisionPendientePage from "./pages/RevisionPendientePage";
 import IndicadoresImpactoPage from "./pages/IndicadoresImpactoPage";
 import ReportesPage from "./pages/ReportesPage";
@@ -44,7 +45,7 @@ const App = () => (
 
               {/* Entidad routes */}
               <Route path="/actividades" element={<MisActividades />} />
-              <Route path="/registro-mensual" element={<PlaceholderPage title="Registro Mensual" />} />
+              <Route path="/registro-mensual" element={<RegistroMensualPage />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
 
               {/* Gestor routes */}
@@ -68,7 +69,7 @@ const App = () => (
               <Route path="/reportes-financieros" element={<ReportesFinancierosPage />} />
 
               {/* Direccion routes */}
-              <Route path="/aprobaciones" element={<PlaceholderPage title="Aprobaciones" />} />
+              <Route path="/aprobaciones" element={<AprobacionesPage />} />
               <Route path="/reportes-ejecutivos" element={<ReportesEjecutivosPage />} />
 
               {/* Role-specific report routes */}
