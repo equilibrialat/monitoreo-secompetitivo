@@ -158,6 +158,9 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
       setFechaEjecucion(existing.fecha_ejecucion ? parseISO(existing.fecha_ejecucion) : undefined);
       setIsEdit(true);
       setObservaciones(existing.observaciones_revision ?? null);
+      setLimitaciones(existing.limitaciones ?? "");
+      setPrioridades(existing.prioridades_proximo_mes ?? "");
+      setCompromisos(existing.compromisos ?? "");
     } else {
       setValorAvance(0);
       setEstado("");
