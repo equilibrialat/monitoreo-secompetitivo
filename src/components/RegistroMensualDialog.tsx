@@ -78,6 +78,8 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [limitaciones, setLimitaciones] = useState("");
   const [prioridades, setPrioridades] = useState("");
   const [compromisos, setCompromisos] = useState("");
+  const [historial, setHistorial] = useState<HistorialEntry[]>([]);
+  const [registroId, setRegistroId] = useState<string | null>(null);
 
   // Refs for auto-save to access latest state
   const stateRef = useRef({ valorAvance, estado, descripcion, fechaEjecucion, fuentes, contextual, mes, anio });
