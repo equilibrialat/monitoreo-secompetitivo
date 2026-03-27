@@ -5,6 +5,13 @@ import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { RegistroPendiente } from "@/lib/registroAprobacion";
 
+interface IndicadorMin {
+  codigo: string;
+  nombre: string;
+  meta: number | null;
+  linea_base: number | null;
+}
+
 interface TreeBranchProps {
   node: TreeNode;
   depth?: number;
@@ -12,9 +19,10 @@ interface TreeBranchProps {
   onRegistrar?: (actividad: ActividadDB) => void;
   registroMap?: Map<string, RegistroPendiente>;
   currentMonthStatusMap?: Map<string, string | null>;
+  indicadores?: IndicadorMin[];
 }
 
-export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar, registroMap, currentMonthStatusMap }: TreeBranchProps) {
+export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar, registroMap, currentMonthStatusMap, indicadores }: TreeBranchProps) {
   const [open, setOpen] = useState(defaultOpen);
   const hasChildren = node.children && node.children.length > 0;
   const isActivity = !!node.actividad;
@@ -29,6 +37,7 @@ export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar, r
           onRegistrar={onRegistrar}
           ultimoRegistro={registro}
           currentMonthStatus={currentStatus}
+          indicadores={indicadores}
         />
       </div>
     );
@@ -56,7 +65,7 @@ export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar, r
       {open && hasChildren && (
         <div className="space-y-1 mt-1">
           {node.children!.map((child, i) => (
-            <TreeBranch key={i} node={child} depth={depth + 1} defaultOpen={depth < 1} onRegistrar={onRegistrar} registroMap={registroMap} currentMonthStatusMap={currentMonthStatusMap} />
+            <TreeBranch key={i} node={child} depth={depth + 1} defaultOpen={depth < 1} onRegistrar={onRegistrar} registroMap={registroMap} currentMonthStatusMap={currentMonthStatusMap} indicadores={indicadores} />
           ))}
         </div>
       )}

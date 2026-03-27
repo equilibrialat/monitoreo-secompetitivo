@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FinanceBar } from "@/components/FinanceBar";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { ClipboardPlus, CheckCircle2, Clock, Send, AlertTriangle, Minus } from "lucide-react";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import type { RegistroPendiente } from "@/lib/registroAprobacion";
@@ -35,9 +36,10 @@ interface ActivityCardProps {
   onRegistrar?: (actividad: ActividadDB) => void;
   ultimoRegistro?: RegistroPendiente;
   currentMonthStatus?: string | null;
+  indicadores?: Array<{ codigo: string; nombre: string; meta: number | null; linea_base: number | null }>;
 }
 
-export function ActivityCard({ actividad, onRegistrar, ultimoRegistro, currentMonthStatus }: ActivityCardProps) {
+export function ActivityCard({ actividad, onRegistrar, ultimoRegistro, currentMonthStatus, indicadores }: ActivityCardProps) {
   const estado = ESTADO_CONFIG[actividad.estado_actual] ?? ESTADO_CONFIG.no_iniciada;
   const semaforoColor = getSemaforoColor(actividad.avance_operativo_pct);
 
@@ -88,6 +90,30 @@ export function ActivityCard({ actividad, onRegistrar, ultimoRegistro, currentMo
           Meta: {actividad.meta_valor} {actividad.meta_unidad_medida}
         </p>
       </div>
+
+      {/* Indicadores vinculados */}
+      {actividad.indicadores_vinculados && actividad.indicadores_vinculados.length > 0 && (
+        <TooltipProvider delayDuration={200}>
+          <div className="flex flex-wrap gap-1 mb-3">
+            {actividad.indicadores_vinculados.map((ind) => {
+              const match = indicadores?.find(i => i.codigo === ind);
+              return (
+                <Tooltip key={ind}>
+                  <TooltipTrigger asChild>
+                    <Badge className="text-[9px] bg-primary/10 text-primary border-primary/20 cursor-help">
+                      {ind}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[250px]">
+                    <p className="text-xs font-medium">{match?.nombre || ind}</p>
+                    {match?.meta && <p className="text-[10px] text-muted-foreground">Meta: {match.meta}</p>}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
+      )}
 
       <div className="space-y-2 mb-4">
         <FinanceBar label="SECO" executed={actividad.ejecutado_seco_acum} budget={actividad.presupuesto_seco} colorClass="bg-primary" />

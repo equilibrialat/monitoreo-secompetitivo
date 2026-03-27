@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { SeccionAvanceOperativo } from "./registro/SeccionAvanceOperativo";
 import { SeccionEjecucionFinanciera } from "./registro/SeccionEjecucionFinanciera";
 import { SeccionIndicadoresContextuales } from "./registro/SeccionIndicadoresContextuales";
@@ -13,6 +14,7 @@ import { AutoSaveIndicator } from "./AutoSaveIndicator";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useRole } from "@/contexts/RoleContext";
+import { supabase } from "@/integrations/supabase/client";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import { saveRegistroMensual, fetchRegistroExistente, fetchAcumuladoAnterior } from "@/lib/supabaseQueries";
 import type { FuenteFinanciera, ContextualData } from "@/types/registroMensual";
@@ -20,6 +22,13 @@ import {
   createEmptyCapacitacion, createEmptyInnovacion,
   createEmptyGei, createEmptyNuevoProducto,
 } from "@/types/registroMensual";
+
+interface IndicadorLinked {
+  codigo: string;
+  nombre: string;
+  meta: number | null;
+  linea_base: number | null;
+}
 
 interface RegistroMensualDialogProps {
   actividad: ActividadDB | null;
@@ -64,6 +73,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [lastActId, setLastActId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [linkedIndicadores, setLinkedIndicadores] = useState<IndicadorLinked[]>([]);
 
   // Refs for auto-save to access latest state
   const stateRef = useRef({ valorAvance, estado, descripcion, fechaEjecucion, fuentes, contextual, mes, anio });
@@ -116,7 +126,18 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
     setIsEdit(false);
     setValidationErrors({});
     setObservaciones(null);
+    setLinkedIndicadores([]);
     markClean();
+
+    // Fetch linked indicators
+    if (actividad.indicadores_vinculados && actividad.indicadores_vinculados.length > 0) {
+      (supabase as any)
+        .from("indicadores_proyecto")
+        .select("codigo, nombre, meta, linea_base")
+        .eq("entidad_id", actividad.entidad_id)
+        .in("codigo", actividad.indicadores_vinculados)
+        .then(({ data }: any) => setLinkedIndicadores(data || []));
+    }
   }
 
   const loadExisting = useCallback(async () => {
@@ -260,6 +281,23 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
                     <p className="text-xs font-semibold text-destructive mb-1">⚠️ Observaciones del revisor:</p>
                     <p className="text-xs text-destructive/80 italic">"{observaciones}"</p>
                     <p className="text-[10px] text-muted-foreground mt-1">Corrige y vuelve a enviar.</p>
+                  </div>
+                )}
+                {/* Indicator context */}
+                {linkedIndicadores.length > 0 && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                    <p className="text-xs font-semibold text-primary mb-2">📊 Esta actividad contribuye a:</p>
+                    <div className="space-y-1.5">
+                      {linkedIndicadores.map((ind) => (
+                        <div key={ind.codigo} className="flex items-center gap-2 text-xs">
+                          <Badge className="text-[9px] bg-primary/10 text-primary border-primary/20">{ind.codigo}</Badge>
+                          <span className="text-foreground">{ind.nombre}</span>
+                          {ind.meta && (
+                            <span className="text-muted-foreground ml-auto shrink-0">Meta: {ind.meta.toLocaleString()}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <SeccionAvanceOperativo

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer, RefreshCw } from "lucide-react";
+import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer, RefreshCw, Target } from "lucide-react";
 import { downloadCSV, formatCurrency, TRIMESTRES_MESES, MESES_NOMBRE } from "@/lib/reportUtils";
 import { invokeAnalysis } from "@/lib/aiAnalysis";
 import { generateTrimestralDocx } from "@/lib/generateDocx";
@@ -56,6 +56,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
   const [innovaciones, setInnovaciones] = useState<any[]>([]);
   const [gei, setGei] = useState<any[]>([]);
   const [nuevosProductos, setNuevosProductos] = useState<any[]>([]);
+  const [indicadores, setIndicadores] = useState<any[]>([]);
   const [normativo, setNormativo] = useState<any[]>([]);
   const [contratos, setContratos] = useState<any[]>([]);
   const [desembolsos, setDesembolsos] = useState<any[]>([]);
@@ -151,6 +152,12 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
     if (entidadId && entidadId !== "consolidado") desQ = desQ.eq("entidad_id", entidadId);
     const { data: desData } = await desQ;
     setDesembolsos(desData || []);
+
+    // 11. Indicadores del Marco Lógico
+    let indQ = (supabase as any).from("indicadores_proyecto").select("codigo, nombre, nivel, meta, linea_base, unidad_medida");
+    if (entidadId && entidadId !== "consolidado") indQ = indQ.eq("entidad_id", entidadId);
+    const { data: indData } = await indQ;
+    setIndicadores(indData || []);
 
     setLoading(false);
   }
@@ -832,6 +839,67 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
                       <TableCell><Badge variant="outline" className="text-[10px]">{d.estado || "—"}</Badge></TableCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
+
+        {/* SECTION — CONTRIBUCIÓN A INDICADORES */}
+        {indicadores.length > 0 && (
+          <>
+            <SectionTitle icon={Target} title="CONTRIBUCIÓN A INDICADORES DEL MARCO LÓGICO" number={11} />
+            <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>Código</TableHead>
+                    <TableHead>Indicador</TableHead>
+                    <TableHead>Nivel</TableHead>
+                    <TableHead className="text-right">Meta</TableHead>
+                    <TableHead className="text-right">L. Base</TableHead>
+                    <TableHead>Actividades Vinculadas</TableHead>
+                    <TableHead>Estado Actividades</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {indicadores.map((ind: any) => {
+                    const linked = actividades.filter(a =>
+                      (a.indicadores_vinculados || []).includes(ind.codigo)
+                    );
+                    if (linked.length === 0) return null;
+                    const avgAvance = linked.length > 0
+                      ? Math.round(linked.reduce((s: number, a: any) => s + (a.avance_operativo_pct || 0), 0) / linked.length)
+                      : 0;
+                    return (
+                      <TableRow key={ind.codigo}>
+                        <TableCell className="font-mono text-xs">{ind.codigo}</TableCell>
+                        <TableCell className="text-xs max-w-[200px]">{ind.nombre}</TableCell>
+                        <TableCell className="text-xs">
+                          <Badge variant="outline" className="text-[9px]">
+                            {ind.nivel === "RESULTADO DE IMPACTO" ? "Impacto" : ind.nivel === "RESULTADO FINAL" ? "R. Final" : "R. Intermedio"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs">{ind.meta ?? "—"}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{ind.linea_base ?? "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex flex-wrap gap-1">
+                            {linked.map((a: any) => (
+                              <Badge key={a.id} className="text-[9px] bg-primary/10 text-primary border-primary/20">
+                                {a.codigo}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <Semaforo pct={avgAvance} />
+                            <span className="font-mono">{avgAvance}% prom.</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
