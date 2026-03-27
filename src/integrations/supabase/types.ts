@@ -554,6 +554,93 @@ export type Database = {
           },
         ]
       }
+      registro_certificacion_laboral: {
+        Row: {
+          apellidos: string
+          aprobo: boolean | null
+          cadena_valor: string | null
+          ccl_evaluador: string | null
+          created_at: string | null
+          departamento: string | null
+          departamento_ccl: string | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          fecha_aprobacion: string | null
+          fecha_evaluacion: string | null
+          fecha_nacimiento: string | null
+          genero: string | null
+          id: string
+          nombre_organizacion: string | null
+          nombres: string
+          num_documento: string
+          pais_origen: string | null
+          perfil_ocupacional: string | null
+          ruc_organizacion: string | null
+          sede_ccl: string | null
+          tipo_documento: string | null
+        }
+        Insert: {
+          apellidos: string
+          aprobo?: boolean | null
+          cadena_valor?: string | null
+          ccl_evaluador?: string | null
+          created_at?: string | null
+          departamento?: string | null
+          departamento_ccl?: string | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_aprobacion?: string | null
+          fecha_evaluacion?: string | null
+          fecha_nacimiento?: string | null
+          genero?: string | null
+          id?: string
+          nombre_organizacion?: string | null
+          nombres: string
+          num_documento: string
+          pais_origen?: string | null
+          perfil_ocupacional?: string | null
+          ruc_organizacion?: string | null
+          sede_ccl?: string | null
+          tipo_documento?: string | null
+        }
+        Update: {
+          apellidos?: string
+          aprobo?: boolean | null
+          cadena_valor?: string | null
+          ccl_evaluador?: string | null
+          created_at?: string | null
+          departamento?: string | null
+          departamento_ccl?: string | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_aprobacion?: string | null
+          fecha_evaluacion?: string | null
+          fecha_nacimiento?: string | null
+          genero?: string | null
+          id?: string
+          nombre_organizacion?: string | null
+          nombres?: string
+          num_documento?: string
+          pais_origen?: string | null
+          perfil_ocupacional?: string | null
+          ruc_organizacion?: string | null
+          sede_ccl?: string | null
+          tipo_documento?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_certificacion_laboral_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registro_financiamiento: {
         Row: {
           actividad_id: string
@@ -1038,6 +1125,759 @@ export type Database = {
             columns: ["revisado_por"]
             isOneToOne: false
             referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reporte_comercial: {
+        Row: {
+          anio: number
+          cadena_valor: string
+          cooperativa_exportadora: string | null
+          created_at: string | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          id: string
+          kg_derivados: number | null
+          kg_primarios: number | null
+          kg_total: number | null
+          mercados_destino_intl: string | null
+          mercados_destino_nac: string | null
+          nombre_organizacion: string
+          nombre_partida: string | null
+          observaciones: string | null
+          partida_arancelaria: string | null
+          region_origen: string | null
+          ruc: string | null
+          tipo: string | null
+          validado_por: string | null
+          valor_fob_derivados: number | null
+          valor_fob_primarios: number | null
+          valor_fob_total: number | null
+          ventas_nac_derivados: number | null
+          ventas_nac_primarios: number | null
+          ventas_nac_total: number | null
+          ventas_terceros_derivados: number | null
+          ventas_terceros_primarios: number | null
+          vol_nac_derivados: number | null
+          vol_nac_primarios: number | null
+          vol_terceros_derivados: number | null
+          vol_terceros_primarios: number | null
+        }
+        Insert: {
+          anio: number
+          cadena_valor: string
+          cooperativa_exportadora?: string | null
+          created_at?: string | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          id?: string
+          kg_derivados?: number | null
+          kg_primarios?: number | null
+          kg_total?: number | null
+          mercados_destino_intl?: string | null
+          mercados_destino_nac?: string | null
+          nombre_organizacion: string
+          nombre_partida?: string | null
+          observaciones?: string | null
+          partida_arancelaria?: string | null
+          region_origen?: string | null
+          ruc?: string | null
+          tipo?: string | null
+          validado_por?: string | null
+          valor_fob_derivados?: number | null
+          valor_fob_primarios?: number | null
+          valor_fob_total?: number | null
+          ventas_nac_derivados?: number | null
+          ventas_nac_primarios?: number | null
+          ventas_nac_total?: number | null
+          ventas_terceros_derivados?: number | null
+          ventas_terceros_primarios?: number | null
+          vol_nac_derivados?: number | null
+          vol_nac_primarios?: number | null
+          vol_terceros_derivados?: number | null
+          vol_terceros_primarios?: number | null
+        }
+        Update: {
+          anio?: number
+          cadena_valor?: string
+          cooperativa_exportadora?: string | null
+          created_at?: string | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          id?: string
+          kg_derivados?: number | null
+          kg_primarios?: number | null
+          kg_total?: number | null
+          mercados_destino_intl?: string | null
+          mercados_destino_nac?: string | null
+          nombre_organizacion?: string
+          nombre_partida?: string | null
+          observaciones?: string | null
+          partida_arancelaria?: string | null
+          region_origen?: string | null
+          ruc?: string | null
+          tipo?: string | null
+          validado_por?: string | null
+          valor_fob_derivados?: number | null
+          valor_fob_primarios?: number | null
+          valor_fob_total?: number | null
+          ventas_nac_derivados?: number | null
+          ventas_nac_primarios?: number | null
+          ventas_nac_total?: number | null
+          ventas_terceros_derivados?: number | null
+          ventas_terceros_primarios?: number | null
+          vol_nac_derivados?: number | null
+          vol_nac_primarios?: number | null
+          vol_terceros_derivados?: number | null
+          vol_terceros_primarios?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reporte_comercial_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reporte_comercial_validado_por_fkey"
+            columns: ["validado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reporte_diversificacion: {
+        Row: {
+          anio: number
+          cadena_valor: string | null
+          created_at: string | null
+          cumple_criterio_1: boolean | null
+          cumple_criterio_2: boolean | null
+          cumple_criterio_3: boolean | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          fecha_adopcion: string | null
+          fecha_primera_venta: string | null
+          genero_representante: string | null
+          id: string
+          nombre_nuevo_producto: string | null
+          nombre_organizacion: string
+          nombre_proceso: string | null
+          periodo: string
+          resultado_esperado: string | null
+          ruc: string | null
+          tipo_criterio_1: string | null
+          tipo_criterio_2: string | null
+          tipo_criterio_3: string | null
+          tipo_org_productiva: string | null
+          tipo_organizacion: string | null
+        }
+        Insert: {
+          anio: number
+          cadena_valor?: string | null
+          created_at?: string | null
+          cumple_criterio_1?: boolean | null
+          cumple_criterio_2?: boolean | null
+          cumple_criterio_3?: boolean | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_adopcion?: string | null
+          fecha_primera_venta?: string | null
+          genero_representante?: string | null
+          id?: string
+          nombre_nuevo_producto?: string | null
+          nombre_organizacion: string
+          nombre_proceso?: string | null
+          periodo: string
+          resultado_esperado?: string | null
+          ruc?: string | null
+          tipo_criterio_1?: string | null
+          tipo_criterio_2?: string | null
+          tipo_criterio_3?: string | null
+          tipo_org_productiva?: string | null
+          tipo_organizacion?: string | null
+        }
+        Update: {
+          anio?: number
+          cadena_valor?: string | null
+          created_at?: string | null
+          cumple_criterio_1?: boolean | null
+          cumple_criterio_2?: boolean | null
+          cumple_criterio_3?: boolean | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_adopcion?: string | null
+          fecha_primera_venta?: string | null
+          genero_representante?: string | null
+          id?: string
+          nombre_nuevo_producto?: string | null
+          nombre_organizacion?: string
+          nombre_proceso?: string | null
+          periodo?: string
+          resultado_esperado?: string | null
+          ruc?: string | null
+          tipo_criterio_1?: string | null
+          tipo_criterio_2?: string | null
+          tipo_criterio_3?: string | null
+          tipo_org_productiva?: string | null
+          tipo_organizacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reporte_diversificacion_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reporte_empleo: {
+        Row: {
+          anio: number
+          cadena_valor: string
+          created_at: string | null
+          empleos_creados_agroindustria: number | null
+          empleos_creados_femenino: number | null
+          empleos_creados_manejo_finca: number | null
+          empleos_creados_masculino: number | null
+          empleos_creados_post_cosecha: number | null
+          empleos_creados_total: number | null
+          empleos_creados_turismo: number | null
+          empleos_mejorados_femenino: number | null
+          empleos_mejorados_masculino: number | null
+          empleos_mejorados_total: number | null
+          empleos_retenidos_femenino: number | null
+          empleos_retenidos_manejo_finca: number | null
+          empleos_retenidos_masculino: number | null
+          empleos_retenidos_total: number | null
+          empleos_retenidos_turismo: number | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          fecha_validacion: string | null
+          id: string
+          ingreso_promedio_final: number | null
+          ingreso_promedio_intermedia: number | null
+          ingreso_promedio_lb: number | null
+          periodo: string
+          region_empleo_creado: string | null
+          region_empleo_mejorado: string | null
+          region_empleo_retenido: string | null
+          temporada: string | null
+          total_empleos: number | null
+          validado_por: string | null
+          variacion_ingresos: number | null
+        }
+        Insert: {
+          anio: number
+          cadena_valor: string
+          created_at?: string | null
+          empleos_creados_agroindustria?: number | null
+          empleos_creados_femenino?: number | null
+          empleos_creados_manejo_finca?: number | null
+          empleos_creados_masculino?: number | null
+          empleos_creados_post_cosecha?: number | null
+          empleos_creados_total?: number | null
+          empleos_creados_turismo?: number | null
+          empleos_mejorados_femenino?: number | null
+          empleos_mejorados_masculino?: number | null
+          empleos_mejorados_total?: number | null
+          empleos_retenidos_femenino?: number | null
+          empleos_retenidos_manejo_finca?: number | null
+          empleos_retenidos_masculino?: number | null
+          empleos_retenidos_total?: number | null
+          empleos_retenidos_turismo?: number | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_validacion?: string | null
+          id?: string
+          ingreso_promedio_final?: number | null
+          ingreso_promedio_intermedia?: number | null
+          ingreso_promedio_lb?: number | null
+          periodo: string
+          region_empleo_creado?: string | null
+          region_empleo_mejorado?: string | null
+          region_empleo_retenido?: string | null
+          temporada?: string | null
+          total_empleos?: number | null
+          validado_por?: string | null
+          variacion_ingresos?: number | null
+        }
+        Update: {
+          anio?: number
+          cadena_valor?: string
+          created_at?: string | null
+          empleos_creados_agroindustria?: number | null
+          empleos_creados_femenino?: number | null
+          empleos_creados_manejo_finca?: number | null
+          empleos_creados_masculino?: number | null
+          empleos_creados_post_cosecha?: number | null
+          empleos_creados_total?: number | null
+          empleos_creados_turismo?: number | null
+          empleos_mejorados_femenino?: number | null
+          empleos_mejorados_masculino?: number | null
+          empleos_mejorados_total?: number | null
+          empleos_retenidos_femenino?: number | null
+          empleos_retenidos_manejo_finca?: number | null
+          empleos_retenidos_masculino?: number | null
+          empleos_retenidos_total?: number | null
+          empleos_retenidos_turismo?: number | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_validacion?: string | null
+          id?: string
+          ingreso_promedio_final?: number | null
+          ingreso_promedio_intermedia?: number | null
+          ingreso_promedio_lb?: number | null
+          periodo?: string
+          region_empleo_creado?: string | null
+          region_empleo_mejorado?: string | null
+          region_empleo_retenido?: string | null
+          temporada?: string | null
+          total_empleos?: number | null
+          validado_por?: string | null
+          variacion_ingresos?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reporte_empleo_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reporte_empleo_validado_por_fkey"
+            columns: ["validado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reporte_gobernanza: {
+        Row: {
+          acceso_mercado_financiamiento: boolean | null
+          anio: number
+          articulacion_representacion: boolean | null
+          buenas_practicas_sostenibilidad: boolean | null
+          cadena_valor: string | null
+          created_at: string | null
+          departamento: string | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          estructura_org_eficiente: boolean | null
+          fort_institucional: boolean | null
+          id: string
+          nombre_organizacion: string
+          periodo: string
+          ruc: string | null
+          tipo_org_productiva: string | null
+          tipo_organizacion: string | null
+        }
+        Insert: {
+          acceso_mercado_financiamiento?: boolean | null
+          anio: number
+          articulacion_representacion?: boolean | null
+          buenas_practicas_sostenibilidad?: boolean | null
+          cadena_valor?: string | null
+          created_at?: string | null
+          departamento?: string | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          estructura_org_eficiente?: boolean | null
+          fort_institucional?: boolean | null
+          id?: string
+          nombre_organizacion: string
+          periodo: string
+          ruc?: string | null
+          tipo_org_productiva?: string | null
+          tipo_organizacion?: string | null
+        }
+        Update: {
+          acceso_mercado_financiamiento?: boolean | null
+          anio?: number
+          articulacion_representacion?: boolean | null
+          buenas_practicas_sostenibilidad?: boolean | null
+          cadena_valor?: string | null
+          created_at?: string | null
+          departamento?: string | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          estructura_org_eficiente?: boolean | null
+          fort_institucional?: boolean | null
+          id?: string
+          nombre_organizacion?: string
+          periodo?: string
+          ruc?: string | null
+          tipo_org_productiva?: string | null
+          tipo_organizacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reporte_gobernanza_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reporte_nuevos_mercados: {
+        Row: {
+          acceso_mercado: string | null
+          anio: number
+          cadena_valor: string | null
+          conclusion: string | null
+          created_at: string | null
+          departamento_destino: string | null
+          dni_representante: string | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          fecha_primer_envio: string | null
+          genero_representante: string | null
+          id: string
+          mes_primera_venta: string | null
+          nombre_organizacion: string
+          nombre_producto: string | null
+          nombre_representante: string | null
+          pais_destino: string | null
+          periodo: string
+          producto_nuevo_existente: string | null
+          ruc: string | null
+          tipo_mercado: string | null
+          tipo_org_productiva: string | null
+          tipo_organizacion: string | null
+          tipo_producto: string | null
+        }
+        Insert: {
+          acceso_mercado?: string | null
+          anio: number
+          cadena_valor?: string | null
+          conclusion?: string | null
+          created_at?: string | null
+          departamento_destino?: string | null
+          dni_representante?: string | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_primer_envio?: string | null
+          genero_representante?: string | null
+          id?: string
+          mes_primera_venta?: string | null
+          nombre_organizacion: string
+          nombre_producto?: string | null
+          nombre_representante?: string | null
+          pais_destino?: string | null
+          periodo: string
+          producto_nuevo_existente?: string | null
+          ruc?: string | null
+          tipo_mercado?: string | null
+          tipo_org_productiva?: string | null
+          tipo_organizacion?: string | null
+          tipo_producto?: string | null
+        }
+        Update: {
+          acceso_mercado?: string | null
+          anio?: number
+          cadena_valor?: string | null
+          conclusion?: string | null
+          created_at?: string | null
+          departamento_destino?: string | null
+          dni_representante?: string | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_primer_envio?: string | null
+          genero_representante?: string | null
+          id?: string
+          mes_primera_venta?: string | null
+          nombre_organizacion?: string
+          nombre_producto?: string | null
+          nombre_representante?: string | null
+          pais_destino?: string | null
+          periodo?: string
+          producto_nuevo_existente?: string | null
+          ruc?: string | null
+          tipo_mercado?: string | null
+          tipo_org_productiva?: string | null
+          tipo_organizacion?: string | null
+          tipo_producto?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reporte_nuevos_mercados_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reporte_productividad: {
+        Row: {
+          anio: number
+          cadena_valor: string
+          created_at: string | null
+          descarte_campo_tn: number | null
+          descarte_proceso_tn: number | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          genero_productores: string | null
+          id: string
+          num_productores: number | null
+          organizacion_productores: string | null
+          produccion_campo_tn: number | null
+          produccion_exportable_tn: number | null
+          productividad_tn_ha: number | null
+          region: string | null
+          superficie_has: number | null
+          total_descarte_tn: number | null
+          validado_por: string | null
+        }
+        Insert: {
+          anio: number
+          cadena_valor: string
+          created_at?: string | null
+          descarte_campo_tn?: number | null
+          descarte_proceso_tn?: number | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          genero_productores?: string | null
+          id?: string
+          num_productores?: number | null
+          organizacion_productores?: string | null
+          produccion_campo_tn?: number | null
+          produccion_exportable_tn?: number | null
+          productividad_tn_ha?: number | null
+          region?: string | null
+          superficie_has?: number | null
+          total_descarte_tn?: number | null
+          validado_por?: string | null
+        }
+        Update: {
+          anio?: number
+          cadena_valor?: string
+          created_at?: string | null
+          descarte_campo_tn?: number | null
+          descarte_proceso_tn?: number | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          genero_productores?: string | null
+          id?: string
+          num_productores?: number | null
+          organizacion_productores?: string | null
+          produccion_campo_tn?: number | null
+          produccion_exportable_tn?: number | null
+          productividad_tn_ha?: number | null
+          region?: string | null
+          superficie_has?: number | null
+          total_descarte_tn?: number | null
+          validado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reporte_productividad_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reporte_productividad_validado_por_fkey"
+            columns: ["validado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reporte_turismo_atractivos: {
+        Row: {
+          anio: number
+          clasificacion: string | null
+          codigo_atractivo: string | null
+          created_at: string | null
+          destino: string | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          id: string
+          nombre_atractivo: string
+          nombre_empresa: string | null
+          periodo: string
+          ruc_empresa: string | null
+          tours_alta: number | null
+          tours_baja: number | null
+          ventas_alta: number | null
+          ventas_baja: number | null
+          visitantes_alta: number | null
+          visitantes_baja: number | null
+        }
+        Insert: {
+          anio: number
+          clasificacion?: string | null
+          codigo_atractivo?: string | null
+          created_at?: string | null
+          destino?: string | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          id?: string
+          nombre_atractivo: string
+          nombre_empresa?: string | null
+          periodo: string
+          ruc_empresa?: string | null
+          tours_alta?: number | null
+          tours_baja?: number | null
+          ventas_alta?: number | null
+          ventas_baja?: number | null
+          visitantes_alta?: number | null
+          visitantes_baja?: number | null
+        }
+        Update: {
+          anio?: number
+          clasificacion?: string | null
+          codigo_atractivo?: string | null
+          created_at?: string | null
+          destino?: string | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          id?: string
+          nombre_atractivo?: string
+          nombre_empresa?: string | null
+          periodo?: string
+          ruc_empresa?: string | null
+          tours_alta?: number | null
+          tours_baja?: number | null
+          ventas_alta?: number | null
+          ventas_baja?: number | null
+          visitantes_alta?: number | null
+          visitantes_baja?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reporte_turismo_atractivos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reporte_turismo_ventas: {
+        Row: {
+          anio: number
+          clasificacion: string | null
+          created_at: string | null
+          entidad_id: string
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          id: string
+          nombre_empresa: string
+          periodo: string
+          provincia: string | null
+          region: string | null
+          ruc: string | null
+          tipo_empresa: string | null
+          total_ventas: number | null
+          ventas_alta_aventura: number | null
+          ventas_alta_bienestar: number | null
+          ventas_alta_biodiversidad: number | null
+          ventas_alta_general: number | null
+          ventas_alta_otros: number | null
+          ventas_baja_aventura: number | null
+          ventas_baja_bienestar: number | null
+          ventas_baja_biodiversidad: number | null
+          ventas_baja_general: number | null
+          ventas_baja_otros: number | null
+        }
+        Insert: {
+          anio: number
+          clasificacion?: string | null
+          created_at?: string | null
+          entidad_id: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          id?: string
+          nombre_empresa: string
+          periodo: string
+          provincia?: string | null
+          region?: string | null
+          ruc?: string | null
+          tipo_empresa?: string | null
+          total_ventas?: number | null
+          ventas_alta_aventura?: number | null
+          ventas_alta_bienestar?: number | null
+          ventas_alta_biodiversidad?: number | null
+          ventas_alta_general?: number | null
+          ventas_alta_otros?: number | null
+          ventas_baja_aventura?: number | null
+          ventas_baja_bienestar?: number | null
+          ventas_baja_biodiversidad?: number | null
+          ventas_baja_general?: number | null
+          ventas_baja_otros?: number | null
+        }
+        Update: {
+          anio?: number
+          clasificacion?: string | null
+          created_at?: string | null
+          entidad_id?: string
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          id?: string
+          nombre_empresa?: string
+          periodo?: string
+          provincia?: string | null
+          region?: string | null
+          ruc?: string | null
+          tipo_empresa?: string | null
+          total_ventas?: number | null
+          ventas_alta_aventura?: number | null
+          ventas_alta_bienestar?: number | null
+          ventas_alta_biodiversidad?: number | null
+          ventas_alta_general?: number | null
+          ventas_alta_otros?: number | null
+          ventas_baja_aventura?: number | null
+          ventas_baja_bienestar?: number | null
+          ventas_baja_biodiversidad?: number | null
+          ventas_baja_general?: number | null
+          ventas_baja_otros?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reporte_turismo_ventas_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
             referencedColumns: ["id"]
           },
         ]
