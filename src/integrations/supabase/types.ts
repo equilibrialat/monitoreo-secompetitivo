@@ -110,6 +110,91 @@ export type Database = {
           },
         ]
       }
+      ejecucion_financiera: {
+        Row: {
+          actividad_id: string
+          comprobante_ref: string | null
+          created_at: string | null
+          detalle_gasto: string | null
+          entidad_aportante: string | null
+          entidad_id: string
+          fecha_gasto: string | null
+          fuente: Database["public"]["Enums"]["fuente_financiamiento"]
+          id: string
+          incluye_igv: boolean | null
+          moneda: string | null
+          monto: number
+          monto_igv: number | null
+          monto_usd: number | null
+          registro_mensual_id: string
+          tipo_cambio: number | null
+          tipo_gasto: string | null
+          tipo_valorizacion: string | null
+        }
+        Insert: {
+          actividad_id: string
+          comprobante_ref?: string | null
+          created_at?: string | null
+          detalle_gasto?: string | null
+          entidad_aportante?: string | null
+          entidad_id: string
+          fecha_gasto?: string | null
+          fuente: Database["public"]["Enums"]["fuente_financiamiento"]
+          id?: string
+          incluye_igv?: boolean | null
+          moneda?: string | null
+          monto: number
+          monto_igv?: number | null
+          monto_usd?: number | null
+          registro_mensual_id: string
+          tipo_cambio?: number | null
+          tipo_gasto?: string | null
+          tipo_valorizacion?: string | null
+        }
+        Update: {
+          actividad_id?: string
+          comprobante_ref?: string | null
+          created_at?: string | null
+          detalle_gasto?: string | null
+          entidad_aportante?: string | null
+          entidad_id?: string
+          fecha_gasto?: string | null
+          fuente?: Database["public"]["Enums"]["fuente_financiamiento"]
+          id?: string
+          incluye_igv?: boolean | null
+          moneda?: string | null
+          monto?: number
+          monto_igv?: number | null
+          monto_usd?: number | null
+          registro_mensual_id?: string
+          tipo_cambio?: number | null
+          tipo_gasto?: string | null
+          tipo_valorizacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ejecucion_financiera_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ejecucion_financiera_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ejecucion_financiera_registro_mensual_id_fkey"
+            columns: ["registro_mensual_id"]
+            isOneToOne: false
+            referencedRelation: "registros_mensuales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entidades: {
         Row: {
           activo: boolean | null
@@ -165,6 +250,66 @@ export type Database = {
             columns: ["coordinador_regional_id"]
             isOneToOne: false
             referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      indicadores_proyecto: {
+        Row: {
+          codigo: string
+          created_at: string | null
+          entidad_id: string
+          id: string
+          linea_base: number | null
+          medio_verificacion: string | null
+          meta: number | null
+          nivel: string
+          nombre: string
+          resultado_id: string | null
+          standard_indicator_seco: string | null
+          unidad_medida: string | null
+        }
+        Insert: {
+          codigo: string
+          created_at?: string | null
+          entidad_id: string
+          id?: string
+          linea_base?: number | null
+          medio_verificacion?: string | null
+          meta?: number | null
+          nivel: string
+          nombre: string
+          resultado_id?: string | null
+          standard_indicator_seco?: string | null
+          unidad_medida?: string | null
+        }
+        Update: {
+          codigo?: string
+          created_at?: string | null
+          entidad_id?: string
+          id?: string
+          linea_base?: number | null
+          medio_verificacion?: string | null
+          meta?: number | null
+          nivel?: string
+          nombre?: string
+          resultado_id?: string | null
+          standard_indicator_seco?: string | null
+          unidad_medida?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicadores_proyecto_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "indicadores_proyecto_resultado_id_fkey"
+            columns: ["resultado_id"]
+            isOneToOne: false
+            referencedRelation: "resultados"
             referencedColumns: ["id"]
           },
         ]
@@ -254,6 +399,99 @@ export type Database = {
             columns: ["resultado_id"]
             isOneToOne: false
             referencedRelation: "resultados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registros_mensuales: {
+        Row: {
+          actividad_id: string
+          anio: number
+          avance_unidad_medida: string | null
+          avance_valor: number | null
+          descripcion_avance: string | null
+          entidad_id: string
+          estado: Database["public"]["Enums"]["estado_actividad"] | null
+          estado_registro: Database["public"]["Enums"]["estado_registro"] | null
+          fecha_ejecucion: string | null
+          fecha_registro: string | null
+          fecha_revision: string | null
+          id: string
+          mes: number
+          observaciones_revision: string | null
+          registrado_por: string | null
+          revisado_por: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          actividad_id: string
+          anio: number
+          avance_unidad_medida?: string | null
+          avance_valor?: number | null
+          descripcion_avance?: string | null
+          entidad_id: string
+          estado?: Database["public"]["Enums"]["estado_actividad"] | null
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_ejecucion?: string | null
+          fecha_registro?: string | null
+          fecha_revision?: string | null
+          id?: string
+          mes: number
+          observaciones_revision?: string | null
+          registrado_por?: string | null
+          revisado_por?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          actividad_id?: string
+          anio?: number
+          avance_unidad_medida?: string | null
+          avance_valor?: number | null
+          descripcion_avance?: string | null
+          entidad_id?: string
+          estado?: Database["public"]["Enums"]["estado_actividad"] | null
+          estado_registro?:
+            | Database["public"]["Enums"]["estado_registro"]
+            | null
+          fecha_ejecucion?: string | null
+          fecha_registro?: string | null
+          fecha_revision?: string | null
+          id?: string
+          mes?: number
+          observaciones_revision?: string | null
+          registrado_por?: string | null
+          revisado_por?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_mensuales_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_mensuales_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_mensuales_registrado_por_fkey"
+            columns: ["registrado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_mensuales_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
             referencedColumns: ["id"]
           },
         ]
