@@ -224,7 +224,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
 
     const result = await invokeAnalysis("reporte", {
       entidad: {
-        codigo: entidad?.codigo || entidadNombre,
+        codigo: entidadNombre,
         nombre: entidadNombre,
         mecanismo: entidad?.mecanismo || "",
         tipo_entidad: entidad?.tipo_entidad || "",
