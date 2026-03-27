@@ -24,6 +24,7 @@ export interface NavItem {
 const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   entidad: [
     { label: "Dashboard", path: "/", icon: LayoutDashboard },
+    { label: "Mis Actividades", path: "/actividades", icon: ClipboardList },
     { label: "Mi Plan de Mejora", path: "/plan-mejora", icon: Target },
     { label: "Indicadores", path: "/indicadores", icon: BarChart3 },
     { label: "Documentos", path: "/documentos", icon: FileText },
