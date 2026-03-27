@@ -1,0 +1,70 @@
+
+-- Enable RLS on ALL new tables with public read for MVP
+ALTER TABLE indicadores_proyecto ENABLE ROW LEVEL SECURITY;
+ALTER TABLE registros_mensuales ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ejecucion_financiera ENABLE ROW LEVEL SECURITY;
+ALTER TABLE registro_capacitaciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE participantes_capacitacion ENABLE ROW LEVEL SECURITY;
+ALTER TABLE registro_innovaciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE registro_gei ENABLE ROW LEVEL SECURITY;
+ALTER TABLE registro_nuevos_productos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE registro_normativo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE registro_financiamiento ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reporte_empleo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reporte_productividad ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reporte_comercial ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reporte_nuevos_mercados ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reporte_turismo_ventas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reporte_turismo_atractivos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reporte_gobernanza ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reporte_diversificacion ENABLE ROW LEVEL SECURITY;
+ALTER TABLE registro_certificacion_laboral ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contratos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE desembolsos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE viaticos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reasignaciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE escala_viaticos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE historial_cambios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE config_indicadores_entidad ENABLE ROW LEVEL SECURITY;
+ALTER TABLE config_gatillos_actividad ENABLE ROW LEVEL SECURITY;
+
+-- Public read policies for MVP (no auth)
+CREATE POLICY "public_read" ON indicadores_proyecto FOR SELECT USING (true);
+CREATE POLICY "public_read" ON registros_mensuales FOR SELECT USING (true);
+CREATE POLICY "public_read" ON ejecucion_financiera FOR SELECT USING (true);
+CREATE POLICY "public_read" ON registro_capacitaciones FOR SELECT USING (true);
+CREATE POLICY "public_read" ON participantes_capacitacion FOR SELECT USING (true);
+CREATE POLICY "public_read" ON registro_innovaciones FOR SELECT USING (true);
+CREATE POLICY "public_read" ON registro_gei FOR SELECT USING (true);
+CREATE POLICY "public_read" ON registro_nuevos_productos FOR SELECT USING (true);
+CREATE POLICY "public_read" ON registro_normativo FOR SELECT USING (true);
+CREATE POLICY "public_read" ON registro_financiamiento FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reporte_empleo FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reporte_productividad FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reporte_comercial FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reporte_nuevos_mercados FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reporte_turismo_ventas FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reporte_turismo_atractivos FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reporte_gobernanza FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reporte_diversificacion FOR SELECT USING (true);
+CREATE POLICY "public_read" ON registro_certificacion_laboral FOR SELECT USING (true);
+CREATE POLICY "public_read" ON contratos FOR SELECT USING (true);
+CREATE POLICY "public_read" ON desembolsos FOR SELECT USING (true);
+CREATE POLICY "public_read" ON viaticos FOR SELECT USING (true);
+CREATE POLICY "public_read" ON reasignaciones FOR SELECT USING (true);
+CREATE POLICY "public_read" ON escala_viaticos FOR SELECT USING (true);
+CREATE POLICY "public_read" ON historial_cambios FOR SELECT USING (true);
+CREATE POLICY "public_read" ON config_indicadores_entidad FOR SELECT USING (true);
+CREATE POLICY "public_read" ON config_gatillos_actividad FOR SELECT USING (true);
+
+-- Public insert policies for MVP tables that need writes
+CREATE POLICY "public_insert" ON registros_mensuales FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON ejecucion_financiera FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON registro_capacitaciones FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON participantes_capacitacion FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON registro_innovaciones FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON registro_gei FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON registro_nuevos_productos FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON registro_normativo FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON registro_financiamiento FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_insert" ON historial_cambios FOR INSERT WITH CHECK (true);
