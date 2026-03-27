@@ -314,6 +314,81 @@ export type Database = {
           },
         ]
       }
+      participantes_capacitacion: {
+        Row: {
+          apellidos: string
+          aplico_aprendizaje: boolean | null
+          cadena_valor: string | null
+          capacitacion_id: string
+          created_at: string | null
+          entidad_id: string
+          fecha_nacimiento: string | null
+          genero: string | null
+          id: string
+          nombre_organizacion: string | null
+          nombres: string
+          num_documento: string
+          pais_origen: string | null
+          ruc_organizacion: string | null
+          tipo_documento: string | null
+          tipo_org_productiva: string | null
+          tipo_organizacion: string | null
+        }
+        Insert: {
+          apellidos: string
+          aplico_aprendizaje?: boolean | null
+          cadena_valor?: string | null
+          capacitacion_id: string
+          created_at?: string | null
+          entidad_id: string
+          fecha_nacimiento?: string | null
+          genero?: string | null
+          id?: string
+          nombre_organizacion?: string | null
+          nombres: string
+          num_documento: string
+          pais_origen?: string | null
+          ruc_organizacion?: string | null
+          tipo_documento?: string | null
+          tipo_org_productiva?: string | null
+          tipo_organizacion?: string | null
+        }
+        Update: {
+          apellidos?: string
+          aplico_aprendizaje?: boolean | null
+          cadena_valor?: string | null
+          capacitacion_id?: string
+          created_at?: string | null
+          entidad_id?: string
+          fecha_nacimiento?: string | null
+          genero?: string | null
+          id?: string
+          nombre_organizacion?: string | null
+          nombres?: string
+          num_documento?: string
+          pais_origen?: string | null
+          ruc_organizacion?: string | null
+          tipo_documento?: string | null
+          tipo_org_productiva?: string | null
+          tipo_organizacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participantes_capacitacion_capacitacion_id_fkey"
+            columns: ["capacitacion_id"]
+            isOneToOne: false
+            referencedRelation: "registro_capacitaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participantes_capacitacion_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       perfiles: {
         Row: {
           activo: boolean | null
@@ -399,6 +474,477 @@ export type Database = {
             columns: ["resultado_id"]
             isOneToOne: false
             referencedRelation: "resultados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_capacitaciones: {
+        Row: {
+          actividad_id: string
+          created_at: string | null
+          departamento: string | null
+          entidad_id: string
+          fecha_fin: string | null
+          fecha_inicio: string | null
+          id: string
+          modalidad: string | null
+          nombre_accion_formativa: string
+          participantes_femenino: number | null
+          participantes_masculino: number | null
+          registro_mensual_id: string
+          tema: string | null
+          tipo_accion_formativa: string | null
+          total_participantes: number | null
+        }
+        Insert: {
+          actividad_id: string
+          created_at?: string | null
+          departamento?: string | null
+          entidad_id: string
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          modalidad?: string | null
+          nombre_accion_formativa: string
+          participantes_femenino?: number | null
+          participantes_masculino?: number | null
+          registro_mensual_id: string
+          tema?: string | null
+          tipo_accion_formativa?: string | null
+          total_participantes?: number | null
+        }
+        Update: {
+          actividad_id?: string
+          created_at?: string | null
+          departamento?: string | null
+          entidad_id?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          modalidad?: string | null
+          nombre_accion_formativa?: string
+          participantes_femenino?: number | null
+          participantes_masculino?: number | null
+          registro_mensual_id?: string
+          tema?: string | null
+          tipo_accion_formativa?: string | null
+          total_participantes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_capacitaciones_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_capacitaciones_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_capacitaciones_registro_mensual_id_fkey"
+            columns: ["registro_mensual_id"]
+            isOneToOne: false
+            referencedRelation: "registros_mensuales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_financiamiento: {
+        Row: {
+          actividad_id: string
+          created_at: string | null
+          entidad_id: string
+          fecha_desembolso: string | null
+          fondo_instrumento: string
+          id: string
+          monto_la_libertad: number | null
+          monto_piura: number | null
+          monto_san_martin: number | null
+          monto_total: number | null
+          num_organizaciones_ll: number | null
+          num_organizaciones_piura: number | null
+          num_organizaciones_sm: number | null
+          num_organizaciones_total: number | null
+          registro_mensual_id: string
+          tipo_financiamiento: string | null
+          tipo_organizacion_financiada: string | null
+        }
+        Insert: {
+          actividad_id: string
+          created_at?: string | null
+          entidad_id: string
+          fecha_desembolso?: string | null
+          fondo_instrumento: string
+          id?: string
+          monto_la_libertad?: number | null
+          monto_piura?: number | null
+          monto_san_martin?: number | null
+          monto_total?: number | null
+          num_organizaciones_ll?: number | null
+          num_organizaciones_piura?: number | null
+          num_organizaciones_sm?: number | null
+          num_organizaciones_total?: number | null
+          registro_mensual_id: string
+          tipo_financiamiento?: string | null
+          tipo_organizacion_financiada?: string | null
+        }
+        Update: {
+          actividad_id?: string
+          created_at?: string | null
+          entidad_id?: string
+          fecha_desembolso?: string | null
+          fondo_instrumento?: string
+          id?: string
+          monto_la_libertad?: number | null
+          monto_piura?: number | null
+          monto_san_martin?: number | null
+          monto_total?: number | null
+          num_organizaciones_ll?: number | null
+          num_organizaciones_piura?: number | null
+          num_organizaciones_sm?: number | null
+          num_organizaciones_total?: number | null
+          registro_mensual_id?: string
+          tipo_financiamiento?: string | null
+          tipo_organizacion_financiada?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_financiamiento_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_financiamiento_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_financiamiento_registro_mensual_id_fkey"
+            columns: ["registro_mensual_id"]
+            isOneToOne: false
+            referencedRelation: "registros_mensuales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_gei: {
+        Row: {
+          actividad_id: string
+          cadena_valor: string | null
+          categoria: string | null
+          created_at: string | null
+          entidad_id: string
+          etapa_implementacion: string | null
+          fecha_prog_culminacion: string | null
+          id: string
+          nombre_organizacion: string | null
+          nombre_practica: string
+          registro_mensual_id: string
+          ruc_organizacion: string | null
+          tipo_accion: string | null
+        }
+        Insert: {
+          actividad_id: string
+          cadena_valor?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          entidad_id: string
+          etapa_implementacion?: string | null
+          fecha_prog_culminacion?: string | null
+          id?: string
+          nombre_organizacion?: string | null
+          nombre_practica: string
+          registro_mensual_id: string
+          ruc_organizacion?: string | null
+          tipo_accion?: string | null
+        }
+        Update: {
+          actividad_id?: string
+          cadena_valor?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          entidad_id?: string
+          etapa_implementacion?: string | null
+          fecha_prog_culminacion?: string | null
+          id?: string
+          nombre_organizacion?: string | null
+          nombre_practica?: string
+          registro_mensual_id?: string
+          ruc_organizacion?: string | null
+          tipo_accion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_gei_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_gei_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_gei_registro_mensual_id_fkey"
+            columns: ["registro_mensual_id"]
+            isOneToOne: false
+            referencedRelation: "registros_mensuales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_innovaciones: {
+        Row: {
+          actividad_id: string
+          cadena_valor: string | null
+          created_at: string | null
+          digitalizacion_trazabilidad: boolean | null
+          entidad_id: string
+          id: string
+          nombre_innovacion: string
+          nombre_organizacion: string | null
+          optimizacion_procesos: boolean | null
+          optimizacion_recursos: boolean | null
+          registro_mensual_id: string
+          ruc_organizacion: string | null
+          sostenibilidad_certificaciones: boolean | null
+          tecnificacion_mecanizacion: boolean | null
+          tipo_organizacion: string | null
+          valor_agregado_calidad: boolean | null
+        }
+        Insert: {
+          actividad_id: string
+          cadena_valor?: string | null
+          created_at?: string | null
+          digitalizacion_trazabilidad?: boolean | null
+          entidad_id: string
+          id?: string
+          nombre_innovacion: string
+          nombre_organizacion?: string | null
+          optimizacion_procesos?: boolean | null
+          optimizacion_recursos?: boolean | null
+          registro_mensual_id: string
+          ruc_organizacion?: string | null
+          sostenibilidad_certificaciones?: boolean | null
+          tecnificacion_mecanizacion?: boolean | null
+          tipo_organizacion?: string | null
+          valor_agregado_calidad?: boolean | null
+        }
+        Update: {
+          actividad_id?: string
+          cadena_valor?: string | null
+          created_at?: string | null
+          digitalizacion_trazabilidad?: boolean | null
+          entidad_id?: string
+          id?: string
+          nombre_innovacion?: string
+          nombre_organizacion?: string | null
+          optimizacion_procesos?: boolean | null
+          optimizacion_recursos?: boolean | null
+          registro_mensual_id?: string
+          ruc_organizacion?: string | null
+          sostenibilidad_certificaciones?: boolean | null
+          tecnificacion_mecanizacion?: boolean | null
+          tipo_organizacion?: string | null
+          valor_agregado_calidad?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_innovaciones_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_innovaciones_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_innovaciones_registro_mensual_id_fkey"
+            columns: ["registro_mensual_id"]
+            isOneToOne: false
+            referencedRelation: "registros_mensuales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_normativo: {
+        Row: {
+          actividad_id: string
+          categoria_tramite: string | null
+          contribucion: string | null
+          created_at: string | null
+          descripcion: string | null
+          detalle_simplificado: string | null
+          entidad_id: string
+          estado: string
+          fecha_aprobacion: string | null
+          id: string
+          monto_financiamiento: number | null
+          nombre_documento: string
+          numero_documento: string | null
+          registro_mensual_id: string
+          sectores_beneficiarios: string | null
+          subtipo: string | null
+          tipo_marco: string
+        }
+        Insert: {
+          actividad_id: string
+          categoria_tramite?: string | null
+          contribucion?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          detalle_simplificado?: string | null
+          entidad_id: string
+          estado: string
+          fecha_aprobacion?: string | null
+          id?: string
+          monto_financiamiento?: number | null
+          nombre_documento: string
+          numero_documento?: string | null
+          registro_mensual_id: string
+          sectores_beneficiarios?: string | null
+          subtipo?: string | null
+          tipo_marco: string
+        }
+        Update: {
+          actividad_id?: string
+          categoria_tramite?: string | null
+          contribucion?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          detalle_simplificado?: string | null
+          entidad_id?: string
+          estado?: string
+          fecha_aprobacion?: string | null
+          id?: string
+          monto_financiamiento?: number | null
+          nombre_documento?: string
+          numero_documento?: string | null
+          registro_mensual_id?: string
+          sectores_beneficiarios?: string | null
+          subtipo?: string | null
+          tipo_marco?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_normativo_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_normativo_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_normativo_registro_mensual_id_fkey"
+            columns: ["registro_mensual_id"]
+            isOneToOne: false
+            referencedRelation: "registros_mensuales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_nuevos_productos: {
+        Row: {
+          actividad_id: string
+          cadena_valor: string | null
+          created_at: string | null
+          diferenciacion_origen: boolean | null
+          entidad_id: string
+          etapa_cadena_valor: string | null
+          id: string
+          incorpora_innovacion: boolean | null
+          mejora_empaque: boolean | null
+          nombre_organizacion: string | null
+          nombre_producto: string
+          registro_mensual_id: string
+          ruc_organizacion: string | null
+          tipo_organizacion: string | null
+          tipo_procesamiento: string | null
+          tipo_tecnologia: string | null
+          transformacion_primario: boolean | null
+        }
+        Insert: {
+          actividad_id: string
+          cadena_valor?: string | null
+          created_at?: string | null
+          diferenciacion_origen?: boolean | null
+          entidad_id: string
+          etapa_cadena_valor?: string | null
+          id?: string
+          incorpora_innovacion?: boolean | null
+          mejora_empaque?: boolean | null
+          nombre_organizacion?: string | null
+          nombre_producto: string
+          registro_mensual_id: string
+          ruc_organizacion?: string | null
+          tipo_organizacion?: string | null
+          tipo_procesamiento?: string | null
+          tipo_tecnologia?: string | null
+          transformacion_primario?: boolean | null
+        }
+        Update: {
+          actividad_id?: string
+          cadena_valor?: string | null
+          created_at?: string | null
+          diferenciacion_origen?: boolean | null
+          entidad_id?: string
+          etapa_cadena_valor?: string | null
+          id?: string
+          incorpora_innovacion?: boolean | null
+          mejora_empaque?: boolean | null
+          nombre_organizacion?: string | null
+          nombre_producto?: string
+          registro_mensual_id?: string
+          ruc_organizacion?: string | null
+          tipo_organizacion?: string | null
+          tipo_procesamiento?: string | null
+          tipo_tecnologia?: string | null
+          transformacion_primario?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_nuevos_productos_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_nuevos_productos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_nuevos_productos_registro_mensual_id_fkey"
+            columns: ["registro_mensual_id"]
+            isOneToOne: false
+            referencedRelation: "registros_mensuales"
             referencedColumns: ["id"]
           },
         ]
