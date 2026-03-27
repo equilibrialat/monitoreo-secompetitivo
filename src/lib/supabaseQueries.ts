@@ -119,6 +119,9 @@ export interface RegistroMensualInsert {
   estado: string;
   descripcion_avance: string;
   estado_registro: string;
+  limitaciones?: string;
+  prioridades_proximo_mes?: string;
+  compromisos?: string;
 }
 
 export interface EjecucionFinancieraInsert {
