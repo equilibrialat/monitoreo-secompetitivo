@@ -130,7 +130,18 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
     setIsEdit(false);
     setValidationErrors({});
     setObservaciones(null);
+    setLinkedIndicadores([]);
     markClean();
+
+    // Fetch linked indicators
+    if (actividad.indicadores_vinculados && actividad.indicadores_vinculados.length > 0) {
+      (supabase as any)
+        .from("indicadores_proyecto")
+        .select("codigo, nombre, meta, linea_base")
+        .eq("entidad_id", actividad.entidad_id)
+        .in("codigo", actividad.indicadores_vinculados)
+        .then(({ data }: any) => setLinkedIndicadores(data || []));
+    }
   }
 
   const loadExisting = useCallback(async () => {
