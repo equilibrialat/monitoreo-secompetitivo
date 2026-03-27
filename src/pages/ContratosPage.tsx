@@ -197,7 +197,9 @@ export default function ContratosPage() {
       <Card>
         <CardContent className="p-0">
           {loading ? <p className="text-center py-8 text-muted-foreground">Cargando…</p> : (
-            <div className="overflow-x-auto">
+            <>
+              <p className="text-[10px] text-muted-foreground text-center py-1 sm:hidden">← desliza →</p>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
                   {isAdmin && <TableHead>Entidad</TableHead>}
