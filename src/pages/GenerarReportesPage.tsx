@@ -36,7 +36,7 @@ export default function GenerarReportesPage() {
   const [anioMensual, setAnioMensual] = useState<string>("2025");
 
   // Quarterly
-  const [trimestre, setTrimestre] = useState<string>("T1");
+  const [trimestre, setTrimestre] = useState<string>("T4");
   const [anioTrimestral, setAnioTrimestral] = useState<string>("2025");
 
   // Semester
