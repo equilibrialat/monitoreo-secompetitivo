@@ -1630,6 +1630,7 @@ export type Database = {
           anio: number
           avance_unidad_medida: string | null
           avance_valor: number | null
+          compromisos: string | null
           descripcion_avance: string | null
           entidad_id: string
           estado: Database["public"]["Enums"]["estado_actividad"] | null
@@ -1638,8 +1639,10 @@ export type Database = {
           fecha_registro: string | null
           fecha_revision: string | null
           id: string
+          limitaciones: string | null
           mes: number
           observaciones_revision: string | null
+          prioridades_proximo_mes: string | null
           registrado_por: string | null
           revisado_por: string | null
           updated_at: string | null
@@ -1649,6 +1652,7 @@ export type Database = {
           anio: number
           avance_unidad_medida?: string | null
           avance_valor?: number | null
+          compromisos?: string | null
           descripcion_avance?: string | null
           entidad_id: string
           estado?: Database["public"]["Enums"]["estado_actividad"] | null
@@ -1659,8 +1663,10 @@ export type Database = {
           fecha_registro?: string | null
           fecha_revision?: string | null
           id?: string
+          limitaciones?: string | null
           mes: number
           observaciones_revision?: string | null
+          prioridades_proximo_mes?: string | null
           registrado_por?: string | null
           revisado_por?: string | null
           updated_at?: string | null
@@ -1670,6 +1676,7 @@ export type Database = {
           anio?: number
           avance_unidad_medida?: string | null
           avance_valor?: number | null
+          compromisos?: string | null
           descripcion_avance?: string | null
           entidad_id?: string
           estado?: Database["public"]["Enums"]["estado_actividad"] | null
@@ -1680,8 +1687,10 @@ export type Database = {
           fecha_registro?: string | null
           fecha_revision?: string | null
           id?: string
+          limitaciones?: string | null
           mes?: number
           observaciones_revision?: string | null
+          prioridades_proximo_mes?: string | null
           registrado_por?: string | null
           revisado_por?: string | null
           updated_at?: string | null
@@ -2599,6 +2608,64 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_dashboard_entidad"
             referencedColumns: ["entidad_id"]
+          },
+        ]
+      }
+      reuniones_seguimiento: {
+        Row: {
+          acuerdos: Json | null
+          created_at: string | null
+          entidad_id: string
+          fecha: string
+          id: string
+          participantes: string | null
+          proxima_reunion: string | null
+          registrado_por: string | null
+          temas_tratados: string | null
+        }
+        Insert: {
+          acuerdos?: Json | null
+          created_at?: string | null
+          entidad_id: string
+          fecha: string
+          id?: string
+          participantes?: string | null
+          proxima_reunion?: string | null
+          registrado_por?: string | null
+          temas_tratados?: string | null
+        }
+        Update: {
+          acuerdos?: Json | null
+          created_at?: string | null
+          entidad_id?: string
+          fecha?: string
+          id?: string
+          participantes?: string | null
+          proxima_reunion?: string | null
+          registrado_por?: string | null
+          temas_tratados?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reuniones_seguimiento_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reuniones_seguimiento_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
+            foreignKeyName: "reuniones_seguimiento_registrado_por_fkey"
+            columns: ["registrado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
           },
         ]
       }
