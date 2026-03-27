@@ -119,12 +119,12 @@ export default function GenerarReportesPage() {
           </CardContent>
         </Card>
 
-        {/* Quarterly Operative */}
+        {/* Quarterly Complete Report */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Badge variant="outline">Anexo 8</Badge>
-              Trimestral Operativo
+              <Badge variant="outline">Anexo 8/9</Badge>
+              Reporte Trimestral Completo
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -150,44 +150,7 @@ export default function GenerarReportesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button className="w-full" onClick={() => setActiveReport("trimestral-operativo")}>
-              <Eye className="h-4 w-4 mr-2" /> Vista previa
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Quarterly Financial */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Badge variant="outline">Anexo 9</Badge>
-              Trimestral Financiero
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-2">
-              <Select value={trimestre} onValueChange={setTrimestre}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRIMESTRES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={anioTrimestral} onValueChange={setAnioTrimestral}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ANIOS.map((a) => (
-                    <SelectItem key={a} value={String(a)}>{a}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button className="w-full" onClick={() => setActiveReport("trimestral-financiero")}>
+            <Button className="w-full" onClick={() => setActiveReport("trimestral")}>
               <Eye className="h-4 w-4 mr-2" /> Vista previa
             </Button>
           </CardContent>
