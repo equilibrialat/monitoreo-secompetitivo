@@ -224,7 +224,33 @@ export function SeccionAvanceOperativo({
 
       {/* Descripción */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Descripción / Observaciones</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Descripción / Observaciones</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[11px] px-2"
+            disabled={suggestLoading}
+            onClick={async () => {
+              setSuggestLoading(true);
+              const { resultado, error } = await invokeAnalysis("narrativa", {
+                actividad: actividadNombre || "Actividad",
+                codigo: actividadCodigo || "",
+                avance: valorAvance,
+                unidad_medida: unidadMedida,
+                meta: metaValor,
+                acumulado: acumuladoAnterior,
+                estado,
+              });
+              setSuggestLoading(false);
+              if (resultado) onDescripcionChange(resultado);
+            }}
+          >
+            {suggestLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+            ✨ Sugerir descripción
+          </Button>
+        </div>
         <Textarea
           value={descripcion}
           onChange={(e) => onDescripcionChange(e.target.value)}

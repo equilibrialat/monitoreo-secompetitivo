@@ -189,6 +189,27 @@ export default function TramaFisicoFinanciera() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* AI Result */}
+        {aiError && (
+          <div className="rounded-md border border-destructive p-3">
+            <p className="text-sm text-destructive">{aiError}</p>
+          </div>
+        )}
+        {aiResult && (
+          <Collapsible open={aiOpen} onOpenChange={setAiOpen}>
+            <div className="rounded-md border-2 border-primary p-4">
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+                <Bot className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold flex-1">Resultado del análisis de consistencia</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${aiOpen ? "rotate-180" : ""}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground mt-3">{aiResult}</div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        )}
+
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
           <Input placeholder="Buscar actividad…" value={search} onChange={e => setSearch(e.target.value)} className="max-w-xs" />

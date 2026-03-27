@@ -85,6 +85,40 @@ export default function DashboardDireccion() {
         </Card>
       </div>
 
+      {/* AI Analysis */}
+      <div className="mb-6">
+        <Button
+          onClick={handleAnalysis}
+          disabled={aiLoading}
+          variant="outline"
+          className="mb-3"
+        >
+          {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
+          {aiLoading ? "Analizando datos del programa..." : "🤖 Generar análisis ejecutivo"}
+        </Button>
+
+        {aiError && (
+          <Card className="border-destructive">
+            <CardContent className="py-3">
+              <p className="text-sm text-destructive">{aiError}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {aiResult && (
+          <Card className="border-primary border-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Bot className="h-4 w-4 text-primary" /> Análisis Ejecutivo IA
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground">{aiResult}</div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Ranking */}
       <h2 className="text-sm font-semibold text-muted-foreground mb-3">Ranking de Entidades</h2>
       <div className="space-y-2">
