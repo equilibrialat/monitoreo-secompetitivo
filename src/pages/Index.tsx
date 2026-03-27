@@ -3,6 +3,7 @@ import DashboardEntidad from "@/components/dashboard/DashboardEntidad";
 import DashboardMonitoreo from "@/components/dashboard/DashboardMonitoreo";
 import DashboardAdministracion from "@/components/dashboard/DashboardAdministracion";
 import DashboardDireccion from "@/components/dashboard/DashboardDireccion";
+import DashboardCadenasValor from "@/components/dashboard/DashboardCadenasValor";
 
 export default function Index() {
   const { role } = useRole();
@@ -32,18 +33,7 @@ export default function Index() {
       );
 
     case "coordinador_cadenas":
-      return (
-        <DashboardMonitoreo
-          title="Dashboard Cadenas de Valor (Mec B)"
-          subtitle="Coordinador Cadenas de Valor"
-          filterFn={(e) => e.mecanismo === "B"}
-          reviewEstado="enviado"
-          reviewNextEstado="en_revision_tecnica"
-          reviewTitle="Revisión Pendiente"
-          reviewLabel="Aprobar (→ Rev. Técnica)"
-          reviewFilterFn={(r) => r.mecanismo === "B"}
-        />
-      );
+      return <DashboardCadenasValor />;
 
     case "asesora_politicas":
       return (
