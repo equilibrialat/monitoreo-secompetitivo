@@ -10,6 +10,7 @@ import MisActividades from "./pages/MisActividades";
 import NotFound from "./pages/NotFound";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import RevisionPendientePage from "./pages/RevisionPendientePage";
+import IndicadoresImpactoPage from "./pages/IndicadoresImpactoPage";
 
 const queryClient = new QueryClient();
 

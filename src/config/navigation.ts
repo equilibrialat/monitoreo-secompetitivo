@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Banknote,
   FileCheck,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
@@ -23,6 +24,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Mis Actividades", path: "/actividades", icon: ClipboardList },
     { label: "Registro Mensual", path: "/registro-mensual", icon: FileText },
+    { label: "Indicadores de Impacto", path: "/indicadores-impacto", icon: TrendingUp },
     { label: "Reportes", path: "/reportes", icon: BarChart3 },
   ],
   coordinador_regional: [
