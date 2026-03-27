@@ -45,7 +45,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function fetchEntidades() {
       setLoadingEntidades(true);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("entidades")
         .select("id, nombre_corto")
         .order("nombre_corto");

@@ -150,7 +150,7 @@ export async function saveRegistroMensual(
       registro_mensual_id: regData.id,
     }));
 
-    const { error: gastosError } = await supabase
+    const { error: gastosError } = await (supabase as any)
       .from("ejecucion_financiera")
       .insert(gastosWithId);
 
