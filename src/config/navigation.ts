@@ -13,6 +13,7 @@ import {
   Shuffle,
   Bell,
   FileDown,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
