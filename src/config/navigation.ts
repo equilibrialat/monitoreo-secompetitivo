@@ -14,6 +14,7 @@ import {
   Bell,
   FileDown,
   Settings,
+  Briefcase,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
@@ -36,6 +37,13 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Reportes", path: "/reportes", icon: BarChart3 },
     { label: "Generar Reportes", path: "/generar-reportes", icon: FileDown },
   ],
+  gestor: [
+    { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+    { label: "Mis Iniciativas", path: "/mis-iniciativas", icon: Briefcase },
+    { label: "Registro Mensual", path: "/registro-mensual", icon: FileText },
+    { label: "Reportes", path: "/reportes", icon: BarChart3 },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
+  ],
   coordinador_regional: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
@@ -43,13 +51,13 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
-  gestor_mec_a: [
+  asesora_politicas: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
     { label: "Reportes Mec A", path: "/reportes-mec-a", icon: BarChart3 },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
-  coordinador_mec_b: [
+  coordinador_cadenas: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
     { label: "Reportes Mec B", path: "/reportes-mec-b", icon: BarChart3 },

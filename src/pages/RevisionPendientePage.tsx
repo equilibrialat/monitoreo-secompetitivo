@@ -14,20 +14,22 @@ const ROLE_CONFIG: Record<string, {
     estadoFiltro: "enviado",
     estadoAprobar: "en_revision_tecnica",
     labelAprobar: "Aprobar (→ Rev. Técnica)",
+    // Coordinadores regionales ven AMBOS mecanismos de su región (no solo Mec B)
     filterFn: (r) => r.region !== "Nacional",
   },
-  coordinador_mec_b: {
-    title: "Revisión Pendiente — Mecanismo B",
+  coordinador_cadenas: {
+    title: "Revisión Pendiente — Cadenas de Valor (Mec B)",
     estadoFiltro: "enviado",
     estadoAprobar: "en_revision_tecnica",
     labelAprobar: "Aprobar (→ Rev. Técnica)",
     filterFn: (r) => r.mecanismo === "B",
   },
-  gestor_mec_a: {
-    title: "Revisión Pendiente — Mecanismo A",
+  asesora_politicas: {
+    title: "Revisión Pendiente — Políticas Públicas (Mec A)",
     estadoFiltro: "enviado",
     estadoAprobar: "en_revision_tecnica",
     labelAprobar: "Aprobar (→ Rev. Técnica)",
+    // Claudia ve solo Mec A (tanto nacionales directos como los que pasaron por coordinador regional)
     filterFn: (r) => r.mecanismo === "A",
   },
   monitoreo: {
