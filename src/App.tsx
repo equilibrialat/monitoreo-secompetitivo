@@ -46,8 +46,10 @@ const App = () => (
               <Route path="/verificacion" element={<PlaceholderPage title="Verificación" />} />
 
               {/* Administracion routes */}
-              <Route path="/contratos" element={<PlaceholderPage title="Contratos" />} />
-              <Route path="/desembolsos" element={<PlaceholderPage title="Desembolsos" />} />
+              <Route path="/contratos" element={<ContratosPage />} />
+              <Route path="/desembolsos" element={<DesembolsosPage />} />
+              <Route path="/viaticos" element={<ViaticosPage />} />
+              <Route path="/reasignaciones" element={<ReasignacionesPage />} />
 
               {/* Direccion routes */}
               <Route path="/aprobaciones" element={<PlaceholderPage title="Aprobaciones" />} />
