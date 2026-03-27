@@ -2617,6 +2617,47 @@ export type Database = {
           },
         ]
       }
+      resumenes_regionales: {
+        Row: {
+          analisis_ia: string | null
+          anio: number
+          contenido: string | null
+          coordinador_id: string | null
+          created_at: string | null
+          id: string
+          mes: number
+          region: string
+        }
+        Insert: {
+          analisis_ia?: string | null
+          anio: number
+          contenido?: string | null
+          coordinador_id?: string | null
+          created_at?: string | null
+          id?: string
+          mes: number
+          region: string
+        }
+        Update: {
+          analisis_ia?: string | null
+          anio?: number
+          contenido?: string | null
+          coordinador_id?: string | null
+          created_at?: string | null
+          id?: string
+          mes?: number
+          region?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resumenes_regionales_coordinador_id_fkey"
+            columns: ["coordinador_id"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reuniones_seguimiento: {
         Row: {
           acuerdos: Json | null
