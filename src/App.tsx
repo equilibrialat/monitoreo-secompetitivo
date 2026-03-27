@@ -17,6 +17,9 @@ import DesembolsosPage from "./pages/DesembolsosPage";
 import ViaticosPage from "./pages/ViaticosPage";
 import ReasignacionesPage from "./pages/ReasignacionesPage";
 import NotificacionesPage from "./pages/NotificacionesPage";
+import IndicadoresMonitoreoPage from "./pages/IndicadoresMonitoreoPage";
+import VerificacionPage from "./pages/VerificacionPage";
+import GenerarReportesPage from "./pages/GenerarReportesPage";
 
 const queryClient = new QueryClient();
 
