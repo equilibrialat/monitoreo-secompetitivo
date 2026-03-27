@@ -77,6 +77,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [lastActId, setLastActId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [linkedIndicadores, setLinkedIndicadores] = useState<IndicadorLinked[]>([]);
 
   // Refs for auto-save to access latest state
   const stateRef = useRef({ valorAvance, estado, descripcion, fechaEjecucion, fuentes, contextual, mes, anio });
