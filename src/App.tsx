@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import MisActividades from "./pages/MisActividades";
 import NotFound from "./pages/NotFound";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import RevisionPendientePage from "./pages/RevisionPendientePage";
 
 const queryClient = new QueryClient();
 
@@ -31,7 +32,7 @@ const App = () => (
 
               {/* Shared routes */}
               <Route path="/reportes" element={<PlaceholderPage title="Reportes" />} />
-              <Route path="/revision-pendiente" element={<PlaceholderPage title="Revisión Pendiente" />} />
+              <Route path="/revision-pendiente" element={<RevisionPendientePage />} />
 
               {/* Monitoreo routes */}
               <Route path="/indicadores" element={<PlaceholderPage title="Indicadores" />} />
