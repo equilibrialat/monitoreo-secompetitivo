@@ -2,29 +2,50 @@ import { useState, useEffect } from "react";
 import { ClipboardList, Loader2 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { fetchActividadesByEntidad, buildActivityTree, type ActividadDB } from "@/lib/supabaseQueries";
+import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroAprobacion";
 import { TreeBranch } from "@/components/TreeBranch";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, CheckCircle2, Clock, Send } from "lucide-react";
 
 export default function MisActividades() {
   const { entidadId } = useRole();
   const [actividades, setActividades] = useState<ActividadDB[]>([]);
+  const [registros, setRegistros] = useState<RegistroPendiente[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedActividad, setSelectedActividad] = useState<ActividadDB | null>(null);
 
   useEffect(() => {
     if (!entidadId) {
       setActividades([]);
+      setRegistros([]);
       setLoading(false);
       return;
     }
     setLoading(true);
-    fetchActividadesByEntidad(entidadId).then((data) => {
-      setActividades(data);
+    Promise.all([
+      fetchActividadesByEntidad(entidadId),
+      fetchRegistrosEntidad(entidadId),
+    ]).then(([acts, regs]) => {
+      setActividades(acts);
+      setRegistros(regs);
       setLoading(false);
     });
   }, [entidadId]);
 
   const tree = buildActivityTree(actividades);
+
+  // Build a map: actividad_id -> latest registro
+  const registroMap = new Map<string, RegistroPendiente>();
+  for (const r of registros) {
+    const existing = registroMap.get(r.actividad_id);
+    if (!existing || r.anio > existing.anio || (r.anio === existing.anio && r.mes > existing.mes)) {
+      registroMap.set(r.actividad_id, r);
+    }
+  }
+
+  // Observados
+  const observados = registros.filter((r) => r.estado_registro === "observado");
 
   return (
     <div>
@@ -34,11 +55,33 @@ export default function MisActividades() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-foreground">Mis Actividades</h1>
-          <p className="text-sm text-muted-foreground">
-            Árbol de resultados
-          </p>
+          <p className="text-sm text-muted-foreground">Árbol de resultados</p>
         </div>
       </div>
+
+      {/* Observados alerts */}
+      {observados.length > 0 && (
+        <div className="mb-6 space-y-2">
+          <h2 className="text-sm font-semibold text-destructive flex items-center gap-1.5">
+            <AlertTriangle className="h-4 w-4" /> Registros Observados
+          </h2>
+          {observados.map((r) => (
+            <div key={r.id} className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-mono text-xs text-muted-foreground">{r.actividad_codigo}</span>
+                <span className="font-medium">{r.actividad_nombre}</span>
+                <Badge variant="destructive" className="text-[10px]">Observado</Badge>
+              </div>
+              {r.observaciones_revision && (
+                <p className="text-xs text-destructive/80 italic">"{r.observaciones_revision}"</p>
+              )}
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Puedes corregir y volver a enviar desde "Registrar avance".
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -59,6 +102,7 @@ export default function MisActividades() {
               depth={0}
               defaultOpen
               onRegistrar={(act) => setSelectedActividad(act)}
+              registroMap={registroMap}
             />
           ))}
         </div>
@@ -67,7 +111,13 @@ export default function MisActividades() {
       <RegistroMensualDialog
         actividad={selectedActividad}
         open={!!selectedActividad}
-        onClose={() => setSelectedActividad(null)}
+        onClose={() => {
+          setSelectedActividad(null);
+          // Refresh registros
+          if (entidadId) {
+            fetchRegistrosEntidad(entidadId).then(setRegistros);
+          }
+        }}
       />
     </div>
   );
