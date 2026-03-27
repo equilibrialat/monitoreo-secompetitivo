@@ -26,6 +26,7 @@ import ReportesMecBPage from "./pages/ReportesMecBPage";
 import ReportesMecAPage from "./pages/ReportesMecAPage";
 import ReportesRegionalesPage from "./pages/ReportesRegionalesPage";
 import AdministracionPage from "./pages/AdministracionPage";
+import MisIniciativasPage from "./pages/MisIniciativasPage";
 
 const queryClient = new QueryClient();
 
