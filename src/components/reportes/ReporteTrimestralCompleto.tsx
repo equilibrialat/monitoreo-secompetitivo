@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer } from "lucide-react";
+import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer, RefreshCw } from "lucide-react";
 import { downloadCSV, formatCurrency, TRIMESTRES_MESES, MESES_NOMBRE } from "@/lib/reportUtils";
 import { invokeAnalysis } from "@/lib/aiAnalysis";
 import { generateTrimestralDocx } from "@/lib/generateDocx";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 import type { EntidadOption } from "@/contexts/RoleContext";
 
 interface Props {
@@ -211,24 +212,64 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
 
   async function handleAI() {
     setAiLoading(true);
-    const result = await invokeAnalysis("ejecutivo", {
-      tipo_reporte: "trimestral_completo",
-      entidad: entidadNombre,
-      mecanismo: entidad?.mecanismo || "",
-      region: entidad?.region || "",
-      cadena_valor: entidad?.cadena_valor || "",
-      periodo: `${trimestre} ${anio}`,
-      total_actividades: actividades.length,
-      actividades_con_avance: actConAvance.size,
-      actividades_culminadas: actCulminadas.size,
-      ejecucion_seco_trimestre: totalSeco,
-      ejecucion_cm_trimestre: totalCM,
-      ejecucion_cnm_trimestre: totalCNM,
-      pct_ejecucion_acumulada: pctEjecTotal,
-      capacitaciones: capacitaciones.length,
-      total_participantes: capacitaciones.reduce((s, c) => s + (c.total_participantes || 0), 0),
-      innovaciones: innovaciones.length,
-      contratos_vigentes: contratos.filter(c => c.estado === "vigente").length,
+    // Build rich structured data for AI
+    const sobregiros = actividades
+      .filter(a => (a.ejecutado_seco_acum || 0) > (a.presupuesto_seco || 0) && (a.presupuesto_seco || 0) > 0)
+      .map(a => ({ actividad: a.codigo, monto_presupuesto: a.presupuesto_seco, monto_ejecutado: a.ejecutado_seco_acum, diferencia: (a.ejecutado_seco_acum || 0) - (a.presupuesto_seco || 0) }));
+
+    const totalPresCM = actividades.reduce((s, a) => s + (a.presupuesto_contrapartida_monetaria || 0), 0);
+    const totalPresCNM = actividades.reduce((s, a) => s + (a.presupuesto_contrapartida_no_monetaria || 0), 0);
+    const totalEjecCM = actividades.reduce((s, a) => s + (a.ejecutado_cm_acum || 0), 0);
+    const totalEjecCNM = actividades.reduce((s, a) => s + (a.ejecutado_cnm_acum || 0), 0);
+
+    const result = await invokeAnalysis("reporte", {
+      entidad: {
+        codigo: entidadNombre,
+        nombre: entidadNombre,
+        mecanismo: entidad?.mecanismo || "",
+        tipo_entidad: entidad?.tipo_entidad || "",
+        cadena_valor: entidad?.cadena_valor || "",
+        region: entidad?.region || "",
+      },
+      periodo: { tipo: "trimestral", anio, trimestre },
+      actividades: actividades.map(a => ({
+        codigo: a.codigo,
+        nombre: a.nombre,
+        meta: a.meta_valor,
+        unidad: a.meta_unidad_medida,
+        avance_acumulado: a.avance_operativo_pct,
+        estado: a.estado_actual,
+        presupuesto_seco: a.presupuesto_seco,
+        ejecutado_seco: a.ejecutado_seco_acum,
+        pct_avance_tecnico: a.avance_operativo_pct,
+        pct_avance_financiero: a.presupuesto_seco > 0 ? Math.round((a.ejecutado_seco_acum / a.presupuesto_seco) * 100) : 0,
+        tags: a.tags,
+      })),
+      financiero: {
+        presupuesto_seco_total: totalPresupuestoSeco,
+        ejecutado_seco_total: totalEjecAcumSeco,
+        pct_seco: pctEjecTotal,
+        presupuesto_cm_total: totalPresCM,
+        ejecutado_cm_total: totalEjecCM,
+        presupuesto_cnm_total: totalPresCNM,
+        ejecutado_cnm_total: totalEjecCNM,
+        ejecucion_trimestre: { seco: totalSeco, cm: totalCM, cnm: totalCNM },
+        sobregiros,
+      },
+      capacitaciones_resumen: capacitaciones.length > 0 ? {
+        total_eventos: capacitaciones.length,
+        total_participantes: capacitaciones.reduce((s, c) => s + (c.total_participantes || 0), 0),
+        participantes_masculino: capacitaciones.reduce((s, c) => s + (c.participantes_masculino || 0), 0),
+        participantes_femenino: capacitaciones.reduce((s, c) => s + (c.participantes_femenino || 0), 0),
+        temas: [...new Set(capacitaciones.map(c => c.tema).filter(Boolean))],
+      } : null,
+      innovaciones_resumen: innovaciones.length > 0 ? { total: innovaciones.length, nombres: innovaciones.map(i => i.nombre_innovacion) } : null,
+      gei_resumen: gei.length > 0 ? { total: gei.length, practicas: gei.map(g => g.nombre_practica) } : null,
+      contratos_resumen: contratos.length > 0 ? {
+        total: contratos.length,
+        vigentes: contratos.filter(c => c.estado === "vigente").length,
+        monto_total: contratos.reduce((s, c) => s + (c.monto || 0), 0),
+      } : null,
     });
     setAiLoading(false);
     if (result.error) toast.error(result.error);
@@ -413,15 +454,31 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
             {aiLoading ? "Generando análisis..." : aiSummary ? "🔄 Regenerar resumen" : "🤖 Generar resumen ejecutivo"}
           </Button>
           {aiSummary && (
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-              <div className="flex items-start justify-between mb-2">
-                <p className="text-xs font-semibold text-primary flex items-center gap-1"><Sparkles className="h-3 w-3" /> Análisis generado por IA</p>
-                <Button variant="ghost" size="sm" onClick={handleCopySummary} className="h-7 text-xs">
-                  {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                  {copied ? "Copiado" : "Copiar"}
-                </Button>
+            <div className="border-l-4 border-l-primary bg-background rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between mb-3">
+                <p className="text-xs font-semibold text-primary flex items-center gap-1">
+                  📊 Análisis Estratégico — Generado por IA
+                  <span className="text-muted-foreground font-normal ml-2">
+                    {new Date().toLocaleString("es-PE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </p>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={handleCopySummary} className="h-7 text-xs print:hidden">
+                    {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                    {copied ? "Copiado" : "Copiar"}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleAI} disabled={aiLoading} className="h-7 text-xs print:hidden">
+                    <RefreshCw className={`h-3 w-3 mr-1 ${aiLoading ? "animate-spin" : ""}`} />
+                    Regenerar
+                  </Button>
+                </div>
               </div>
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{aiSummary}</p>
+              <div className="prose prose-sm max-w-none text-foreground [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:text-foreground">
+                <ReactMarkdown>{aiSummary}</ReactMarkdown>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-4 pt-2 border-t border-border/50 italic">
+                Este análisis es una herramienta de apoyo. Los datos específicos están disponibles en las tablas del reporte.
+              </p>
             </div>
           )}
         </div>

@@ -2,18 +2,21 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Loader2, Bot } from "lucide-react";
+import { Loader2, Bot, Copy, Check, RefreshCw } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Header, ClickableKpiCard, KpiCard, MecanismoBadge, Semaforo, fmt, DashboardSkeleton } from "./DashboardEntidad";
 import { invokeAnalysis } from "@/lib/aiAnalysis";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
+import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 
 export default function DashboardDireccion() {
   const { data: entidades, isLoading } = useDashboardData();
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
   const { setEntidadId } = useRole();
 
@@ -23,22 +26,46 @@ export default function DashboardDireccion() {
     setAiError(null);
     setAiResult(null);
     const { resultado, error } = await invokeAnalysis("ejecutivo", {
-      entidades: entidades.map((e) => ({
+      entidad: { codigo: "PROGRAMA", nombre: "SeCompetitivo", mecanismo: "todos", tipo_entidad: "programa", cadena_valor: "múltiples", region: "nacional" },
+      periodo: { tipo: "dashboard", anio: 2025 },
+      actividades: entidades.map((e) => ({
+        codigo: e.codigo,
         nombre: e.nombre_corto,
         mecanismo: e.mecanismo,
         region: e.region,
-        avance_operativo: e.avance_operativo_promedio,
-        pct_ejecucion_seco: e.pct_ejecucion_seco,
+        cadena_valor: e.cadena_valor,
+        pct_avance_tecnico: e.avance_operativo_promedio,
+        pct_avance_financiero: e.pct_ejecucion_seco,
         presupuesto_seco: e.presupuesto_seco_total,
         ejecutado_seco: e.ejecutado_seco_total,
-        actividades: e.total_actividades,
+        total_actividades: e.total_actividades,
         completadas: e.actividades_completadas,
         sobregiros: e.sobregiros_seco,
+        desfases: e.desfases_tecnico_financiero,
       })),
+      financiero: {
+        presupuesto_seco_total: entidades.reduce((s, e) => s + e.presupuesto_seco_total, 0),
+        ejecutado_seco_total: entidades.reduce((s, e) => s + e.ejecutado_seco_total, 0),
+        pct_seco: entidades.reduce((s, e) => s + e.presupuesto_seco_total, 0) > 0
+          ? Math.round((entidades.reduce((s, e) => s + e.ejecutado_seco_total, 0) / entidades.reduce((s, e) => s + e.presupuesto_seco_total, 0)) * 100)
+          : 0,
+        sobregiros: entidades.filter(e => e.sobregiros_seco > 0).map(e => ({
+          entidad: e.nombre_corto,
+          cantidad_sobregiros: e.sobregiros_seco,
+        })),
+      },
     });
     setAiLoading(false);
     if (error) setAiError(error);
     else setAiResult(resultado ?? null);
+  };
+
+  const handleCopy = () => {
+    if (!aiResult) return;
+    navigator.clipboard.writeText(aiResult);
+    setCopied(true);
+    toast.success("Análisis copiado al portapapeles");
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (isLoading) return <DashboardSkeleton />;
@@ -96,9 +123,9 @@ export default function DashboardDireccion() {
 
       {/* AI Analysis */}
       <div className="mb-6">
-        <Button onClick={handleAnalysis} disabled={aiLoading} variant="outline" className="mb-3">
+        <Button onClick={handleAnalysis} disabled={aiLoading} variant="outline" className="mb-3 border-primary/30 text-primary hover:bg-primary/5">
           {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
-          {aiLoading ? "Analizando datos del programa..." : "🤖 Generar análisis ejecutivo"}
+          {aiLoading ? "Analizando datos del programa..." : aiResult ? "🔄 Regenerar análisis ejecutivo" : "🤖 Generar análisis ejecutivo"}
         </Button>
 
         {aiError && (
@@ -108,14 +135,28 @@ export default function DashboardDireccion() {
         )}
 
         {aiResult && (
-          <Card className="border-primary border-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Bot className="h-4 w-4 text-primary" /> Análisis Ejecutivo IA
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground">{aiResult}</div>
+          <Card className="border-l-4 border-l-primary bg-background shadow-sm">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <p className="text-xs font-semibold text-primary flex items-center gap-1">
+                  📊 Análisis Estratégico — Generado por IA
+                  <span className="text-muted-foreground font-normal ml-2">
+                    {new Date().toLocaleString("es-PE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </p>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-xs">
+                    {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                    {copied ? "Copiado" : "Copiar"}
+                  </Button>
+                </div>
+              </div>
+              <div className="prose prose-sm max-w-none text-foreground [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:text-foreground">
+                <ReactMarkdown>{aiResult}</ReactMarkdown>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-4 pt-2 border-t border-border/50 italic">
+                Este análisis es una herramienta de apoyo. Los datos específicos están disponibles en las tablas del dashboard.
+              </p>
             </CardContent>
           </Card>
         )}

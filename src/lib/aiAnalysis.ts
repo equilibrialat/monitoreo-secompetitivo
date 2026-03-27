@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type AnalysisTipo = "ejecutivo" | "consistencia" | "narrativa";
+export type AnalysisTipo = "ejecutivo" | "reporte" | "consistencia" | "narrativa";
 
 interface AnalysisResult {
   resultado?: string;
@@ -12,7 +12,7 @@ export async function invokeAnalysis(
   datos: Record<string, unknown>
 ): Promise<AnalysisResult> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 60000);
 
   try {
     const { data, error } = await supabase.functions.invoke("analyze", {
