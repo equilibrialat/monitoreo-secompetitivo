@@ -173,7 +173,7 @@ function RevisionRow({
   labelAprobar: string;
   onDone: () => void;
 }) {
-  const { role } = useRole();
+  const { role, entidades } = useRole();
   const [acting, setActing] = useState(false);
   const [mode, setMode] = useState<"none" | "observar" | "comentar">("none");
   const [obs, setObs] = useState("");
@@ -181,9 +181,16 @@ function RevisionRow({
 
   const nombreUsuario = ROLE_LABELS[role] || role;
 
+  // Determine if this is a Mec A entity (skip financial review)
+  const regEntidad = entidades.find(e => e.id === registro.entidad_id);
+  const isMecA = regEntidad?.mecanismo === "A" || regEntidad?.tipo_entidad === "mec_a";
+
   const nextEstado = (() => {
     if (registro.estado_registro === "enviado") return "en_revision_tecnica";
-    if (registro.estado_registro === "en_revision_tecnica") return "en_revision_financiera";
+    if (registro.estado_registro === "en_revision_tecnica") {
+      // Mec A: skip financial review (Carmen already loaded financials)
+      return isMecA ? "aprobado" : "en_revision_financiera";
+    }
     if (registro.estado_registro === "en_revision_financiera") return "aprobado";
     return estadoAprobar;
   })();
