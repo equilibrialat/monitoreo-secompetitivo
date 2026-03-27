@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ClipboardList, Loader2 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchActividadesByEntidad, buildActivityTree, type ActividadDB } from "@/lib/supabaseQueries";
 import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroAprobacion";
 import { TreeBranch } from "@/components/TreeBranch";
@@ -8,10 +9,18 @@ import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 
+interface IndicadorMin {
+  codigo: string;
+  nombre: string;
+  meta: number | null;
+  linea_base: number | null;
+}
+
 export default function MisActividades() {
   const { entidadId } = useRole();
   const [actividades, setActividades] = useState<ActividadDB[]>([]);
   const [registros, setRegistros] = useState<RegistroPendiente[]>([]);
+  const [indicadores, setIndicadores] = useState<IndicadorMin[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedActividad, setSelectedActividad] = useState<ActividadDB | null>(null);
 
@@ -19,6 +28,7 @@ export default function MisActividades() {
     if (!entidadId) {
       setActividades([]);
       setRegistros([]);
+      setIndicadores([]);
       setLoading(false);
       return;
     }
@@ -26,9 +36,11 @@ export default function MisActividades() {
     Promise.all([
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
-    ]).then(([acts, regs]) => {
+      (supabase as any).from("indicadores_proyecto").select("codigo, nombre, meta, linea_base").eq("entidad_id", entidadId),
+    ]).then(([acts, regs, indResult]) => {
       setActividades(acts);
       setRegistros(regs);
+      setIndicadores(indResult.data || []);
       setLoading(false);
     });
   }, [entidadId]);
@@ -115,6 +127,7 @@ export default function MisActividades() {
               onRegistrar={(act) => setSelectedActividad(act)}
               registroMap={registroMap}
               currentMonthStatusMap={currentMonthStatusMap}
+              indicadores={indicadores}
             />
           ))}
         </div>
