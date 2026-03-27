@@ -784,7 +784,9 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* FOOTER */}
         <div className="flex items-center justify-between pt-6 border-t print:hidden">
           <p className="text-xs text-muted-foreground">Generado automáticamente por el Sistema de Monitoreo SeCompetitivo</p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" onClick={handleDocx}><FileDown className="h-4 w-4 mr-1" />Descargar Word</Button>
+            <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />Descargar PDF</Button>
             <Button variant="outline" size="sm" onClick={handleCSV}><Download className="h-4 w-4 mr-1" />Descargar CSV</Button>
             {aiSummary && <Button variant="outline" size="sm" onClick={handleCopySummary}><Copy className="h-4 w-4 mr-1" />Copiar resumen</Button>}
             <Button variant="outline" size="sm" onClick={handleAI} disabled={aiLoading}>
