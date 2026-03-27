@@ -14,7 +14,288 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      actividades: {
+        Row: {
+          avance_operativo_pct: number | null
+          codigo: string
+          created_at: string | null
+          ejecutado_cm_acum: number | null
+          ejecutado_cnm_acum: number | null
+          ejecutado_seco_acum: number | null
+          entidad_id: string
+          es_hito: boolean | null
+          estado_actual: Database["public"]["Enums"]["estado_actividad"] | null
+          fecha_fin_prog: string | null
+          fecha_inicio_prog: string | null
+          id: string
+          medio_verificacion: string | null
+          meta_unidad_medida: string | null
+          meta_valor: number | null
+          nombre: string
+          orden: number | null
+          presupuesto_contrapartida_monetaria: number | null
+          presupuesto_contrapartida_no_monetaria: number | null
+          presupuesto_seco: number | null
+          producto_id: string
+          supuestos: string | null
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          avance_operativo_pct?: number | null
+          codigo: string
+          created_at?: string | null
+          ejecutado_cm_acum?: number | null
+          ejecutado_cnm_acum?: number | null
+          ejecutado_seco_acum?: number | null
+          entidad_id: string
+          es_hito?: boolean | null
+          estado_actual?: Database["public"]["Enums"]["estado_actividad"] | null
+          fecha_fin_prog?: string | null
+          fecha_inicio_prog?: string | null
+          id?: string
+          medio_verificacion?: string | null
+          meta_unidad_medida?: string | null
+          meta_valor?: number | null
+          nombre: string
+          orden?: number | null
+          presupuesto_contrapartida_monetaria?: number | null
+          presupuesto_contrapartida_no_monetaria?: number | null
+          presupuesto_seco?: number | null
+          producto_id: string
+          supuestos?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          avance_operativo_pct?: number | null
+          codigo?: string
+          created_at?: string | null
+          ejecutado_cm_acum?: number | null
+          ejecutado_cnm_acum?: number | null
+          ejecutado_seco_acum?: number | null
+          entidad_id?: string
+          es_hito?: boolean | null
+          estado_actual?: Database["public"]["Enums"]["estado_actividad"] | null
+          fecha_fin_prog?: string | null
+          fecha_inicio_prog?: string | null
+          id?: string
+          medio_verificacion?: string | null
+          meta_unidad_medida?: string | null
+          meta_valor?: number | null
+          nombre?: string
+          orden?: number | null
+          presupuesto_contrapartida_monetaria?: number | null
+          presupuesto_contrapartida_no_monetaria?: number | null
+          presupuesto_seco?: number | null
+          producto_id?: string
+          supuestos?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actividades_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actividades_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entidades: {
+        Row: {
+          activo: boolean | null
+          cadena_valor: string | null
+          codigo: string
+          coordinador_regional_id: string | null
+          created_at: string | null
+          fecha_fin: string | null
+          fecha_inicio: string | null
+          id: string
+          mecanismo: Database["public"]["Enums"]["mecanismo_tipo"]
+          nombre_completo: string
+          nombre_corto: string
+          region: string | null
+          tipo_entidad: Database["public"]["Enums"]["tipo_entidad"]
+          titulo_proyecto: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          cadena_valor?: string | null
+          codigo: string
+          coordinador_regional_id?: string | null
+          created_at?: string | null
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          mecanismo: Database["public"]["Enums"]["mecanismo_tipo"]
+          nombre_completo: string
+          nombre_corto: string
+          region?: string | null
+          tipo_entidad: Database["public"]["Enums"]["tipo_entidad"]
+          titulo_proyecto?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          cadena_valor?: string | null
+          codigo?: string
+          coordinador_regional_id?: string | null
+          created_at?: string | null
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          mecanismo?: Database["public"]["Enums"]["mecanismo_tipo"]
+          nombre_completo?: string
+          nombre_corto?: string
+          region?: string | null
+          tipo_entidad?: Database["public"]["Enums"]["tipo_entidad"]
+          titulo_proyecto?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entidades_coordinador_regional_id_fkey"
+            columns: ["coordinador_regional_id"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      perfiles: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          email: string
+          entidad_id: string | null
+          id: string
+          nombre_completo: string
+          region: string | null
+          rol: Database["public"]["Enums"]["rol_usuario"]
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          email: string
+          entidad_id?: string | null
+          id: string
+          nombre_completo: string
+          region?: string | null
+          rol?: Database["public"]["Enums"]["rol_usuario"]
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          email?: string
+          entidad_id?: string | null
+          id?: string
+          nombre_completo?: string
+          region?: string | null
+          rol?: Database["public"]["Enums"]["rol_usuario"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfiles_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      productos: {
+        Row: {
+          codigo: string
+          created_at: string | null
+          entidad_id: string
+          id: string
+          nombre: string
+          orden: number | null
+          resultado_id: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string | null
+          entidad_id: string
+          id?: string
+          nombre: string
+          orden?: number | null
+          resultado_id: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string | null
+          entidad_id?: string
+          id?: string
+          nombre?: string
+          orden?: number | null
+          resultado_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "productos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productos_resultado_id_fkey"
+            columns: ["resultado_id"]
+            isOneToOne: false
+            referencedRelation: "resultados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resultados: {
+        Row: {
+          codigo: string
+          created_at: string | null
+          entidad_id: string
+          id: string
+          nivel: string
+          nombre: string
+          orden: number | null
+        }
+        Insert: {
+          codigo: string
+          created_at?: string | null
+          entidad_id: string
+          id?: string
+          nivel: string
+          nombre: string
+          orden?: number | null
+        }
+        Update: {
+          codigo?: string
+          created_at?: string | null
+          entidad_id?: string
+          id?: string
+          nivel?: string
+          nombre?: string
+          orden?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resultados_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +304,49 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      estado_actividad:
+        | "no_iniciada"
+        | "iniciado_1_35"
+        | "en_proceso_36_65"
+        | "proceso_avanzado_66_99"
+        | "culminado_100"
+      estado_contrato:
+        | "en_proceso"
+        | "adjudicado"
+        | "vigente"
+        | "finalizado"
+        | "cancelado"
+      estado_registro:
+        | "borrador"
+        | "enviado"
+        | "en_revision_coordinador"
+        | "en_revision_tecnica"
+        | "en_revision_financiera"
+        | "observado"
+        | "aprobado"
+      frecuencia_indicador:
+        | "mensual"
+        | "trimestral"
+        | "semestral"
+        | "anual"
+        | "por_evento"
+        | "por_campana"
+      fuente_financiamiento:
+        | "cofinanciamiento_seco"
+        | "contrapartida_monetaria"
+        | "contrapartida_no_monetaria"
+      mecanismo_tipo: "A" | "B" | "C"
+      rol_usuario:
+        | "entidad"
+        | "coordinador_regional"
+        | "gestor_mec_a"
+        | "coordinador_mec_b"
+        | "monitoreo"
+        | "administracion"
+        | "direccion"
+        | "admin_sistema"
+      tipo_contrato: "persona_natural" | "persona_juridica"
+      tipo_entidad: "mec_b_agro" | "mec_b_turismo" | "mec_b_mixto" | "mec_a"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +473,56 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      estado_actividad: [
+        "no_iniciada",
+        "iniciado_1_35",
+        "en_proceso_36_65",
+        "proceso_avanzado_66_99",
+        "culminado_100",
+      ],
+      estado_contrato: [
+        "en_proceso",
+        "adjudicado",
+        "vigente",
+        "finalizado",
+        "cancelado",
+      ],
+      estado_registro: [
+        "borrador",
+        "enviado",
+        "en_revision_coordinador",
+        "en_revision_tecnica",
+        "en_revision_financiera",
+        "observado",
+        "aprobado",
+      ],
+      frecuencia_indicador: [
+        "mensual",
+        "trimestral",
+        "semestral",
+        "anual",
+        "por_evento",
+        "por_campana",
+      ],
+      fuente_financiamiento: [
+        "cofinanciamiento_seco",
+        "contrapartida_monetaria",
+        "contrapartida_no_monetaria",
+      ],
+      mecanismo_tipo: ["A", "B", "C"],
+      rol_usuario: [
+        "entidad",
+        "coordinador_regional",
+        "gestor_mec_a",
+        "coordinador_mec_b",
+        "monitoreo",
+        "administracion",
+        "direccion",
+        "admin_sistema",
+      ],
+      tipo_contrato: ["persona_natural", "persona_juridica"],
+      tipo_entidad: ["mec_b_agro", "mec_b_turismo", "mec_b_mixto", "mec_a"],
+    },
   },
 } as const
