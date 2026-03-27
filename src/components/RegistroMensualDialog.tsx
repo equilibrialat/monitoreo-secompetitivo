@@ -230,6 +230,9 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
         estado,
         descripcion_avance: descripcion,
         estado_registro: draft ? "borrador" : "enviado",
+        limitaciones: limitaciones || undefined,
+        prioridades_proximo_mes: prioridades || undefined,
+        compromisos: compromisos || undefined,
       },
       allGastos,
       contextual
