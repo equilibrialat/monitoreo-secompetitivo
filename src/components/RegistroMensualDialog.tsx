@@ -294,12 +294,12 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
             )}
           </ScrollArea>
 
-          <div className="border-t px-5 py-3 flex gap-2 shrink-0">
-            <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => handleSave(true)} disabled={saving || loading}>
+          <div className="border-t px-4 md:px-5 py-3 flex flex-col sm:flex-row gap-2 shrink-0 sticky bottom-0 bg-card z-10">
+            <Button variant="outline" size="sm" className="flex-1 text-xs min-h-[44px]" onClick={() => handleSave(true)} disabled={saving || loading}>
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
               Guardar borrador
             </Button>
-            <Button size="sm" className="flex-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setShowSendConfirm(true)} disabled={saving || loading}>
+            <Button size="sm" className="flex-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90 min-h-[44px]" onClick={() => setShowSendConfirm(true)} disabled={saving || loading}>
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
               Enviar para revisión
             </Button>
