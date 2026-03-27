@@ -76,7 +76,6 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
       return c;
     });
   };
-  };
   const addRow = () => setRows((p) => [...p, emptyRow()]);
   const removeRow = (i: number) => {
     const r = rows[i];
