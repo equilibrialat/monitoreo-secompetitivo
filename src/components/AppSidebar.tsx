@@ -1,5 +1,5 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { ChevronDown, Building2 } from "lucide-react";
+import { ChevronDown, Building2, X } from "lucide-react";
 import { useRole, ROLE_LABELS, type AppRole } from "@/contexts/RoleContext";
 import { getNavForRole } from "@/config/navigation";
 import {
@@ -18,7 +18,12 @@ import {
 
 const ALL_ROLES = Object.keys(ROLE_LABELS) as AppRole[];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
   const { role, setRole, entidadId, setEntidadId, entidades, loadingEntidades } = useRole();
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,20 +34,29 @@ export function AppSidebar() {
     navigate("/dashboard");
   };
 
-  return (
+  const handleNavClick = () => {
+    onMobileClose?.();
+  };
+
+  const sidebarContent = (
     <aside className="flex flex-col w-[220px] min-h-screen bg-sidebar text-sidebar-foreground shrink-0">
-      {/* Logo */}
-      <div className="px-5 pt-6 pb-4">
+      {/* Logo + close button on mobile */}
+      <div className="px-5 pt-6 pb-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-sidebar-active tracking-tight">
           Se<span className="text-primary">Competitivo</span>
         </h1>
+        {mobileOpen && (
+          <button onClick={onMobileClose} className="md:hidden p-1 text-sidebar-foreground hover:text-sidebar-active">
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Role selector */}
       <div className="px-3 pb-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center justify-between w-full rounded-md bg-sidebar-accent px-3 py-2 text-sm text-sidebar-active hover:bg-sidebar-accent/80 transition-colors">
+            <button className="flex items-center justify-between w-full rounded-md bg-sidebar-accent px-3 py-2.5 text-sm text-sidebar-active hover:bg-sidebar-accent/80 transition-colors min-h-[44px]">
               <span className="truncate">{ROLE_LABELS[role]}</span>
               <ChevronDown className="h-4 w-4 opacity-60 shrink-0 ml-1" />
             </button>
@@ -52,7 +66,7 @@ export function AppSidebar() {
               <DropdownMenuItem
                 key={r}
                 onSelect={() => handleRoleChange(r)}
-                className={r === role ? "font-semibold" : ""}
+                className={`min-h-[44px] ${r === role ? "font-semibold" : ""}`}
               >
                 {ROLE_LABELS[r]}
               </DropdownMenuItem>
@@ -61,21 +75,17 @@ export function AppSidebar() {
         </DropdownMenu>
       </div>
 
-      {/* Entidad selector - only for "entidad" role */}
+      {/* Entidad selector */}
       {role === "entidad" && entidades.length > 0 && (
         <div className="px-3 pb-4">
-          <Select
-            value={entidadId ?? ""}
-            onValueChange={setEntidadId}
-            disabled={loadingEntidades}
-          >
-            <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-none text-sidebar-active">
+          <Select value={entidadId ?? ""} onValueChange={setEntidadId} disabled={loadingEntidades}>
+            <SelectTrigger className="h-10 text-xs bg-sidebar-accent border-none text-sidebar-active min-h-[44px]">
               <Building2 className="h-3 w-3 mr-1.5 shrink-0" />
               <SelectValue placeholder="Seleccionar entidad" />
             </SelectTrigger>
             <SelectContent>
               {entidades.map((e) => (
-                <SelectItem key={e.id} value={e.id} className="text-xs">
+                <SelectItem key={e.id} value={e.id} className="text-xs min-h-[44px]">
                   {e.nombre_corto}
                 </SelectItem>
               ))}
@@ -85,14 +95,15 @@ export function AppSidebar() {
       )}
 
       {/* Nav */}
-      <nav className="flex-1 px-3 space-y-1">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const active = location.pathname === item.path;
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+              onClick={handleNavClick}
+              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors min-h-[44px] ${
                 active
                   ? "bg-sidebar-accent text-sidebar-active font-medium"
                   : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-active"
@@ -111,4 +122,6 @@ export function AppSidebar() {
       </div>
     </aside>
   );
+
+  return sidebarContent;
 }
