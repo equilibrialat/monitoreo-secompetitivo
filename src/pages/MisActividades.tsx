@@ -7,7 +7,6 @@ import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroApr
 import { TreeBranch } from "@/components/TreeBranch";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
 import MapaMarcoLogico from "@/components/reportes/MapaMarcoLogico";
-import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 
