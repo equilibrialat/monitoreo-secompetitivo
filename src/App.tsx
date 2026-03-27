@@ -47,6 +47,9 @@ const App = () => (
               <Route path="/registro-mensual" element={<PlaceholderPage title="Registro Mensual" />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
 
+              {/* Gestor routes */}
+              <Route path="/mis-iniciativas" element={<MisIniciativasPage />} />
+
               {/* Shared routes */}
               <Route path="/reportes" element={<ReportesPage />} />
               <Route path="/revision-pendiente" element={<RevisionPendientePage />} />
