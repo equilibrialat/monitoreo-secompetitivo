@@ -157,9 +157,13 @@ export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }
         : 0,
       empleos_creados_total: 0, empleos_creados_masculino: 0, empleos_creados_femenino: 0,
       empleos_creados_manejo_finca: 0, empleos_creados_post_cosecha: 0, empleos_creados_agroindustria: 0, empleos_creados_turismo: 0,
+      region_empleo_creado: "",
       empleos_retenidos_total: 0, empleos_retenidos_masculino: 0, empleos_retenidos_femenino: 0,
-      empleos_retenidos_manejo_finca: 0, empleos_retenidos_turismo: 0,
+      empleos_retenidos_manejo_finca: 0, empleos_retenidos_post_cosecha: 0, empleos_retenidos_agroindustria: 0, empleos_retenidos_turismo: 0,
+      region_empleo_retenido: "",
       empleos_mejorados_total: 0, empleos_mejorados_masculino: 0, empleos_mejorados_femenino: 0,
+      empleos_mejorados_manejo_finca: 0, empleos_mejorados_post_cosecha: 0, empleos_mejorados_agroindustria: 0, empleos_mejorados_turismo: 0,
+      region_empleo_mejorado: "",
       total_empleos: 0,
     };
 
