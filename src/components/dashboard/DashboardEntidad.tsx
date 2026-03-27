@@ -163,3 +163,71 @@ export default function DashboardEntidad() {
     </div>
   );
 }
+
+// --- Shared sub-components used across dashboards ---
+
+export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4 md:mb-6">
+      <div className="flex items-center justify-center h-9 w-9 md:h-10 md:w-10 rounded-lg bg-primary/10 shrink-0">
+        <LayoutDashboard className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+      </div>
+      <div className="min-w-0">
+        <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">{title}</h1>
+        {subtitle && <p className="text-xs md:text-sm text-muted-foreground truncate">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+export function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <Card>
+      <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
+        <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+        <p className="text-xl md:text-2xl font-bold text-foreground">{value}</p>
+        {sub && <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ClickableKpiCard({ label, value, sub, onClick, className }: { label: string; value: string; sub?: string; onClick: () => void; className?: string }) {
+  return (
+    <Card className={`cursor-pointer hover:shadow-md hover:border-primary/30 transition-all ${className || ""}`} onClick={onClick}>
+      <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
+        <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+        <p className="text-xl md:text-2xl font-bold text-foreground">{value}</p>
+        {sub && <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function Semaforo({ desfase }: { desfase: number }) {
+  const abs = Math.abs(desfase);
+  const color = abs < 15 ? "bg-green-500" : abs < 30 ? "bg-yellow-500" : "bg-red-500";
+  return <span className={`inline-block h-3 w-3 rounded-full ${color}`} title={`Desfase: ${desfase}%`} />;
+}
+
+export function MecanismoBadge({ mec }: { mec: string }) {
+  return (
+    <Badge variant={mec === "A" ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
+      MEC-{mec}
+    </Badge>
+  );
+}
+
+export function fmt(n: number) {
+  return n.toLocaleString("es-PE", { maximumFractionDigits: 0 });
+}
+
+export function DashboardSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i}><CardContent className="pt-5 pb-4"><div className="h-2 w-20 rounded bg-muted mb-3" /><div className="h-8 w-16 rounded bg-muted" /></CardContent></Card>
+      ))}
+    </div>
+  );
+}
