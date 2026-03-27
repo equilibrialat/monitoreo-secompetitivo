@@ -99,9 +99,9 @@ export function SeccionAvanceOperativo({
 
       {/* Estado */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Estado</Label>
+        <Label className="text-xs">Estado <span className="text-destructive">*</span></Label>
         <Select value={estado} onValueChange={onEstadoChange}>
-          <SelectTrigger className="h-9 text-sm">
+          <SelectTrigger className={cn("h-9 text-sm", errors.estado && "border-destructive")}>
             <SelectValue placeholder="Seleccionar estado" />
           </SelectTrigger>
           <SelectContent>
@@ -110,6 +110,7 @@ export function SeccionAvanceOperativo({
             ))}
           </SelectContent>
         </Select>
+        {errors.estado && <p className="text-xs text-destructive">{errors.estado}</p>}
       </div>
 
       {/* Fecha de ejecución */}
