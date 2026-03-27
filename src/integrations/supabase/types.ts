@@ -110,6 +110,230 @@ export type Database = {
           },
         ]
       }
+      config_gatillos_actividad: {
+        Row: {
+          aplica_mecanismo:
+            | Database["public"]["Enums"]["mecanismo_tipo"][]
+            | null
+          aplica_tipo_entidad:
+            | Database["public"]["Enums"]["tipo_entidad"][]
+            | null
+          campos_requeridos: string[] | null
+          created_at: string | null
+          formulario_label: string
+          id: string
+          tabla_destino: string
+          tag: string
+        }
+        Insert: {
+          aplica_mecanismo?:
+            | Database["public"]["Enums"]["mecanismo_tipo"][]
+            | null
+          aplica_tipo_entidad?:
+            | Database["public"]["Enums"]["tipo_entidad"][]
+            | null
+          campos_requeridos?: string[] | null
+          created_at?: string | null
+          formulario_label: string
+          id?: string
+          tabla_destino: string
+          tag: string
+        }
+        Update: {
+          aplica_mecanismo?:
+            | Database["public"]["Enums"]["mecanismo_tipo"][]
+            | null
+          aplica_tipo_entidad?:
+            | Database["public"]["Enums"]["tipo_entidad"][]
+            | null
+          campos_requeridos?: string[] | null
+          created_at?: string | null
+          formulario_label?: string
+          id?: string
+          tabla_destino?: string
+          tag?: string
+        }
+        Relationships: []
+      }
+      config_indicadores_entidad: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          entidad_id: string
+          frecuencia: Database["public"]["Enums"]["frecuencia_indicador"]
+          id: string
+          trama_codigo: string
+          trama_nombre: string
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          entidad_id: string
+          frecuencia: Database["public"]["Enums"]["frecuencia_indicador"]
+          id?: string
+          trama_codigo: string
+          trama_nombre: string
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          entidad_id?: string
+          frecuencia?: Database["public"]["Enums"]["frecuencia_indicador"]
+          id?: string
+          trama_codigo?: string
+          trama_nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "config_indicadores_entidad_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contratos: {
+        Row: {
+          actividad_id: string | null
+          created_at: string | null
+          entidad_id: string
+          estado: Database["public"]["Enums"]["estado_contrato"] | null
+          fecha_adjudicacion: string | null
+          fecha_fin: string | null
+          fecha_inicio: string | null
+          fuente: Database["public"]["Enums"]["fuente_financiamiento"] | null
+          id: string
+          moneda: string | null
+          monto: number | null
+          nombre_contratado: string
+          numero_contrato: string | null
+          objeto: string | null
+          registrado_por: string | null
+          ruc_dni: string | null
+          tipo: Database["public"]["Enums"]["tipo_contrato"]
+          tipo_seleccion: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          actividad_id?: string | null
+          created_at?: string | null
+          entidad_id: string
+          estado?: Database["public"]["Enums"]["estado_contrato"] | null
+          fecha_adjudicacion?: string | null
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          fuente?: Database["public"]["Enums"]["fuente_financiamiento"] | null
+          id?: string
+          moneda?: string | null
+          monto?: number | null
+          nombre_contratado: string
+          numero_contrato?: string | null
+          objeto?: string | null
+          registrado_por?: string | null
+          ruc_dni?: string | null
+          tipo: Database["public"]["Enums"]["tipo_contrato"]
+          tipo_seleccion?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          actividad_id?: string | null
+          created_at?: string | null
+          entidad_id?: string
+          estado?: Database["public"]["Enums"]["estado_contrato"] | null
+          fecha_adjudicacion?: string | null
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          fuente?: Database["public"]["Enums"]["fuente_financiamiento"] | null
+          id?: string
+          moneda?: string | null
+          monto?: number | null
+          nombre_contratado?: string
+          numero_contrato?: string | null
+          objeto?: string | null
+          registrado_por?: string | null
+          ruc_dni?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_contrato"]
+          tipo_seleccion?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_registrado_por_fkey"
+            columns: ["registrado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      desembolsos: {
+        Row: {
+          created_at: string | null
+          entidad_id: string
+          estado: string | null
+          fecha_desembolso: string | null
+          fecha_rendicion: string | null
+          id: string
+          monto_pen: number | null
+          monto_usd: number
+          numero_remesa: number
+          observaciones: string | null
+          tipo_cambio: number | null
+          trimestre_vinculado: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entidad_id: string
+          estado?: string | null
+          fecha_desembolso?: string | null
+          fecha_rendicion?: string | null
+          id?: string
+          monto_pen?: number | null
+          monto_usd: number
+          numero_remesa: number
+          observaciones?: string | null
+          tipo_cambio?: number | null
+          trimestre_vinculado?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entidad_id?: string
+          estado?: string | null
+          fecha_desembolso?: string | null
+          fecha_rendicion?: string | null
+          id?: string
+          monto_pen?: number | null
+          monto_usd?: number
+          numero_remesa?: number
+          observaciones?: string | null
+          tipo_cambio?: number | null
+          trimestre_vinculado?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "desembolsos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ejecucion_financiera: {
         Row: {
           actividad_id: string
@@ -248,6 +472,83 @@ export type Database = {
           {
             foreignKeyName: "entidades_coordinador_regional_id_fkey"
             columns: ["coordinador_regional_id"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escala_viaticos: {
+        Row: {
+          alimentacion: number
+          alojamiento: number
+          ciudad: string
+          created_at: string | null
+          departamento: string | null
+          id: string
+          transporte_local: number
+          vigente: boolean | null
+        }
+        Insert: {
+          alimentacion: number
+          alojamiento: number
+          ciudad: string
+          created_at?: string | null
+          departamento?: string | null
+          id?: string
+          transporte_local: number
+          vigente?: boolean | null
+        }
+        Update: {
+          alimentacion?: number
+          alojamiento?: number
+          ciudad?: string
+          created_at?: string | null
+          departamento?: string | null
+          id?: string
+          transporte_local?: number
+          vigente?: boolean | null
+        }
+        Relationships: []
+      }
+      historial_cambios: {
+        Row: {
+          accion: string
+          campo: string | null
+          created_at: string | null
+          id: string
+          registro_id: string
+          tabla: string
+          usuario_id: string | null
+          valor_anterior: string | null
+          valor_nuevo: string | null
+        }
+        Insert: {
+          accion: string
+          campo?: string | null
+          created_at?: string | null
+          id?: string
+          registro_id: string
+          tabla: string
+          usuario_id?: string | null
+          valor_anterior?: string | null
+          valor_nuevo?: string | null
+        }
+        Update: {
+          accion?: string
+          campo?: string | null
+          created_at?: string | null
+          id?: string
+          registro_id?: string
+          tabla?: string
+          usuario_id?: string | null
+          valor_anterior?: string | null
+          valor_nuevo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historial_cambios_usuario_id_fkey"
+            columns: ["usuario_id"]
             isOneToOne: false
             referencedRelation: "perfiles"
             referencedColumns: ["id"]
@@ -474,6 +775,70 @@ export type Database = {
             columns: ["resultado_id"]
             isOneToOne: false
             referencedRelation: "resultados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reasignaciones: {
+        Row: {
+          aprobado_por: string | null
+          created_at: string | null
+          entidad_id: string
+          estado: string | null
+          fecha_aprobacion: string | null
+          fecha_solicitud: string | null
+          id: string
+          motivo: string
+          movimientos: Json
+          observaciones: string | null
+          solicitado_por: string | null
+        }
+        Insert: {
+          aprobado_por?: string | null
+          created_at?: string | null
+          entidad_id: string
+          estado?: string | null
+          fecha_aprobacion?: string | null
+          fecha_solicitud?: string | null
+          id?: string
+          motivo: string
+          movimientos: Json
+          observaciones?: string | null
+          solicitado_por?: string | null
+        }
+        Update: {
+          aprobado_por?: string | null
+          created_at?: string | null
+          entidad_id?: string
+          estado?: string | null
+          fecha_aprobacion?: string | null
+          fecha_solicitud?: string | null
+          id?: string
+          motivo?: string
+          movimientos?: Json
+          observaciones?: string | null
+          solicitado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reasignaciones_aprobado_por_fkey"
+            columns: ["aprobado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reasignaciones_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reasignaciones_solicitado_por_fkey"
+            columns: ["solicitado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1913,6 +2278,78 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "resultados_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      viaticos: {
+        Row: {
+          actividad_id: string | null
+          alimentacion_diaria: number | null
+          alojamiento_diario: number | null
+          created_at: string | null
+          destino: string | null
+          entidad_id: string
+          estado: string | null
+          fecha_liquidacion: string | null
+          fecha_retorno: string | null
+          fecha_salida: string | null
+          id: string
+          monto_liquidado: number | null
+          monto_solicitado: number | null
+          motivo: string | null
+          nombre_viajero: string
+          transporte_local: number | null
+        }
+        Insert: {
+          actividad_id?: string | null
+          alimentacion_diaria?: number | null
+          alojamiento_diario?: number | null
+          created_at?: string | null
+          destino?: string | null
+          entidad_id: string
+          estado?: string | null
+          fecha_liquidacion?: string | null
+          fecha_retorno?: string | null
+          fecha_salida?: string | null
+          id?: string
+          monto_liquidado?: number | null
+          monto_solicitado?: number | null
+          motivo?: string | null
+          nombre_viajero: string
+          transporte_local?: number | null
+        }
+        Update: {
+          actividad_id?: string | null
+          alimentacion_diaria?: number | null
+          alojamiento_diario?: number | null
+          created_at?: string | null
+          destino?: string | null
+          entidad_id?: string
+          estado?: string | null
+          fecha_liquidacion?: string | null
+          fecha_retorno?: string | null
+          fecha_salida?: string | null
+          id?: string
+          monto_liquidado?: number | null
+          monto_solicitado?: number | null
+          motivo?: string | null
+          nombre_viajero?: string
+          transporte_local?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viaticos_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viaticos_entidad_id_fkey"
             columns: ["entidad_id"]
             isOneToOne: false
             referencedRelation: "entidades"
