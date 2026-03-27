@@ -141,6 +141,9 @@ export interface RegistroMensualExistente {
   fecha_ejecucion: string | null;
   estado_registro: string | null;
   observaciones_revision: string | null;
+  limitaciones: string | null;
+  prioridades_proximo_mes: string | null;
+  compromisos: string | null;
 }
 
 export async function fetchRegistroExistente(
