@@ -110,11 +110,9 @@ export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }
         if (uiRows.length > 0) setRows(uiRows);
       }
       if (rows.length === 0 && data.length === 0) {
-        // Init default rows
         const defaults: EmpleoRow[] = [];
         for (const tipo of TIPOS_EMPLEO) {
           for (const act of TIPOS_ACTIVIDAD) {
-            if (tipo.key === "mejorado" && act !== "Manejo de finca") continue;
             defaults.push({ tipo_empleo: tipo.key, tipo_actividad: act, total: 0, masculino: 0, femenino: 0, region: "" });
           }
         }
