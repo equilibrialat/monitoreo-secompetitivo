@@ -29,10 +29,6 @@ interface IndicadorLinked {
   meta: number | null;
   linea_base: number | null;
 }
-import {
-  createEmptyCapacitacion, createEmptyInnovacion,
-  createEmptyGei, createEmptyNuevoProducto,
-} from "@/types/registroMensual";
 
 interface RegistroMensualDialogProps {
   actividad: ActividadDB | null;
