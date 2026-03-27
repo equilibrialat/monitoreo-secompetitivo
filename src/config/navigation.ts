@@ -9,6 +9,8 @@ import {
   Banknote,
   FileCheck,
   TrendingUp,
+  Plane,
+  Shuffle,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
@@ -25,11 +27,15 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Mis Actividades", path: "/actividades", icon: ClipboardList },
     { label: "Registro Mensual", path: "/registro-mensual", icon: FileText },
     { label: "Indicadores de Impacto", path: "/indicadores-impacto", icon: TrendingUp },
+    { label: "Contratos", path: "/contratos", icon: FileCheck },
+    { label: "Viáticos", path: "/viaticos", icon: Plane },
+    { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
     { label: "Reportes", path: "/reportes", icon: BarChart3 },
   ],
   coordinador_regional: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
+    { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
   ],
   gestor_mec_a: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -49,10 +55,13 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Contratos", path: "/contratos", icon: FileCheck },
     { label: "Desembolsos", path: "/desembolsos", icon: Banknote },
+    { label: "Viáticos", path: "/viaticos", icon: Plane },
+    { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
   ],
   direccion: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Aprobaciones", path: "/aprobaciones", icon: ClipboardCheck },
+    { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
   ],
 };
 
