@@ -1,10 +1,42 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Loader2, Bot } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Header, KpiCard, MecanismoBadge, Semaforo, fmt, DashboardSkeleton } from "./DashboardEntidad";
+import { invokeAnalysis } from "@/lib/aiAnalysis";
 
 export default function DashboardDireccion() {
   const { data: entidades, isLoading } = useDashboardData();
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleAnalysis = async () => {
+    if (!entidades?.length) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    const { resultado, error } = await invokeAnalysis("ejecutivo", {
+      entidades: entidades.map((e) => ({
+        nombre: e.nombre_corto,
+        mecanismo: e.mecanismo,
+        region: e.region,
+        avance_operativo: e.avance_operativo_promedio,
+        pct_ejecucion_seco: e.pct_ejecucion_seco,
+        presupuesto_seco: e.presupuesto_seco_total,
+        ejecutado_seco: e.ejecutado_seco_total,
+        actividades: e.total_actividades,
+        completadas: e.actividades_completadas,
+        sobregiros: e.sobregiros_seco,
+      })),
+    });
+    setAiLoading(false);
+    if (error) setAiError(error);
+    else setAiResult(resultado ?? null);
+  };
+
   if (isLoading) return <DashboardSkeleton />;
 
   const all = entidades || [];
