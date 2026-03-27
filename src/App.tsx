@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
+import MisActividades from "./pages/MisActividades";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
