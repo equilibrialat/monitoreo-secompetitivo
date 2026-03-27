@@ -107,7 +107,9 @@ export default function ReporteTrimestralOperativo({ entidadId, trimestre, anio,
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="space-y-4">
+            <AIAnalysisCard tipo="narrativa" datos={{ tipo_reporte: "trimestral_operativo", entidad: entidadNombre, periodo: `${trimestre} ${anio}`, total_actividades: rows.length }} label="Generar análisis IA" />
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
