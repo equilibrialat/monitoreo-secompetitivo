@@ -36,6 +36,7 @@ interface ActivityCardProps {
   onRegistrar?: (actividad: ActividadDB) => void;
   ultimoRegistro?: RegistroPendiente;
   currentMonthStatus?: string | null;
+  indicadores?: Array<{ codigo: string; nombre: string; meta: number | null; linea_base: number | null }>;
 }
 
 export function ActivityCard({ actividad, onRegistrar, ultimoRegistro, currentMonthStatus }: ActivityCardProps) {
