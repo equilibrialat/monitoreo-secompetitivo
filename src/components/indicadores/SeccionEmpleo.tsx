@@ -80,7 +80,7 @@ function mapRowToDb(row: any, entidadId: string, anio: number, periodo: string, 
   return base;
 }
 
-export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }: Props) {
+export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved, onDirty }: Props) {
   const [rows, setRows] = useState<EmpleoRow[]>([]);
   const [ingresos, setIngresos] = useState<IngresoData>({ ingreso_promedio_lb: 0, ingreso_promedio_intermedia: 0, ingreso_promedio_final: 0 });
   const [saving, setSaving] = useState(false);
