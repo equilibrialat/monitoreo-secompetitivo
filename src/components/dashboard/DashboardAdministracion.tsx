@@ -1,12 +1,20 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertTriangle } from "lucide-react";
-import { useDashboardData } from "@/hooks/useDashboardData";
+import { useDashboardData, fetchSobregiroDetalle, type SobregirosDetalle } from "@/hooks/useDashboardData";
 import { Header, KpiCard, fmt, DashboardSkeleton } from "./DashboardEntidad";
 import { SeccionRevision } from "./SeccionRevision";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardAdministracion() {
   const { data: entidades, isLoading } = useDashboardData();
+  const [sobregiroDetalle, setSobregiroDetalle] = useState<SobregirosDetalle[]>([]);
+
+  useEffect(() => {
+    fetchSobregiroDetalle().then(setSobregiroDetalle);
+  }, []);
+
   if (isLoading) return <DashboardSkeleton />;
 
   const all = entidades || [];
@@ -78,6 +86,50 @@ export default function DashboardAdministracion() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Sobregiros detallados por actividad */}
+      {sobregiroDetalle.length > 0 && (
+        <Card className="mb-6 border-destructive/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-4 w-4" /> Sobregiros Detallados por Actividad
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Entidad</TableHead>
+                    <TableHead>Actividad</TableHead>
+                    <TableHead className="text-right">Presupuesto SECO</TableHead>
+                    <TableHead className="text-right">Ejecutado</TableHead>
+                    <TableHead className="text-right">% Ejecución</TableHead>
+                    <TableHead className="text-right">Exceso</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sobregiroDetalle.map((s, i) => (
+                    <TableRow key={i} className="bg-destructive/5">
+                      <TableCell className="font-medium">{s.entidad_nombre}</TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs">{s.actividad_codigo}</span>
+                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{s.actividad_nombre}</p>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">USD {fmt(s.presupuesto)}</TableCell>
+                      <TableCell className="text-right font-mono text-destructive font-semibold">USD {fmt(s.ejecutado)}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant="destructive" className="text-[10px]">{s.pct}%</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-destructive">+USD {fmt(s.ejecutado - s.presupuesto)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {sobregiros.length > 0 && (
         <>
