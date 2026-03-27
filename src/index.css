@@ -104,3 +104,13 @@
     max-width: calc(100vw - 2rem) !important;
   }
 }
+
+@media print {
+  body { background: white !important; }
+  .print\\:hidden { display: none !important; }
+  nav, aside, header, [data-sidebar] { display: none !important; }
+  main { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
+  .shadow-lg { box-shadow: none !important; }
+  table { font-size: 9pt !important; }
+  @page { size: A4; margin: 1.5cm; }
+}
