@@ -11,18 +11,25 @@ interface TreeBranchProps {
   defaultOpen?: boolean;
   onRegistrar?: (actividad: ActividadDB) => void;
   registroMap?: Map<string, RegistroPendiente>;
+  currentMonthStatusMap?: Map<string, string | null>;
 }
 
-export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar, registroMap }: TreeBranchProps) {
+export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar, registroMap, currentMonthStatusMap }: TreeBranchProps) {
   const [open, setOpen] = useState(defaultOpen);
   const hasChildren = node.children && node.children.length > 0;
   const isActivity = !!node.actividad;
 
   if (isActivity) {
     const registro = registroMap?.get(node.actividad!.id);
+    const currentStatus = currentMonthStatusMap?.get(node.actividad!.id) ?? null;
     return (
       <div className="ml-4">
-        <ActivityCard actividad={node.actividad!} onRegistrar={onRegistrar} ultimoRegistro={registro} />
+        <ActivityCard
+          actividad={node.actividad!}
+          onRegistrar={onRegistrar}
+          ultimoRegistro={registro}
+          currentMonthStatus={currentStatus}
+        />
       </div>
     );
   }
@@ -49,7 +56,7 @@ export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar, r
       {open && hasChildren && (
         <div className="space-y-1 mt-1">
           {node.children!.map((child, i) => (
-            <TreeBranch key={i} node={child} depth={depth + 1} defaultOpen={depth < 1} onRegistrar={onRegistrar} registroMap={registroMap} />
+            <TreeBranch key={i} node={child} depth={depth + 1} defaultOpen={depth < 1} onRegistrar={onRegistrar} registroMap={registroMap} currentMonthStatusMap={currentMonthStatusMap} />
           ))}
         </div>
       )}
