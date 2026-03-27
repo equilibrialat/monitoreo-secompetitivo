@@ -39,7 +39,7 @@ interface ActivityCardProps {
   indicadores?: Array<{ codigo: string; nombre: string; meta: number | null; linea_base: number | null }>;
 }
 
-export function ActivityCard({ actividad, onRegistrar, ultimoRegistro, currentMonthStatus }: ActivityCardProps) {
+export function ActivityCard({ actividad, onRegistrar, ultimoRegistro, currentMonthStatus, indicadores }: ActivityCardProps) {
   const estado = ESTADO_CONFIG[actividad.estado_actual] ?? ESTADO_CONFIG.no_iniciada;
   const semaforoColor = getSemaforoColor(actividad.avance_operativo_pct);
 
