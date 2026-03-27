@@ -37,7 +37,7 @@ function calc(r: ProdRow) {
 }
 
 const emptyRow = (): ProdRow => ({
-  organizacion_productores: "", region: "", num_productores: 0, genero_productores: "",
+  organizacion_productores: "", region: "", num_productores: 0, num_productores_masculino: 0, num_productores_femenino: 0,
   superficie_has: 0, produccion_campo_tn: 0, descarte_campo_tn: 0, descarte_proceso_tn: 0,
 });
 
