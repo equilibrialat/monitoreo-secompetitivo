@@ -22,9 +22,9 @@ interface RegistroMensualDialogProps {
 
 function buildFuentes(act: ActividadDB): FuenteFinanciera[] {
   return [
-    { key: "seco", label: "SECO (Cooperación Suiza)", presupuesto: act.presupuesto_seco, ejecutado_acum: act.ejecutado_seco_acum, gastos: [] },
-    { key: "cm", label: "Contrapartida Monetaria", presupuesto: act.presupuesto_contrapartida_monetaria, ejecutado_acum: act.ejecutado_cm_acum, gastos: [] },
-    { key: "cnm", label: "Contrapartida No Monetaria", presupuesto: act.presupuesto_contrapartida_no_monetaria, ejecutado_acum: act.ejecutado_cnm_acum, gastos: [] },
+    { key: "cofinanciamiento_seco", label: "SECO (Cooperación Suiza)", presupuesto: act.presupuesto_seco, ejecutado_acum: act.ejecutado_seco_acum, gastos: [] },
+    { key: "contrapartida_monetaria", label: "Contrapartida Monetaria", presupuesto: act.presupuesto_contrapartida_monetaria, ejecutado_acum: act.ejecutado_cm_acum, gastos: [] },
+    { key: "contrapartida_no_monetaria", label: "Contrapartida No Monetaria", presupuesto: act.presupuesto_contrapartida_no_monetaria, ejecutado_acum: act.ejecutado_cnm_acum, gastos: [] },
   ];
 }
 
