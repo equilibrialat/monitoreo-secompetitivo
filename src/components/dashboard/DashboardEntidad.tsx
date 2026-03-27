@@ -7,11 +7,13 @@ import { useRole } from "@/contexts/RoleContext";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function DashboardEntidad() {
   const { entidadId } = useRole();
   const { data: entidades, isLoading } = useDashboardData();
   const [indicadores, setIndicadores] = useState<any[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!entidadId) return;
@@ -42,10 +44,10 @@ export default function DashboardEntidad() {
     <div>
       <Header title="Mi Dashboard" subtitle={ent.nombre_corto} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <KpiCard label="Actividades" value={`${ent.actividades_completadas}/${ent.total_actividades}`} sub="completadas" />
+        <ClickableKpiCard label="Actividades" value={`${ent.actividades_completadas}/${ent.total_actividades}`} sub="completadas" onClick={() => navigate("/mis-actividades")} />
         <KpiCard label="Avance Operativo" value={`${avOp}%`} sub="promedio" />
         <KpiCard label="Ejecución SECO" value={`${avFin}%`} sub={`USD ${fmt(ent.ejecutado_seco_total)} / ${fmt(ent.presupuesto_seco_total)}`} />
-        <KpiCard label="Indicadores" value={String(indicadores.length)} sub="del Marco Lógico" />
+        <ClickableKpiCard label="Indicadores" value={String(indicadores.length)} sub="del Marco Lógico" onClick={() => navigate("/indicadores-impacto")} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 mb-6">
         <Card>
@@ -117,6 +119,18 @@ export function Header({ title, subtitle }: { title: string; subtitle?: string }
 export function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <Card>
+      <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
+        <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+        <p className="text-xl md:text-2xl font-bold text-foreground">{value}</p>
+        {sub && <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ClickableKpiCard({ label, value, sub, onClick, className }: { label: string; value: string; sub?: string; onClick: () => void; className?: string }) {
+  return (
+    <Card className={`cursor-pointer hover:shadow-md hover:border-primary/30 transition-all ${className || ""}`} onClick={onClick}>
       <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
         <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
         <p className="text-xl md:text-2xl font-bold text-foreground">{value}</p>
