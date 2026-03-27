@@ -20,8 +20,8 @@ export interface DashboardEntidad {
   ejecutado_cnm_total: number;
   sobregiros_seco: number;
   desfases_tecnico_financiero: number;
-  avance_operativo_promedio?: number;
-  pendientes_revision?: number;
+  avance_operativo_promedio: number;
+  pendientes_revision: number;
 }
 
 async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
@@ -34,11 +34,11 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
     return [];
   }
 
-  // Enrich with avg avance_operativo and pending registros
-  const entidadIds = (data || []).filter((d: any) => d.entidad_id).map((d: any) => d.entidad_id);
-  if (entidadIds.length === 0) return (data || []).map(mapRow);
+  const rows = data || [];
+  const entidadIds = rows.map((d: any) => d.entidad_id).filter(Boolean);
+  if (entidadIds.length === 0) return [];
 
-  // Fetch avg avance per entidad
+  // Avg avance per entidad
   const { data: actData } = await (supabase as any)
     .from("actividades")
     .select("entidad_id, avance_operativo_pct")
@@ -52,7 +52,7 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
     avanceMap.set(a.entidad_id, cur);
   }
 
-  // Fetch pending registros
+  // Pending registros
   const { data: pendData } = await (supabase as any)
     .from("registros_mensuales")
     .select("entidad_id")
@@ -63,8 +63,7 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
     pendMap.set(p.entidad_id, (pendMap.get(p.entidad_id) || 0) + 1);
   }
 
-  // Fetch contratos vigentes total
-  return (data || []).map((d: any) => {
+  return rows.map((d: any) => {
     const av = avanceMap.get(d.entidad_id);
     return {
       entidad_id: d.entidad_id,
@@ -89,14 +88,6 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       pendientes_revision: pendMap.get(d.entidad_id) || 0,
     };
   });
-}
-
-// Also need entidades with region info
-async function fetchEntidadesRegion() {
-  const { data } = await (supabase as any)
-    .from("entidades")
-    .select("id, region, cadena_valor, mecanismo");
-  return data || [];
 }
 
 export function useDashboardData() {
