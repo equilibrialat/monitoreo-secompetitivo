@@ -11,7 +11,7 @@ import { SeccionEjecucionFinanciera } from "./registro/SeccionEjecucionFinancier
 import { SeccionIndicadoresContextuales } from "./registro/SeccionIndicadoresContextuales";
 import { useRole } from "@/contexts/RoleContext";
 import type { ActividadDB } from "@/lib/supabaseQueries";
-import { saveRegistroMensual, fetchRegistroExistente } from "@/lib/supabaseQueries";
+import { saveRegistroMensual, fetchRegistroExistente, fetchAcumuladoAnterior } from "@/lib/supabaseQueries";
 import type { FuenteFinanciera, ContextualData } from "@/types/registroMensual";
 import {
   createEmptyCapacitacion, createEmptyInnovacion,
@@ -56,6 +56,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [loading, setLoading] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [acumuladoAnterior, setAcumuladoAnterior] = useState(0);
   const [observaciones, setObservaciones] = useState<string | null>(null);
   const [lastActId, setLastActId] = useState<string | null>(null);
   if (actividad && actividad.id !== lastActId) {
@@ -74,7 +75,11 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const loadExisting = useCallback(async () => {
     if (!actividad) return;
     setLoading(true);
-    const existing = await fetchRegistroExistente(actividad.id, anio, mes + 1);
+    const [existing, acum] = await Promise.all([
+      fetchRegistroExistente(actividad.id, anio, mes + 1),
+      fetchAcumuladoAnterior(actividad.id, anio, mes + 1),
+    ]);
+    setAcumuladoAnterior(acum);
     if (existing) {
       setValorAvance(existing.avance_valor ?? 0);
       setEstado(existing.estado ?? "");
@@ -197,6 +202,8 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
                 mes={mes} anio={anio} valorAvance={valorAvance} estado={estado}
                 descripcion={descripcion} fechaEjecucion={fechaEjecucion}
                 unidadMedida={actividad.meta_unidad_medida}
+                metaValor={actividad.meta_valor ?? 0}
+                acumuladoAnterior={acumuladoAnterior}
                 onMesChange={setMes} onAnioChange={setAnio}
                 onValorAvanceChange={setValorAvance} onEstadoChange={setEstado}
                 onDescripcionChange={setDescripcion} onFechaEjecucionChange={setFechaEjecucion}

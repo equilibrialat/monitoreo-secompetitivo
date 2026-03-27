@@ -155,6 +155,25 @@ export async function fetchRegistroExistente(
   return data as RegistroMensualExistente;
 }
 
+export async function fetchAcumuladoAnterior(
+  actividadId: string,
+  anio: number,
+  mesActual: number
+): Promise<number> {
+  const { data, error } = await (supabase as any)
+    .from("registros_mensuales")
+    .select("avance_valor")
+    .eq("actividad_id", actividadId)
+    .neq("estado_registro", "observado");
+
+  if (error || !data) return 0;
+
+  // Sum all avance_valor except the current month
+  return (data as any[])
+    .filter((r: any) => !(r.anio === anio && r.mes === mesActual))
+    .reduce((sum: number, r: any) => sum + (r.avance_valor ?? 0), 0);
+}
+
 export async function saveRegistroMensual(
   registro: RegistroMensualInsert,
   gastos: Omit<EjecucionFinancieraInsert, "registro_mensual_id">[],

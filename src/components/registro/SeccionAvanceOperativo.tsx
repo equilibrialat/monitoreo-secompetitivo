@@ -1,13 +1,13 @@
-import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -20,6 +20,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ESTADOS_AVANCE, MESES } from "@/types/registroMensual";
 
 interface SeccionAvanceProps {
@@ -30,6 +35,8 @@ interface SeccionAvanceProps {
   descripcion: string;
   fechaEjecucion: Date | undefined;
   unidadMedida: string;
+  metaValor: number;
+  acumuladoAnterior: number;
   onMesChange: (v: number) => void;
   onAnioChange: (v: number) => void;
   onValorAvanceChange: (v: number) => void;
@@ -42,11 +49,39 @@ interface SeccionAvanceProps {
 const currentYear = new Date().getFullYear();
 const ANIOS = [currentYear - 1, currentYear, currentYear + 1];
 
+function getTooltipText(unidad: string): string {
+  const u = (unidad || "").toLowerCase();
+
+  const countable = ["parcelas", "centros", "kits", "talleres", "eventos", "documentos", "intercambios", "alianzas", "mesas", "servicios", "organizaciones"];
+  if (countable.some((c) => u.includes(c))) {
+    return `Ingrese la cantidad de ${unidad} completadas en este mes. Ejemplo: si implementó 5 ${unidad.toLowerCase()} este mes, ingrese 5.`;
+  }
+
+  if (u.includes("programa") || u.includes("global")) {
+    return "Esta actividad se mide como entrega única. Ingrese un valor entre 0 y 1 representando el porcentaje de avance (0.3 = 30% avanzado, 1 = completado).";
+  }
+
+  if (u.includes("productores") || u.includes("profesionales")) {
+    return "Ingrese la cantidad de personas atendidas o capacitadas en este mes.";
+  }
+
+  if (u.includes("tn ofertadas") || u.includes("toneladas")) {
+    return "Ingrese las toneladas ofertadas de manera conjunta en este mes.";
+  }
+
+  return `Ingrese la cantidad de ${unidad} lograda en este mes.`;
+}
+
 export function SeccionAvanceOperativo({
   mes, anio, valorAvance, estado, descripcion, fechaEjecucion, unidadMedida,
+  metaValor, acumuladoAnterior,
   onMesChange, onAnioChange, onValorAvanceChange, onEstadoChange,
   onDescripcionChange, onFechaEjecucionChange, errors = {},
 }: SeccionAvanceProps) {
+  const totalProyectado = acumuladoAnterior + valorAvance;
+  const progressPct = metaValor > 0 ? Math.min((totalProyectado / metaValor) * 100, 100) : 0;
+  const superaMeta = metaValor > 0 && totalProyectado > metaValor;
+
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
@@ -85,16 +120,55 @@ export function SeccionAvanceOperativo({
 
       {/* Valor de avance */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Valor de avance ({unidadMedida}) <span className="text-destructive">*</span></Label>
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs">
+            Avance este mes ({unidadMedida}) <span className="text-destructive">*</span>
+          </Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[280px] text-xs">
+              {getTooltipText(unidadMedida)}
+            </TooltipContent>
+          </Tooltip>
+        </div>
         <Input
           type="number"
           min={0}
+          step="any"
           value={valorAvance || ""}
           onChange={(e) => onValorAvanceChange(Number(e.target.value))}
           className={cn("h-9 text-sm", errors.avance && "border-destructive")}
           placeholder={`Cantidad de ${unidadMedida}`}
         />
         {errors.avance && <p className="text-xs text-destructive">{errors.avance}</p>}
+
+        <p className="text-[11px] text-muted-foreground">
+          Meta total: <span className="font-medium text-foreground">{metaValor}</span> {unidadMedida}.
+          {" "}Acumulado anterior: <span className="font-medium text-foreground">{acumuladoAnterior}</span>.
+          {" "}Registre cuánto avanzó este mes.
+        </p>
+
+        {/* Progress bar */}
+        {metaValor > 0 && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>{totalProyectado} / {metaValor} {unidadMedida}</span>
+              <span className="font-medium">{Math.round((totalProyectado / metaValor) * 100)}%</span>
+            </div>
+            <Progress
+              value={progressPct}
+              className={cn("h-2", superaMeta && "[&>div]:bg-warning")}
+            />
+          </div>
+        )}
+
+        {superaMeta && (
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+            ⚠ El avance supera la meta planificada.
+          </div>
+        )}
       </div>
 
       {/* Estado */}
