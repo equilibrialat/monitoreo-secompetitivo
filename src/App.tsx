@@ -21,6 +21,7 @@ const App = () => (
           <AppLayout>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/actividades" element={<MisActividades />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
