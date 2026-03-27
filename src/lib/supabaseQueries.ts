@@ -135,6 +135,7 @@ export interface RegistroMensualExistente {
   descripcion_avance: string | null;
   fecha_ejecucion: string | null;
   estado_registro: string | null;
+  observaciones_revision: string | null;
 }
 
 export async function fetchRegistroExistente(
