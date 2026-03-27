@@ -9,6 +9,7 @@ import { SeccionRevision } from "./SeccionRevision";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
+import DashboardFilters from "@/components/DashboardFilters";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, Cell, ReferenceLine, Legend,
@@ -55,9 +56,17 @@ export default function DashboardMonitoreo({
   const [indicadoresStats, setIndicadoresStats] = useState({ total: 0, completed: 0 });
   const [contratos, setContratos] = useState<any[]>([]);
   const navigate = useNavigate();
-  const { setEntidadId } = useRole();
+  const { setEntidadId, filters } = useRole();
 
-  const entidades = filterFn ? (allEntidades || []).filter(filterFn) : (allEntidades || []);
+  // Apply both prop-based and global filters
+  const entidades = (allEntidades || []).filter(e => {
+    if (filterFn && !filterFn(e)) return false;
+    if (filters.mecanismo === "mec_a" && e.mecanismo !== "A") return false;
+    if (filters.mecanismo === "mec_b" && e.mecanismo !== "B") return false;
+    if (filters.entidadFiltro && e.entidad_id !== filters.entidadFiltro) return false;
+    if (filters.region && e.region !== filters.region) return false;
+    return true;
+  });
 
   useEffect(() => {
     const entidadIds = entidades.map(e => e.entidad_id);
@@ -164,6 +173,8 @@ export default function DashboardMonitoreo({
   return (
     <div className="space-y-6">
       <Header title={title} subtitle={subtitle || "Vista consolidada del programa SeCompetitivo"} />
+
+      <DashboardFilters showMecanismo showEntidad showRegion showPeriodo />
 
       {/* Review section */}
       <SeccionRevision

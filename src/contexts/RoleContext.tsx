@@ -31,6 +31,13 @@ export interface EntidadOption {
   region?: string;
 }
 
+export interface GlobalFilters {
+  mecanismo: "todos" | "mec_a" | "mec_b";
+  entidadFiltro: string | null; // null = todas
+  region: string | null;
+  periodo: string; // e.g. "2025", "T4-2025"
+}
+
 interface RoleContextValue {
   role: AppRole;
   setRole: (r: AppRole) => void;
@@ -38,7 +45,19 @@ interface RoleContextValue {
   setEntidadId: (id: string | null) => void;
   entidades: EntidadOption[];
   loadingEntidades: boolean;
+  filters: GlobalFilters;
+  setFilters: (f: GlobalFilters) => void;
+  clearFilters: () => void;
+  hasActiveFilters: boolean;
+  filteredEntidades: EntidadOption[];
 }
+
+const DEFAULT_FILTERS: GlobalFilters = {
+  mecanismo: "todos",
+  entidadFiltro: null,
+  region: null,
+  periodo: "2025",
+};
 
 const RoleContext = createContext<RoleContextValue | null>(null);
 
@@ -47,6 +66,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [entidadId, setEntidadId] = useState<string | null>(null);
   const [entidades, setEntidades] = useState<EntidadOption[]>([]);
   const [loadingEntidades, setLoadingEntidades] = useState(true);
+  const [filters, setFiltersState] = useState<GlobalFilters>(DEFAULT_FILTERS);
 
   useEffect(() => {
     async function fetchEntidades() {
@@ -65,9 +85,36 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     fetchEntidades();
   }, []);
 
+  const setFilters = (f: GlobalFilters) => setFiltersState(f);
+  const clearFilters = () => setFiltersState(DEFAULT_FILTERS);
+
+  const hasActiveFilters =
+    filters.mecanismo !== "todos" ||
+    filters.entidadFiltro !== null ||
+    filters.region !== null;
+
+  // Compute filtered entidades based on role restrictions + user filters
+  const filteredEntidades = entidades.filter((e) => {
+    // Role-based restrictions (hard filters)
+    if (role === "asesora_politicas" && e.mecanismo !== "mec_a") return false;
+    if (role === "coordinador_cadenas" && e.mecanismo !== "mec_b") return false;
+    // coordinador_regional would filter by region - handled by user's region
+
+    // User-selected filters
+    if (filters.mecanismo === "mec_a" && e.mecanismo !== "mec_a") return false;
+    if (filters.mecanismo === "mec_b" && e.mecanismo !== "mec_b") return false;
+    if (filters.entidadFiltro && e.id !== filters.entidadFiltro) return false;
+    if (filters.region && e.region !== filters.region) return false;
+
+    return true;
+  });
+
   return (
     <RoleContext.Provider
-      value={{ role, setRole, entidadId, setEntidadId, entidades, loadingEntidades }}
+      value={{
+        role, setRole, entidadId, setEntidadId, entidades, loadingEntidades,
+        filters, setFilters, clearFilters, hasActiveFilters, filteredEntidades,
+      }}
     >
       {children}
     </RoleContext.Provider>
