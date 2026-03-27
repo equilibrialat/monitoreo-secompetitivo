@@ -212,24 +212,64 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
 
   async function handleAI() {
     setAiLoading(true);
-    const result = await invokeAnalysis("ejecutivo", {
-      tipo_reporte: "trimestral_completo",
-      entidad: entidadNombre,
-      mecanismo: entidad?.mecanismo || "",
-      region: entidad?.region || "",
-      cadena_valor: entidad?.cadena_valor || "",
-      periodo: `${trimestre} ${anio}`,
-      total_actividades: actividades.length,
-      actividades_con_avance: actConAvance.size,
-      actividades_culminadas: actCulminadas.size,
-      ejecucion_seco_trimestre: totalSeco,
-      ejecucion_cm_trimestre: totalCM,
-      ejecucion_cnm_trimestre: totalCNM,
-      pct_ejecucion_acumulada: pctEjecTotal,
-      capacitaciones: capacitaciones.length,
-      total_participantes: capacitaciones.reduce((s, c) => s + (c.total_participantes || 0), 0),
-      innovaciones: innovaciones.length,
-      contratos_vigentes: contratos.filter(c => c.estado === "vigente").length,
+    // Build rich structured data for AI
+    const sobregiros = actividades
+      .filter(a => (a.ejecutado_seco_acum || 0) > (a.presupuesto_seco || 0) && (a.presupuesto_seco || 0) > 0)
+      .map(a => ({ actividad: a.codigo, monto_presupuesto: a.presupuesto_seco, monto_ejecutado: a.ejecutado_seco_acum, diferencia: (a.ejecutado_seco_acum || 0) - (a.presupuesto_seco || 0) }));
+
+    const totalPresCM = actividades.reduce((s, a) => s + (a.presupuesto_contrapartida_monetaria || 0), 0);
+    const totalPresCNM = actividades.reduce((s, a) => s + (a.presupuesto_contrapartida_no_monetaria || 0), 0);
+    const totalEjecCM = actividades.reduce((s, a) => s + (a.ejecutado_cm_acum || 0), 0);
+    const totalEjecCNM = actividades.reduce((s, a) => s + (a.ejecutado_cnm_acum || 0), 0);
+
+    const result = await invokeAnalysis("reporte", {
+      entidad: {
+        codigo: entidad?.codigo || entidadNombre,
+        nombre: entidadNombre,
+        mecanismo: entidad?.mecanismo || "",
+        tipo_entidad: entidad?.tipo_entidad || "",
+        cadena_valor: entidad?.cadena_valor || "",
+        region: entidad?.region || "",
+      },
+      periodo: { tipo: "trimestral", anio, trimestre },
+      actividades: actividades.map(a => ({
+        codigo: a.codigo,
+        nombre: a.nombre,
+        meta: a.meta_valor,
+        unidad: a.meta_unidad_medida,
+        avance_acumulado: a.avance_operativo_pct,
+        estado: a.estado_actual,
+        presupuesto_seco: a.presupuesto_seco,
+        ejecutado_seco: a.ejecutado_seco_acum,
+        pct_avance_tecnico: a.avance_operativo_pct,
+        pct_avance_financiero: a.presupuesto_seco > 0 ? Math.round((a.ejecutado_seco_acum / a.presupuesto_seco) * 100) : 0,
+        tags: a.tags,
+      })),
+      financiero: {
+        presupuesto_seco_total: totalPresupuestoSeco,
+        ejecutado_seco_total: totalEjecAcumSeco,
+        pct_seco: pctEjecTotal,
+        presupuesto_cm_total: totalPresCM,
+        ejecutado_cm_total: totalEjecCM,
+        presupuesto_cnm_total: totalPresCNM,
+        ejecutado_cnm_total: totalEjecCNM,
+        ejecucion_trimestre: { seco: totalSeco, cm: totalCM, cnm: totalCNM },
+        sobregiros,
+      },
+      capacitaciones_resumen: capacitaciones.length > 0 ? {
+        total_eventos: capacitaciones.length,
+        total_participantes: capacitaciones.reduce((s, c) => s + (c.total_participantes || 0), 0),
+        participantes_masculino: capacitaciones.reduce((s, c) => s + (c.participantes_masculino || 0), 0),
+        participantes_femenino: capacitaciones.reduce((s, c) => s + (c.participantes_femenino || 0), 0),
+        temas: [...new Set(capacitaciones.map(c => c.tema).filter(Boolean))],
+      } : null,
+      innovaciones_resumen: innovaciones.length > 0 ? { total: innovaciones.length, nombres: innovaciones.map(i => i.nombre_innovacion) } : null,
+      gei_resumen: gei.length > 0 ? { total: gei.length, practicas: gei.map(g => g.nombre_practica) } : null,
+      contratos_resumen: contratos.length > 0 ? {
+        total: contratos.length,
+        vigentes: contratos.filter(c => c.estado === "vigente").length,
+        monto_total: contratos.reduce((s, c) => s + (c.monto || 0), 0),
+      } : null,
     });
     setAiLoading(false);
     if (result.error) toast.error(result.error);
