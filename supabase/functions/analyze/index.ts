@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ resultado: text }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" } }
     );
   } catch (error) {
     console.error("Edge function error:", error);
