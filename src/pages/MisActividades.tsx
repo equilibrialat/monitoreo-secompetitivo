@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ClipboardList, Loader2 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,7 @@ import { fetchActividadesByEntidad, buildActivityTree, type ActividadDB } from "
 import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroAprobacion";
 import { TreeBranch } from "@/components/TreeBranch";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
+import MapaMarcoLogico from "@/components/reportes/MapaMarcoLogico";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 
@@ -14,6 +15,8 @@ interface IndicadorMin {
   nombre: string;
   meta: number | null;
   linea_base: number | null;
+  nivel: string;
+  unidad_medida: string | null;
 }
 
 export default function MisActividades() {
@@ -36,7 +39,7 @@ export default function MisActividades() {
     Promise.all([
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
-      (supabase as any).from("indicadores_proyecto").select("codigo, nombre, meta, linea_base").eq("entidad_id", entidadId),
+      (supabase as any).from("indicadores_proyecto").select("codigo, nombre, meta, linea_base, nivel, unidad_medida").eq("entidad_id", entidadId),
     ]).then(([acts, regs, indResult]) => {
       setActividades(acts);
       setRegistros(regs);
@@ -46,6 +49,19 @@ export default function MisActividades() {
   }, [entidadId]);
 
   const tree = buildActivityTree(actividades);
+
+  // Build grouped data for MapaMarcoLogico
+  const grouped = useMemo(() => {
+    const map = new Map<string, Map<string, any[]>>();
+    actividades.forEach(a => {
+      const res = `${a.resultado_codigo} — ${a.resultado_nombre}`;
+      const prod = `${a.producto_codigo} — ${a.producto_nombre}`;
+      if (!map.has(res)) map.set(res, new Map());
+      if (!map.get(res)!.has(prod)) map.get(res)!.set(prod, []);
+      map.get(res)!.get(prod)!.push(a);
+    });
+    return map;
+  }, [actividades]);
 
   // Build a map: actividad_id -> latest registro
   const registroMap = new Map<string, RegistroPendiente>();
@@ -117,20 +133,35 @@ export default function MisActividades() {
           <p className="text-xs text-muted-foreground mt-1">Selecciona una entidad en el menú lateral.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {tree.map((node, i) => (
-            <TreeBranch
-              key={i}
-              node={node}
-              depth={0}
-              defaultOpen
-              onRegistrar={(act) => setSelectedActividad(act)}
-              registroMap={registroMap}
-              currentMonthStatusMap={currentMonthStatusMap}
-              indicadores={indicadores}
-            />
-          ))}
-        </div>
+        <>
+          {/* Mapa del Marco Lógico */}
+          {indicadores.length > 0 && (
+            <div className="mb-6 border rounded-lg p-4 bg-card">
+              <h2 className="text-sm font-semibold text-foreground mb-3">📊 Mapa del Marco Lógico</h2>
+              <MapaMarcoLogico
+                indicadores={indicadores}
+                actividades={actividades}
+                grouped={grouped}
+                compact
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {tree.map((node, i) => (
+              <TreeBranch
+                key={i}
+                node={node}
+                depth={0}
+                defaultOpen
+                onRegistrar={(act) => setSelectedActividad(act)}
+                registroMap={registroMap}
+                currentMonthStatusMap={currentMonthStatusMap}
+                indicadores={indicadores}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <RegistroMensualDialog

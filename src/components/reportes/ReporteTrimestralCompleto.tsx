@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer, RefreshCw, Target } from "lucide-react";
+import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer, RefreshCw, Target, GitBranch, ClipboardList } from "lucide-react";
+import MapaMarcoLogico from "./MapaMarcoLogico";
 import { downloadCSV, formatCurrency, TRIMESTRES_MESES, MESES_NOMBRE } from "@/lib/reportUtils";
 import { invokeAnalysis } from "@/lib/aiAnalysis";
 import { generateTrimestralDocx } from "@/lib/generateDocx";
@@ -491,7 +492,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 2 — KPIs */}
-        <SectionTitle icon={BarChart3} title="KPIs DEL TRIMESTRE" number={2} />
+        <SectionTitle icon={BarChart3} title="RESUMEN DEL TRIMESTRE" number={2} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <KpiCard label="Actividades con avance" value={`${actConAvance.size} de ${actividades.length}`} />
@@ -503,8 +504,18 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
           </div>
         </div>
 
+        {/* SECTION 3 — MAPA DEL MARCO LÓGICO */}
+        <SectionTitle icon={GitBranch} title="MAPA DEL MARCO LÓGICO" number={3} />
+        <div className="border border-t-0 rounded-b-lg p-4 mb-2">
+          <MapaMarcoLogico
+            indicadores={indicadores}
+            actividades={actividades}
+            grouped={grouped}
+          />
+        </div>
+
         {/* SECTION 3 — AVANCE OPERATIVO */}
-        <SectionTitle icon={Calendar} title="AVANCE OPERATIVO" number={3} />
+        <SectionTitle icon={Calendar} title="AVANCE OPERATIVO" number={4} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
           <Table>
             <TableHeader>
@@ -551,7 +562,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 4 — DETALLE NARRATIVO */}
-        <SectionTitle icon={FileText} title="DETALLE NARRATIVO POR ACTIVIDAD" number={4} />
+        <SectionTitle icon={FileText} title="DETALLE NARRATIVO POR ACTIVIDAD" number={5} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2 space-y-3">
           {actividades.filter(a => actConAvance.has(a.id)).map(a => {
             const regs = regByActMes.get(a.id);
@@ -598,7 +609,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 5 — EJECUCIÓN FINANCIERA */}
-        <SectionTitle icon={DollarSign} title="EJECUCIÓN FINANCIERA" number={5} />
+        <SectionTitle icon={DollarSign} title="EJECUCIÓN FINANCIERA" number={6} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2 space-y-4">
           <Tabs defaultValue="seco">
             <TabsList className="flex flex-wrap h-auto gap-1">
@@ -649,7 +660,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 6 — DETALLE DE GASTOS */}
-        <SectionTitle icon={DollarSign} title="DETALLE DE GASTOS" number={6} />
+        <SectionTitle icon={DollarSign} title="DETALLE DE GASTOS" number={7} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
           <Table>
             <TableHeader>
@@ -682,7 +693,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION 7 — CAPACITACIONES */}
         {capacitaciones.length > 0 && (
           <>
-            <SectionTitle icon={Users} title="CAPACITACIONES DEL TRIMESTRE" number={7} />
+            <SectionTitle icon={Users} title="CAPACITACIONES DEL TRIMESTRE" number={8} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -728,7 +739,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION 8 — INDICADORES CONTEXTUALES */}
         {(innovaciones.length > 0 || gei.length > 0 || nuevosProductos.length > 0 || normativo.length > 0) && (
           <>
-            <SectionTitle icon={Leaf} title="INDICADORES CONTEXTUALES" number={8} />
+            <SectionTitle icon={Leaf} title="INDICADORES CONTEXTUALES" number={9} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 space-y-4">
               {innovaciones.length > 0 && (
                 <div>
@@ -773,7 +784,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION 9 — CONTRATOS */}
         {contratos.length > 0 && (
           <>
-            <SectionTitle icon={Briefcase} title="CONTRATOS VIGENTES" number={9} />
+            <SectionTitle icon={Briefcase} title="CONTRATOS VIGENTES" number={10} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -813,7 +824,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION 10 — DESEMBOLSOS */}
         {desembolsos.length > 0 && (
           <>
-            <SectionTitle icon={Scale} title="ESTADO DE DESEMBOLSOS" number={10} />
+            <SectionTitle icon={Scale} title="ESTADO DE DESEMBOLSOS" number={11} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -848,7 +859,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION — CONTRIBUCIÓN A INDICADORES */}
         {indicadores.length > 0 && (
           <>
-            <SectionTitle icon={Target} title="CONTRIBUCIÓN A INDICADORES DEL MARCO LÓGICO" number={11} />
+            <SectionTitle icon={Target} title="CONTRIBUCIÓN A INDICADORES DEL MARCO LÓGICO" number={12} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -902,6 +913,53 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
                   })}
                 </TableBody>
               </Table>
+            </div>
+          </>
+        )}
+
+        {/* SECTION 13 — COMPROMISOS Y PRIORIDADES */}
+        {actividades.some(a => {
+          const regs = regByActMes.get(a.id);
+          return regs && Array.from(regs.values()).some(r => r.limitaciones || r.prioridades_proximo_mes || r.compromisos);
+        }) && (
+          <>
+            <SectionTitle icon={ClipboardList} title="COMPROMISOS Y PRIORIDADES" number={13} />
+            <div className="border border-t-0 rounded-b-lg p-4 mb-2 space-y-3">
+              {actividades.filter(a => {
+                const regs = regByActMes.get(a.id);
+                return regs && Array.from(regs.values()).some(r => r.limitaciones || r.prioridades_proximo_mes || r.compromisos);
+              }).map(a => {
+                const regs = regByActMes.get(a.id);
+                const allRegs = regs ? Array.from(regs.values()) : [];
+                const limitaciones = allRegs.map(r => r.limitaciones).filter(Boolean);
+                const prioridades = allRegs.map(r => r.prioridades_proximo_mes).filter(Boolean);
+                const compromisos = allRegs.map(r => r.compromisos).filter(Boolean);
+                return (
+                  <div key={a.id} className="border rounded-lg p-3 bg-muted/10">
+                    <h4 className="font-semibold text-sm mb-2">{a.codigo} — {a.nombre}</h4>
+                    <div className="space-y-1.5 text-sm">
+                      {limitaciones.length > 0 && (
+                        <div className="pl-3 border-l-2 border-destructive/30">
+                          <span className="text-xs font-medium text-destructive">Limitaciones:</span>
+                          {limitaciones.map((l, i) => <p key={i} className="text-foreground">{l}</p>)}
+                        </div>
+                      )}
+                      {prioridades.length > 0 && (
+                        <div className="pl-3 border-l-2 border-primary/30">
+                          <span className="text-xs font-medium text-primary">Prioridades próximo período:</span>
+                          {prioridades.map((p, i) => <p key={i} className="text-foreground">{p}</p>)}
+                        </div>
+                      )}
+                      {compromisos.length > 0 && (
+                        <div className="pl-3 border-l-2 border-amber-500/30">
+                          <span className="text-xs font-medium text-amber-600">Compromisos:</span>
+                          {compromisos.map((c, i) => <p key={i} className="text-foreground">{c}</p>)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
