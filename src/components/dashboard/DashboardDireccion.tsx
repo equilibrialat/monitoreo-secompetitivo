@@ -114,7 +114,9 @@ export default function DashboardDireccion() {
         <ClickableKpiCard label="Actividades Completadas" value={`${completadas}/${totalAct}`} onClick={() => navigate("/mis-actividades")} />
       </div>
 
-      {/* Mec A vs Mec B */}
+      {/* Quarterly Approval */}
+      <AprobacionTrimestral />
+
       <div className="grid gap-4 sm:grid-cols-2 mb-6">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/reportes-mec-a")}>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Mecanismo A — Políticas Públicas</CardTitle></CardHeader>

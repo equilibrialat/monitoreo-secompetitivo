@@ -482,3 +482,252 @@ export async function generateTrimestralDocx(data: ReportData) {
   const filename = `Informe_Trimestral_${entidadNombre}_${trimestre}_${anio}.docx`;
   saveAs(buffer, filename);
 }
+
+// ---- RESUMEN EJECUTIVO TRIMESTRAL (Para Dirección) ----
+interface ResumenEjecutivoData {
+  trimestre: string;
+  anio: number;
+  entidadesDetalle: {
+    id: string;
+    nombre: string;
+    mecanismo: string;
+    estado: "aprobado" | "en_revision" | "sin_reporte";
+    avanceOp: number;
+    pctEjec: number;
+  }[];
+  kpis: {
+    totalActividades: number;
+    actConAvance: number;
+    totalPresupuesto: number;
+    totalEjecutado: number;
+    pctEjecucion: number;
+    avanceOperativo: number;
+  };
+  aiSummary: string | null;
+  aprobadoPor: string | null;
+  fechaAprobacion: string | null;
+}
+
+export async function generateResumenEjecutivoDocx(data: ResumenEjecutivoData) {
+  const { trimestre, anio, entidadesDetalle, kpis, aiSummary, aprobadoPor, fechaAprobacion } = data;
+  const children: (Paragraph | Table)[] = [];
+
+  // ---- PAGE 1: KPIs ----
+  children.push(new Paragraph({
+    spacing: { after: 100 },
+    children: [new TextRun({ text: `RESUMEN EJECUTIVO ${trimestre}-${anio}`, bold: true, font: "Arial", size: 36, color: BLUE_DARK })],
+  }));
+  children.push(new Paragraph({
+    spacing: { after: 60 },
+    children: [new TextRun({ text: "Programa SeCompetitivo — Cooperación Suiza (SECO)", font: "Arial", size: 22, color: "666666" })],
+  }));
+  children.push(new Paragraph({
+    spacing: { after: 200 },
+    children: [new TextRun({ text: `Fecha: ${new Date().toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" })}`, font: "Arial", size: 18, color: "999999" })],
+  }));
+
+  if (aprobadoPor) {
+    children.push(new Paragraph({
+      spacing: { after: 200 },
+      shading: { fill: "D1FAE5", type: ShadingType.CLEAR },
+      children: [new TextRun({ text: `  ✅ Aprobado por ${aprobadoPor} — ${fechaAprobacion ? new Date(fechaAprobacion).toLocaleDateString("es-PE") : ""}`, bold: true, font: "Arial", size: 20, color: "065F46" })],
+    }));
+  }
+
+  children.push(sectionHeading(1, "KPIs DEL TRIMESTRE"));
+  const kpiColWidth = Math.floor(9360 / 3);
+  const kpiRows = [
+    [
+      { label: "Entidades activas", value: String(entidadesDetalle.length) },
+      { label: "Entidades aprobadas", value: String(entidadesDetalle.filter(e => e.estado === "aprobado").length) },
+      { label: "Actividades con avance", value: `${kpis.actConAvance} / ${kpis.totalActividades}` },
+    ],
+    [
+      { label: "Avance operativo promedio", value: `${kpis.avanceOperativo}%` },
+      { label: "Ejecución financiera", value: `${kpis.pctEjecucion}%` },
+      { label: "Total actividades", value: String(kpis.totalActividades) },
+    ],
+  ];
+  for (const row of kpiRows) {
+    children.push(new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: row.map(() => kpiColWidth),
+      rows: [new TableRow({ children: row.map(k => new TableCell({
+        borders: cellBorders, width: { size: kpiColWidth, type: WidthType.DXA },
+        shading: { fill: BLUE_LIGHT, type: ShadingType.CLEAR }, margins: cellMargins,
+        children: [
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: k.label, font: "Arial", size: 16, color: "666666" })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: k.value, font: "Arial", size: 28, bold: true })] }),
+        ],
+      })) })],
+    }));
+  }
+
+  // ---- PAGE 2: Avance por mecanismo ----
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+  children.push(sectionHeading(2, "AVANCE POR MECANISMO"));
+
+  const mecA = entidadesDetalle.filter(e => e.mecanismo === "A");
+  const mecB = entidadesDetalle.filter(e => e.mecanismo !== "A");
+  const avgEjec = (arr: typeof entidadesDetalle) => arr.length > 0 ? Math.round(arr.reduce((s, e) => s + e.pctEjec, 0) / arr.length) : 0;
+
+  const mecColWidths = [2000, 1500, 1500, 1500, 1500, 1360];
+  children.push(new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: mecColWidths,
+    rows: [
+      new TableRow({ children: ["Mecanismo", "Entidades", "Aprobadas", "Pendientes", "Ejec. SECO %", "Estado"].map((h, i) => headerCell(h, mecColWidths[i])) }),
+      ...([
+        { label: "Mecanismo A — Políticas Públicas", ents: mecA },
+        { label: "Mecanismo B — Cadenas de Valor", ents: mecB },
+      ].map((row, idx) => {
+        const aprobadas = row.ents.filter(e => e.estado === "aprobado").length;
+        const pend = row.ents.length - aprobadas;
+        const shade = idx % 2 === 0 ? GRAY_LIGHT : WHITE;
+        return new TableRow({
+          children: [
+            dataCell(row.label, mecColWidths[0], { shade, bold: true }),
+            dataCell(String(row.ents.length), mecColWidths[1], { shade, align: AlignmentType.CENTER }),
+            dataCell(String(aprobadas), mecColWidths[2], { shade, align: AlignmentType.CENTER, color: "16A34A" }),
+            dataCell(String(pend), mecColWidths[3], { shade, align: AlignmentType.CENTER, color: pend > 0 ? RED : undefined }),
+            dataCell(`${avgEjec(row.ents)}%`, mecColWidths[4], { shade, align: AlignmentType.CENTER }),
+            dataCell(pend === 0 ? "Listo" : "Pendiente", mecColWidths[5], { shade }),
+          ],
+        });
+      })),
+    ],
+  }));
+
+  // Detailed entity table
+  children.push(new Paragraph({ spacing: { before: 300, after: 100 }, children: [new TextRun({ text: "Detalle por Entidad", bold: true, font: "Arial", size: 22, color: BLUE_DARK })] }));
+  const entColWidths = [2500, 1000, 1500, 1500, 1500, 1360];
+  children.push(new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: entColWidths,
+    rows: [
+      new TableRow({ children: ["Entidad", "Mec.", "Estado", "Avance Op.", "Ejec. SECO", "Semáforo"].map((h, i) => headerCell(h, entColWidths[i])) }),
+      ...entidadesDetalle.map((e, idx) => {
+        const shade = idx % 2 === 0 ? GRAY_LIGHT : WHITE;
+        const estadoLabel = e.estado === "aprobado" ? "✅ Aprobado" : e.estado === "en_revision" ? "⏳ En revisión" : "🔴 Sin reporte";
+        return new TableRow({
+          children: [
+            dataCell(e.nombre, entColWidths[0], { shade }),
+            dataCell(`MEC-${e.mecanismo}`, entColWidths[1], { shade }),
+            dataCell(estadoLabel, entColWidths[2], { shade, color: e.estado === "aprobado" ? "16A34A" : e.estado === "en_revision" ? undefined : RED }),
+            dataCell(`${e.avanceOp}%`, entColWidths[3], { shade, align: AlignmentType.CENTER }),
+            dataCell(`${e.pctEjec}%`, entColWidths[4], { shade, align: AlignmentType.CENTER }),
+            dataCell(e.pctEjec >= 70 ? "🟢" : e.pctEjec >= 40 ? "🟡" : "🔴", entColWidths[5], { shade, align: AlignmentType.CENTER }),
+          ],
+        });
+      }),
+    ],
+  }));
+
+  // ---- PAGE 3: AI Analysis ----
+  if (aiSummary) {
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+    children.push(sectionHeading(3, "ANÁLISIS EJECUTIVO (IA)"));
+    aiSummary.split("\n").filter(Boolean).forEach(p => {
+      const trimmed = p.trim();
+      if (trimmed.startsWith("##")) {
+        children.push(new Paragraph({
+          spacing: { before: 200, after: 100 },
+          children: [new TextRun({ text: trimmed.replace(/^#+\s*/, ""), bold: true, font: "Arial", size: 24, color: BLUE_DARK })],
+        }));
+      } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+        children.push(new Paragraph({
+          spacing: { after: 60 },
+          indent: { left: 360 },
+          children: [new TextRun({ text: `• ${trimmed.replace(/^[-*]\s*/, "")}`, font: "Arial", size: 20 })],
+        }));
+      } else {
+        children.push(new Paragraph({
+          spacing: { after: 100 },
+          children: [new TextRun({ text: trimmed, font: "Arial", size: 20 })],
+        }));
+      }
+    });
+  }
+
+  // ---- PAGE 4: Alertas y acciones ----
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+  children.push(sectionHeading(aiSummary ? 4 : 3, "ALERTAS Y ACCIONES PENDIENTES"));
+
+  const pendientes = entidadesDetalle.filter(e => e.estado !== "aprobado");
+  if (pendientes.length > 0) {
+    children.push(new Paragraph({
+      spacing: { after: 100 },
+      shading: { fill: "FEF2F2", type: ShadingType.CLEAR },
+      children: [new TextRun({ text: `  ⚠️ ${pendientes.length} entidades pendientes de aprobación`, bold: true, font: "Arial", size: 20, color: RED })],
+    }));
+    pendientes.forEach(e => {
+      children.push(new Paragraph({
+        spacing: { after: 60 },
+        indent: { left: 360 },
+        children: [new TextRun({ text: `• ${e.nombre} (MEC-${e.mecanismo}) — ${e.estado === "en_revision" ? "En revisión" : "Sin reporte"}`, font: "Arial", size: 20 })],
+      }));
+    });
+  } else {
+    children.push(new Paragraph({
+      spacing: { after: 100 },
+      shading: { fill: "D1FAE5", type: ShadingType.CLEAR },
+      children: [new TextRun({ text: "  ✅ Todas las entidades aprobadas — Trimestre listo para cierre", bold: true, font: "Arial", size: 20, color: "065F46" })],
+    }));
+  }
+
+  const lowExec = entidadesDetalle.filter(e => e.pctEjec < 30);
+  if (lowExec.length > 0) {
+    children.push(new Paragraph({
+      spacing: { before: 200, after: 100 },
+      children: [new TextRun({ text: "Entidades con baja ejecución financiera (<30%)", bold: true, font: "Arial", size: 20, color: BLUE_DARK })],
+    }));
+    lowExec.forEach(e => {
+      children.push(new Paragraph({
+        spacing: { after: 60 },
+        indent: { left: 360 },
+        children: [new TextRun({ text: `• ${e.nombre} — Ejecución SECO: ${e.pctEjec}%`, font: "Arial", size: 20, color: RED })],
+      }));
+    });
+  }
+
+  // Footer
+  children.push(new Paragraph({
+    spacing: { before: 400 },
+    children: [new TextRun({ text: "Generado automáticamente por el Sistema de Monitoreo SeCompetitivo", font: "Arial", size: 16, color: "999999", italics: true })],
+  }));
+
+  const doc = new Document({
+    styles: { default: { document: { run: { font: "Arial", size: 22 } } } },
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+        },
+      },
+      headers: {
+        default: new Header({
+          children: [new Paragraph({
+            border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: BLUE_DARK, space: 4 } },
+            children: [new TextRun({ text: `SeCompetitivo — Resumen Ejecutivo ${trimestre}-${anio}`, font: "Arial", size: 16, color: "999999" })],
+          })],
+        }),
+      },
+      footers: {
+        default: new Footer({
+          children: [new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({ text: "Página ", font: "Arial", size: 16, color: "999999" }),
+              new TextRun({ children: [PageNumber.CURRENT], font: "Arial", size: 16, color: "999999" }),
+            ],
+          })],
+        }),
+      },
+      children,
+    }],
+  });
+
+  const buffer = await Packer.toBlob(doc);
+  saveAs(buffer, `Resumen_Ejecutivo_${trimestre}_${anio}.docx`);
+}
