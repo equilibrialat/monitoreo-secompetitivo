@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, X } from "lucide-react";
 import { downloadCSV, formatCurrency, TRIMESTRES_MESES } from "@/lib/reportUtils";
 import type { EntidadOption } from "@/contexts/RoleContext";
+import AIAnalysisCard from "./AIAnalysisCard";
 
 interface Props {
   entidadId: string | null;
@@ -106,7 +107,9 @@ export default function ReporteTrimestralOperativo({ entidadId, trimestre, anio,
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="space-y-4">
+            <AIAnalysisCard tipo="narrativa" datos={{ tipo_reporte: "trimestral_operativo", entidad: entidadNombre, periodo: `${trimestre} ${anio}`, total_actividades: rows.length }} label="Generar análisis IA" />
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -142,6 +145,7 @@ export default function ReporteTrimestralOperativo({ entidadId, trimestre, anio,
                 })}
               </TableBody>
             </Table>
+          </div>
           </div>
         )}
       </CardContent>

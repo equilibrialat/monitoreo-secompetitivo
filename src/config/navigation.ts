@@ -13,6 +13,7 @@ import {
   Shuffle,
   Bell,
   FileDown,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
@@ -60,6 +61,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Verificación", path: "/verificacion", icon: Eye },
     { label: "Reportes", path: "/reportes", icon: FolderOpen },
     { label: "Generar Reportes", path: "/generar-reportes", icon: FileDown },
+    { label: "Administración", path: "/administracion", icon: Settings },
     { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   administracion: [

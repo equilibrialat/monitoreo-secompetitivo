@@ -25,6 +25,7 @@ import ReportesEjecutivosPage from "./pages/ReportesEjecutivosPage";
 import ReportesMecBPage from "./pages/ReportesMecBPage";
 import ReportesMecAPage from "./pages/ReportesMecAPage";
 import ReportesRegionalesPage from "./pages/ReportesRegionalesPage";
+import AdministracionPage from "./pages/AdministracionPage";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/reportes-mec-b" element={<ReportesMecBPage />} />
               <Route path="/reportes-mec-a" element={<ReportesMecAPage />} />
               <Route path="/reportes-regionales" element={<ReportesRegionalesPage />} />
+              <Route path="/administracion" element={<AdministracionPage />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
