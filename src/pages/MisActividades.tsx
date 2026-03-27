@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { ClipboardList } from "lucide-react";
 import { MOCK_ACTIVIDADES, buildActivityTree } from "@/data/mockActividades";
+import type { Actividad } from "@/data/mockActividades";
 import { TreeBranch } from "@/components/TreeBranch";
+import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
 
 export default function MisActividades() {
   const tree = buildActivityTree(MOCK_ACTIVIDADES);
+  const [selectedActividad, setSelectedActividad] = useState<Actividad | null>(null);
 
   return (
     <div>
@@ -21,9 +25,21 @@ export default function MisActividades() {
 
       <div className="space-y-2">
         {tree.map((node, i) => (
-          <TreeBranch key={i} node={node} depth={0} defaultOpen />
+          <TreeBranch
+            key={i}
+            node={node}
+            depth={0}
+            defaultOpen
+            onRegistrar={(act) => setSelectedActividad(act)}
+          />
         ))}
       </div>
+
+      <RegistroMensualDialog
+        actividad={selectedActividad}
+        open={!!selectedActividad}
+        onClose={() => setSelectedActividad(null)}
+      />
     </div>
   );
 }

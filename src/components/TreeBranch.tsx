@@ -1,16 +1,18 @@
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
-import type { TreeNode } from "@/data/mockActividades";
-import { ActivityCard } from "@/components/ActivityCard";
 import { cn } from "@/lib/utils";
+import type { TreeNode } from "@/data/mockActividades";
+import type { Actividad } from "@/data/mockActividades";
+import { ActivityCard } from "@/components/ActivityCard";
+import { ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 interface TreeBranchProps {
   node: TreeNode;
   depth?: number;
   defaultOpen?: boolean;
+  onRegistrar?: (actividad: Actividad) => void;
 }
 
-export function TreeBranch({ node, depth = 0, defaultOpen = true }: TreeBranchProps) {
+export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar }: TreeBranchProps) {
   const [open, setOpen] = useState(defaultOpen);
   const hasChildren = node.children && node.children.length > 0;
   const isActivity = !!node.actividad;
@@ -18,7 +20,7 @@ export function TreeBranch({ node, depth = 0, defaultOpen = true }: TreeBranchPr
   if (isActivity) {
     return (
       <div className="ml-4">
-        <ActivityCard actividad={node.actividad!} />
+        <ActivityCard actividad={node.actividad!} onRegistrar={onRegistrar} />
       </div>
     );
   }
@@ -53,7 +55,7 @@ export function TreeBranch({ node, depth = 0, defaultOpen = true }: TreeBranchPr
       {open && hasChildren && (
         <div className="space-y-1 mt-1">
           {node.children!.map((child, i) => (
-            <TreeBranch key={i} node={child} depth={depth + 1} defaultOpen={depth < 1} />
+            <TreeBranch key={i} node={child} depth={depth + 1} defaultOpen={depth < 1} onRegistrar={onRegistrar} />
           ))}
         </div>
       )}
