@@ -16,12 +16,10 @@ export function NotificationBell() {
   const [selected, setSelected] = useState<Notificacion | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Only show for entidad role
-  if (role !== "entidad" || !entidadId) return null;
+  const isEntidad = role === "entidad" && !!entidadId;
 
   useEffect(() => {
-    const load = async () => {
-      if (!entidadId) return;
+    if (!isEntidad || !entidadId) return;
       const [data, count] = await Promise.all([
         fetchNotificacionesForEntidad(entidadId),
         countUnread(entidadId),
