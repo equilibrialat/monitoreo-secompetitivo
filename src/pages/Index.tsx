@@ -31,11 +31,11 @@ export default function Index() {
         />
       );
 
-    case "coordinador_mec_b":
+    case "coordinador_cadenas":
       return (
         <DashboardMonitoreo
-          title="Dashboard Mecanismo B — Cadenas de Valor"
-          subtitle="Coordinador MEC-B"
+          title="Dashboard Cadenas de Valor (Mec B)"
+          subtitle="Coordinador Cadenas de Valor"
           filterFn={(e) => e.mecanismo === "B"}
           reviewEstado="enviado"
           reviewNextEstado="en_revision_tecnica"
@@ -45,11 +45,11 @@ export default function Index() {
         />
       );
 
-    case "gestor_mec_a":
+    case "asesora_politicas":
       return (
         <DashboardMonitoreo
-          title="Dashboard Mecanismo A — Políticas Públicas"
-          subtitle="Gestor MEC-A"
+          title="Dashboard Políticas Públicas (Mec A)"
+          subtitle="Asesora Políticas Públicas"
           filterFn={(e) => e.mecanismo === "A"}
           reviewEstado="enviado"
           reviewNextEstado="en_revision_tecnica"
@@ -58,6 +58,10 @@ export default function Index() {
           reviewFilterFn={(r) => r.mecanismo === "A"}
         />
       );
+
+    case "gestor":
+      // Gestor sees entity dashboard for their assigned entities
+      return <DashboardEntidad />;
 
     case "entidad":
     default:
