@@ -28,6 +28,7 @@ import ReportesMecAPage from "./pages/ReportesMecAPage";
 import ReportesRegionalesPage from "./pages/ReportesRegionalesPage";
 import AdministracionPage from "./pages/AdministracionPage";
 import MisIniciativasPage from "./pages/MisIniciativasPage";
+import RegistroRapidoPage from "./pages/RegistroRapidoPage";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
               {/* Entidad routes */}
               <Route path="/actividades" element={<MisActividades />} />
               <Route path="/registro-mensual" element={<RegistroMensualPage />} />
+              <Route path="/registro-rapido" element={<RegistroRapidoPage />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
 
               {/* Gestor routes */}

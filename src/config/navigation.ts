@@ -15,6 +15,7 @@ import {
   FileDown,
   Settings,
   Briefcase,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
@@ -30,6 +31,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Mis Actividades", path: "/actividades", icon: ClipboardList },
     { label: "Registro Mensual", path: "/registro-mensual", icon: FileText },
+    { label: "Registro Rápido", path: "/registro-rapido", icon: Zap },
     { label: "Indicadores de Impacto", path: "/indicadores-impacto", icon: TrendingUp },
     { label: "Contratos", path: "/contratos", icon: FileCheck },
     { label: "Viáticos", path: "/viaticos", icon: Plane },
