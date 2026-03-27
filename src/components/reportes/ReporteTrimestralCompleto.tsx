@@ -492,7 +492,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 2 — KPIs */}
-        <SectionTitle icon={BarChart3} title="KPIs DEL TRIMESTRE" number={2} />
+        <SectionTitle icon={BarChart3} title="RESUMEN DEL TRIMESTRE" number={2} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <KpiCard label="Actividades con avance" value={`${actConAvance.size} de ${actividades.length}`} />
@@ -502,6 +502,16 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
             <KpiCard label="Contrapartida No Mon." value={formatCurrency(totalCNM)} />
             <KpiCard label="% Ejec. vs Presupuesto" value={`${pctEjecTotal}%`} sub="Acumulado SECO" />
           </div>
+        </div>
+
+        {/* SECTION 3 — MAPA DEL MARCO LÓGICO */}
+        <SectionTitle icon={GitBranch} title="MAPA DEL MARCO LÓGICO" number={3} />
+        <div className="border border-t-0 rounded-b-lg p-4 mb-2">
+          <MapaMarcoLogico
+            indicadores={indicadores}
+            actividades={actividades}
+            grouped={grouped}
+          />
         </div>
 
         {/* SECTION 3 — AVANCE OPERATIVO */}
