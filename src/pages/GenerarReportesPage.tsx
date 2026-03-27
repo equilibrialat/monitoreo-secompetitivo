@@ -7,8 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FileText, Download, Eye } from "lucide-react";
 import ReporteMensualPreview from "@/components/reportes/ReporteMensualPreview";
-import ReporteTrimestralOperativo from "@/components/reportes/ReporteTrimestralOperativo";
-import ReporteTrimestralFinanciero from "@/components/reportes/ReporteTrimestralFinanciero";
+import ReporteTrimestralCompleto from "@/components/reportes/ReporteTrimestralCompleto";
 import ReporteSemestral from "@/components/reportes/ReporteSemestral";
 import ReporteAnual from "@/components/reportes/ReporteAnual";
 
