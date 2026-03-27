@@ -88,6 +88,34 @@ export default function TramaFisicoFinanciera() {
   const [filterResultado, setFilterResultado] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(true);
+
+  const handleConsistency = async () => {
+    if (!rows.length) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    const sample = rows.slice(0, 50).map((r) => ({
+      codigo: r.c_actividad,
+      actividad: r.n_actividad,
+      proyecto: r.cod_proy_e_iniciativa,
+      resultado: r.cod_resultado,
+      meta: r.meta,
+      avance: r.valor_de_avance,
+      estado: r.estado,
+      ppto_seco: r.presupuesto_cofinanc_seco_p,
+      ejec_seco: r.ejecucion_presupuesto_cof_seco,
+      pct_seco: r.pct_avance_cof_seco,
+      mecanismo: r.mecanismo,
+    }));
+    const { resultado, error } = await invokeAnalysis("consistencia", { trama: sample });
+    setAiLoading(false);
+    if (error) setAiError(error);
+    else setAiResult(resultado ?? null);
+  };
 
   useEffect(() => {
     (async () => {
