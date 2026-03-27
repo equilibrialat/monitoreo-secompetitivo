@@ -1860,12 +1860,18 @@ export type Database = {
           empleos_creados_post_cosecha: number | null
           empleos_creados_total: number | null
           empleos_creados_turismo: number | null
+          empleos_mejorados_agroindustria: number | null
           empleos_mejorados_femenino: number | null
+          empleos_mejorados_manejo_finca: number | null
           empleos_mejorados_masculino: number | null
+          empleos_mejorados_post_cosecha: number | null
           empleos_mejorados_total: number | null
+          empleos_mejorados_turismo: number | null
+          empleos_retenidos_agroindustria: number | null
           empleos_retenidos_femenino: number | null
           empleos_retenidos_manejo_finca: number | null
           empleos_retenidos_masculino: number | null
+          empleos_retenidos_post_cosecha: number | null
           empleos_retenidos_total: number | null
           empleos_retenidos_turismo: number | null
           entidad_id: string
@@ -1895,12 +1901,18 @@ export type Database = {
           empleos_creados_post_cosecha?: number | null
           empleos_creados_total?: number | null
           empleos_creados_turismo?: number | null
+          empleos_mejorados_agroindustria?: number | null
           empleos_mejorados_femenino?: number | null
+          empleos_mejorados_manejo_finca?: number | null
           empleos_mejorados_masculino?: number | null
+          empleos_mejorados_post_cosecha?: number | null
           empleos_mejorados_total?: number | null
+          empleos_mejorados_turismo?: number | null
+          empleos_retenidos_agroindustria?: number | null
           empleos_retenidos_femenino?: number | null
           empleos_retenidos_manejo_finca?: number | null
           empleos_retenidos_masculino?: number | null
+          empleos_retenidos_post_cosecha?: number | null
           empleos_retenidos_total?: number | null
           empleos_retenidos_turismo?: number | null
           entidad_id: string
@@ -1932,12 +1944,18 @@ export type Database = {
           empleos_creados_post_cosecha?: number | null
           empleos_creados_total?: number | null
           empleos_creados_turismo?: number | null
+          empleos_mejorados_agroindustria?: number | null
           empleos_mejorados_femenino?: number | null
+          empleos_mejorados_manejo_finca?: number | null
           empleos_mejorados_masculino?: number | null
+          empleos_mejorados_post_cosecha?: number | null
           empleos_mejorados_total?: number | null
+          empleos_mejorados_turismo?: number | null
+          empleos_retenidos_agroindustria?: number | null
           empleos_retenidos_femenino?: number | null
           empleos_retenidos_manejo_finca?: number | null
           empleos_retenidos_masculino?: number | null
+          empleos_retenidos_post_cosecha?: number | null
           empleos_retenidos_total?: number | null
           empleos_retenidos_turismo?: number | null
           entidad_id?: string
@@ -2173,6 +2191,8 @@ export type Database = {
           genero_productores: string | null
           id: string
           num_productores: number | null
+          num_productores_femenino: number | null
+          num_productores_masculino: number | null
           organizacion_productores: string | null
           produccion_campo_tn: number | null
           produccion_exportable_tn: number | null
@@ -2195,6 +2215,8 @@ export type Database = {
           genero_productores?: string | null
           id?: string
           num_productores?: number | null
+          num_productores_femenino?: number | null
+          num_productores_masculino?: number | null
           organizacion_productores?: string | null
           produccion_campo_tn?: number | null
           produccion_exportable_tn?: number | null
@@ -2217,6 +2239,8 @@ export type Database = {
           genero_productores?: string | null
           id?: string
           num_productores?: number | null
+          num_productores_femenino?: number | null
+          num_productores_masculino?: number | null
           organizacion_productores?: string | null
           produccion_campo_tn?: number | null
           produccion_exportable_tn?: number | null
