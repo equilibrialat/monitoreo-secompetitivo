@@ -562,7 +562,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 4 — DETALLE NARRATIVO */}
-        <SectionTitle icon={FileText} title="DETALLE NARRATIVO POR ACTIVIDAD" number={4} />
+        <SectionTitle icon={FileText} title="DETALLE NARRATIVO POR ACTIVIDAD" number={5} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2 space-y-3">
           {actividades.filter(a => actConAvance.has(a.id)).map(a => {
             const regs = regByActMes.get(a.id);
