@@ -102,6 +102,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "actividades_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
             foreignKeyName: "actividades_producto_id_fkey"
             columns: ["producto_id"]
             isOneToOne: false
@@ -191,6 +198,13 @@ export type Database = {
             referencedRelation: "entidades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "config_indicadores_entidad_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
         ]
       }
       contratos: {
@@ -273,6 +287,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contratos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
             foreignKeyName: "contratos_registrado_por_fkey"
             columns: ["registrado_por"]
             isOneToOne: false
@@ -331,6 +352,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desembolsos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
         ]
       }
@@ -409,6 +437,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ejecucion_financiera_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "ejecucion_financiera_registro_mensual_id_fkey"
@@ -607,6 +642,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "indicadores_proyecto_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
             foreignKeyName: "indicadores_proyecto_resultado_id_fkey"
             columns: ["resultado_id"]
             isOneToOne: false
@@ -688,6 +730,13 @@ export type Database = {
             referencedRelation: "entidades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "participantes_capacitacion_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
         ]
       }
       perfiles: {
@@ -732,6 +781,13 @@ export type Database = {
             referencedRelation: "entidades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "perfiles_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
         ]
       }
       productos: {
@@ -769,6 +825,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "productos_resultado_id_fkey"
@@ -833,6 +896,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reasignaciones_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "reasignaciones_solicitado_por_fkey"
@@ -909,6 +979,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_capacitaciones_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "registro_capacitaciones_registro_mensual_id_fkey"
@@ -1004,6 +1081,13 @@ export type Database = {
             referencedRelation: "entidades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "registro_certificacion_laboral_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
         ]
       }
       registro_financiamiento: {
@@ -1080,6 +1164,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "registro_financiamiento_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
             foreignKeyName: "registro_financiamiento_registro_mensual_id_fkey"
             columns: ["registro_mensual_id"]
             isOneToOne: false
@@ -1148,6 +1239,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_gei_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "registro_gei_registro_mensual_id_fkey"
@@ -1227,6 +1325,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_innovaciones_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "registro_innovaciones_registro_mensual_id_fkey"
@@ -1311,6 +1416,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "registro_normativo_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
             foreignKeyName: "registro_normativo_registro_mensual_id_fkey"
             columns: ["registro_mensual_id"]
             isOneToOne: false
@@ -1391,6 +1503,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_nuevos_productos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "registro_nuevos_productos_registro_mensual_id_fkey"
@@ -1477,6 +1596,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_mensuales_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "registros_mensuales_registrado_por_fkey"
@@ -1610,6 +1736,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reporte_comercial_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
             foreignKeyName: "reporte_comercial_validado_por_fkey"
             columns: ["validado_por"]
             isOneToOne: false
@@ -1705,6 +1838,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reporte_diversificacion_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
         ]
       }
@@ -1827,6 +1967,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reporte_empleo_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
             foreignKeyName: "reporte_empleo_validado_por_fkey"
             columns: ["validado_por"]
             isOneToOne: false
@@ -1904,6 +2051,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reporte_gobernanza_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
         ]
       }
@@ -1998,6 +2152,13 @@ export type Database = {
             referencedRelation: "entidades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "reporte_nuevos_mercados_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
         ]
       }
       reporte_productividad: {
@@ -2072,6 +2233,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reporte_productividad_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
           {
             foreignKeyName: "reporte_productividad_validado_por_fkey"
@@ -2154,6 +2322,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reporte_turismo_atractivos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
         ]
       }
@@ -2245,6 +2420,13 @@ export type Database = {
             referencedRelation: "entidades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "reporte_turismo_ventas_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
         ]
       }
       resultados: {
@@ -2282,6 +2464,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resultados_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
         ]
       }
@@ -2355,11 +2544,73 @@ export type Database = {
             referencedRelation: "entidades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "viaticos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      v_dashboard_entidad: {
+        Row: {
+          actividades_completadas: number | null
+          codigo: string | null
+          desfases_tecnico_financiero: number | null
+          ejecutado_cm_total: number | null
+          ejecutado_cnm_total: number | null
+          ejecutado_seco_total: number | null
+          entidad_id: string | null
+          mecanismo: Database["public"]["Enums"]["mecanismo_tipo"] | null
+          nombre_corto: string | null
+          pct_ejecucion_seco: number | null
+          presupuesto_cm_total: number | null
+          presupuesto_cnm_total: number | null
+          presupuesto_seco_total: number | null
+          sobregiros_seco: number | null
+          tipo_entidad: Database["public"]["Enums"]["tipo_entidad"] | null
+          total_actividades: number | null
+        }
+        Relationships: []
+      }
+      v_trama_fisico_financiera: {
+        Row: {
+          actividad_hito: boolean | null
+          aporte_contrapartida_monetaria_p: number | null
+          aporte_contrapartida_no_monetaria_p: number | null
+          c_actividad: string | null
+          cod_producto: string | null
+          cod_proy_e_iniciativa: string | null
+          cod_resultado: string | null
+          descripcion_de_avance: string | null
+          ejecucion_presupuesto_cof_seco: number | null
+          ejecucion_presupuesto_contrapartida_monetaria: number | null
+          ejecucion_presupuesto_contrapartida_no_monetaria: number | null
+          estado: Database["public"]["Enums"]["estado_actividad"] | null
+          fecha_corte: string | null
+          id_h2: string | null
+          item: number | null
+          mecanismo: Database["public"]["Enums"]["mecanismo_tipo"] | null
+          medio_verificacion: string | null
+          mes_anio_fin_prog: string | null
+          mes_anio_inicio_prog: string | null
+          meta: number | null
+          n_actividad: string | null
+          nombre_producto: string | null
+          nombre_resultado: string | null
+          pct_avance_cm: number | null
+          pct_avance_cnm: number | null
+          pct_avance_cof_seco: number | null
+          presupuesto_cofinanc_seco_p: number | null
+          presupuesto_total: number | null
+          unidad_de_medida: string | null
+          valor_de_avance: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
