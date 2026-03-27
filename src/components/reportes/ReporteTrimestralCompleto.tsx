@@ -515,7 +515,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 3 — AVANCE OPERATIVO */}
-        <SectionTitle icon={Calendar} title="AVANCE OPERATIVO" number={3} />
+        <SectionTitle icon={Calendar} title="AVANCE OPERATIVO" number={4} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
           <Table>
             <TableHeader>
