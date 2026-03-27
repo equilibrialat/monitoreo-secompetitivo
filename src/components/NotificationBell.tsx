@@ -1,12 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { Bell } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRole } from "@/contexts/RoleContext";
 import { fetchNotificacionesForEntidad, countUnread, markAsRead, type Notificacion } from "@/lib/notificaciones";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+
+const TIPO_ICON: Record<string, string> = {
+  recordatorio: "⏰",
+  solicitud_info: "📋",
+  aviso_general: "📢",
+  auto_observado: "⚠️",
+  auto_aprobado: "✅",
+  auto_vencimiento: "🔔",
+};
 
 export function NotificationBell() {
   const { entidadId, role } = useRole();
@@ -20,6 +28,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (!isEntidad || !entidadId) return;
+    const load = async () => {
       const [data, count] = await Promise.all([
         fetchNotificacionesForEntidad(entidadId),
         countUnread(entidadId),
@@ -30,9 +39,8 @@ export function NotificationBell() {
     load();
     const interval = setInterval(load, 60000);
     return () => clearInterval(interval);
-  }, [entidadId]);
+  }, [entidadId, isEntidad]);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -44,6 +52,8 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  if (!isEntidad) return null;
+
   const handleClick = async (n: Notificacion) => {
     setSelected(n);
     if (!n.leido) {
@@ -51,15 +61,6 @@ export function NotificationBell() {
       setNotifs((prev) => prev.map((x) => x.id === n.id ? { ...x, leido: true } : x));
       setUnreadCount((c) => Math.max(0, c - 1));
     }
-  };
-
-  const TIPO_ICON: Record<string, string> = {
-    recordatorio: "⏰",
-    solicitud_info: "📋",
-    aviso_general: "📢",
-    auto_observado: "⚠️",
-    auto_aprobado: "✅",
-    auto_vencimiento: "🔔",
   };
 
   return (
@@ -70,9 +71,9 @@ export function NotificationBell() {
         className="relative h-9 w-9"
         onClick={() => { setOpen(!open); setSelected(null); }}
       >
-        <Bell className="h-4.5 w-4.5" />
+        <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4.5 min-w-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1">
+          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}

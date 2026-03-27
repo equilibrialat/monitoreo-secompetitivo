@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Plane,
   Shuffle,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
