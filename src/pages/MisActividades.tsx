@@ -39,7 +39,7 @@ export default function MisActividades() {
     Promise.all([
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
-      (supabase as any).from("indicadores_proyecto").select("codigo, nombre, meta, linea_base").eq("entidad_id", entidadId),
+      (supabase as any).from("indicadores_proyecto").select("codigo, nombre, meta, linea_base, nivel, unidad_medida").eq("entidad_id", entidadId),
     ]).then(([acts, regs, indResult]) => {
       setActividades(acts);
       setRegistros(regs);
