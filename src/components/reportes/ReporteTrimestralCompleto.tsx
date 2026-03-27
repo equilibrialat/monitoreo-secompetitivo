@@ -396,6 +396,8 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
             <p className="text-white/50 text-xs mt-1">Fecha de generación: {new Date().toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" })}</p>
           </div>
           <div className="flex gap-2 print:hidden">
+            <Button variant="secondary" size="sm" onClick={handleDocx}><FileDown className="h-4 w-4 mr-1" />Word</Button>
+            <Button variant="secondary" size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />PDF</Button>
             <Button variant="secondary" size="sm" onClick={handleCSV}><Download className="h-4 w-4 mr-1" />CSV</Button>
             <Button variant="ghost" size="sm" className="text-white hover:text-white/80" onClick={onClose}><X className="h-4 w-4" /></Button>
           </div>
