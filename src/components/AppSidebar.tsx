@@ -1,4 +1,4 @@
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { ChevronDown, Building2 } from "lucide-react";
 import { useRole, ROLE_LABELS, type AppRole } from "@/contexts/RoleContext";
 import { getNavForRole } from "@/config/navigation";
@@ -21,7 +21,13 @@ const ALL_ROLES = Object.keys(ROLE_LABELS) as AppRole[];
 export function AppSidebar() {
   const { role, setRole, entidadId, setEntidadId, entidades, loadingEntidades } = useRole();
   const location = useLocation();
+  const navigate = useNavigate();
   const navItems = getNavForRole(role);
+
+  const handleRoleChange = (r: AppRole) => {
+    setRole(r);
+    navigate("/dashboard");
+  };
 
   return (
     <aside className="flex flex-col w-[220px] min-h-screen bg-sidebar text-sidebar-foreground shrink-0">
@@ -45,7 +51,7 @@ export function AppSidebar() {
             {ALL_ROLES.map((r) => (
               <DropdownMenuItem
                 key={r}
-                onSelect={() => setRole(r)}
+                onSelect={() => handleRoleChange(r)}
                 className={r === role ? "font-semibold" : ""}
               >
                 {ROLE_LABELS[r]}
@@ -55,8 +61,8 @@ export function AppSidebar() {
         </DropdownMenu>
       </div>
 
-      {/* Entidad selector */}
-      {entidades.length > 0 && (
+      {/* Entidad selector - only for "entidad" role */}
+      {role === "entidad" && entidades.length > 0 && (
         <div className="px-3 pb-4">
           <Select
             value={entidadId ?? ""}
