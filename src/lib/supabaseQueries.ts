@@ -156,9 +156,10 @@ export async function fetchRegistroExistente(
 
 export async function saveRegistroMensual(
   registro: RegistroMensualInsert,
-  gastos: Omit<EjecucionFinancieraInsert, "registro_mensual_id">[]
+  gastos: Omit<EjecucionFinancieraInsert, "registro_mensual_id">[],
+  contextual?: ContextualData
 ): Promise<{ success: boolean; error?: string }> {
-  // 1. Upsert registro mensual (update if actividad_id+anio+mes exists)
+  // 1. Upsert registro mensual
   const { data: regData, error: regError } = await (supabase as any)
     .from("registros_mensuales")
     .upsert(registro, { onConflict: "actividad_id,anio,mes" })
@@ -170,27 +171,109 @@ export async function saveRegistroMensual(
     return { success: false, error: regError?.message ?? "Error al guardar registro" };
   }
 
-  // 2. Delete old gastos for this registro, then insert new ones
+  const regId = regData.id;
+  const entId = registro.entidad_id;
+  const actId = registro.actividad_id;
+
+  // 2. Delete old gastos, then insert new ones
+  await (supabase as any).from("ejecucion_financiera").delete().eq("registro_mensual_id", regId);
   if (gastos.length > 0) {
-    // Remove previous gastos for this registro
-    await (supabase as any)
-      .from("ejecucion_financiera")
-      .delete()
-      .eq("registro_mensual_id", regData.id);
-
-    const gastosWithId = gastos.map((g) => ({
-      ...g,
-      registro_mensual_id: regData.id,
-      entidad_id: registro.entidad_id,
-    }));
-
-    const { error: gastosError } = await (supabase as any)
-      .from("ejecucion_financiera")
-      .insert(gastosWithId);
-
+    const gastosWithId = gastos.map((g) => ({ ...g, registro_mensual_id: regId, entidad_id: entId }));
+    const { error: gastosError } = await (supabase as any).from("ejecucion_financiera").insert(gastosWithId);
     if (gastosError) {
       console.error("Error saving gastos:", gastosError);
       return { success: false, error: gastosError.message };
+    }
+  }
+
+  // 3. Save contextual indicators
+  if (contextual) {
+    // Capacitación
+    if (contextual.capacitacion && contextual.capacitacion.nombre_accion_formativa) {
+      // Delete previous
+      await (supabase as any).from("registro_capacitaciones").delete().eq("registro_mensual_id", regId);
+      const cap = contextual.capacitacion;
+      const { data: capData, error: capError } = await (supabase as any)
+        .from("registro_capacitaciones")
+        .insert({
+          registro_mensual_id: regId, actividad_id: actId, entidad_id: entId,
+          nombre_accion_formativa: cap.nombre_accion_formativa,
+          tipo_accion_formativa: cap.tipo_accion_formativa || null,
+          tema: cap.tema || null,
+          fecha_inicio: cap.fecha_inicio ? format(cap.fecha_inicio, "yyyy-MM-dd") : null,
+          fecha_fin: cap.fecha_fin ? format(cap.fecha_fin, "yyyy-MM-dd") : null,
+          departamento: cap.departamento || null,
+          modalidad: cap.modalidad || null,
+          total_participantes: cap.participantes.length,
+          participantes_masculino: cap.participantes.filter((p) => p.genero === "M").length,
+          participantes_femenino: cap.participantes.filter((p) => p.genero === "F").length,
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (!capError && capData && cap.participantes.length > 0) {
+        const parts = cap.participantes
+          .filter((p) => p.num_documento && p.apellidos && p.nombres)
+          .map((p) => ({
+            capacitacion_id: capData.id, entidad_id: entId,
+            num_documento: p.num_documento, apellidos: p.apellidos, nombres: p.nombres,
+            genero: p.genero || null, nombre_organizacion: p.nombre_organizacion || null,
+            aplico_aprendizaje: p.aplico_aprendizaje,
+          }));
+        if (parts.length > 0) {
+          await (supabase as any).from("participantes_capacitacion").insert(parts);
+        }
+      }
+    }
+
+    // Innovación
+    if (contextual.innovacion?.activo && contextual.innovacion.nombre_innovacion) {
+      await (supabase as any).from("registro_innovaciones").delete().eq("registro_mensual_id", regId);
+      const inn = contextual.innovacion;
+      await (supabase as any).from("registro_innovaciones").insert({
+        registro_mensual_id: regId, actividad_id: actId, entidad_id: entId,
+        nombre_innovacion: inn.nombre_innovacion,
+        optimizacion_recursos: inn.optimizacion_recursos,
+        optimizacion_procesos: inn.optimizacion_procesos,
+        tecnificacion_mecanizacion: inn.tecnificacion_mecanizacion,
+        digitalizacion_trazabilidad: inn.digitalizacion_trazabilidad,
+        sostenibilidad_certificaciones: inn.sostenibilidad_certificaciones,
+        valor_agregado_calidad: inn.valor_agregado_calidad,
+        ruc_organizacion: inn.ruc_organizacion || null,
+        nombre_organizacion: inn.nombre_organizacion || null,
+      });
+    }
+
+    // GEI
+    if (contextual.gei?.activo && contextual.gei.nombre_practica) {
+      await (supabase as any).from("registro_gei").delete().eq("registro_mensual_id", regId);
+      const gei = contextual.gei;
+      await (supabase as any).from("registro_gei").insert({
+        registro_mensual_id: regId, actividad_id: actId, entidad_id: entId,
+        tipo_accion: gei.tipo_accion || null,
+        nombre_practica: gei.nombre_practica,
+        categoria: gei.categoria || null,
+        etapa_implementacion: gei.etapa_implementacion || null,
+        ruc_organizacion: gei.ruc_organizacion || null,
+        nombre_organizacion: gei.nombre_organizacion || null,
+      });
+    }
+
+    // Nuevo producto
+    if (contextual.nuevo_producto?.activo && contextual.nuevo_producto.nombre_producto) {
+      await (supabase as any).from("registro_nuevos_productos").delete().eq("registro_mensual_id", regId);
+      const np = contextual.nuevo_producto;
+      await (supabase as any).from("registro_nuevos_productos").insert({
+        registro_mensual_id: regId, actividad_id: actId, entidad_id: entId,
+        nombre_producto: np.nombre_producto,
+        cadena_valor: np.cadena_valor || null,
+        transformacion_primario: np.transformacion_primario,
+        mejora_empaque: np.mejora_empaque,
+        diferenciacion_origen: np.diferenciacion_origen,
+        incorpora_innovacion: np.incorpora_innovacion,
+        ruc_organizacion: np.ruc_organizacion || null,
+        nombre_organizacion: np.nombre_organizacion || null,
+      });
     }
   }
 
