@@ -10,15 +10,25 @@ import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import DashboardFilters from "@/components/DashboardFilters";
 
 export default function DashboardDireccion() {
-  const { data: entidades, isLoading } = useDashboardData();
+  const { data: allEntidades, isLoading } = useDashboardData();
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
-  const { setEntidadId } = useRole();
+  const { setEntidadId, filters } = useRole();
+
+  // Apply filters
+  const entidades = (allEntidades || []).filter(e => {
+    if (filters.mecanismo === "mec_a" && e.mecanismo !== "A") return false;
+    if (filters.mecanismo === "mec_b" && e.mecanismo !== "B") return false;
+    if (filters.entidadFiltro && e.entidad_id !== filters.entidadFiltro) return false;
+    if (filters.region && e.region !== filters.region) return false;
+    return true;
+  });
 
   const handleAnalysis = async () => {
     if (!entidades?.length) return;
@@ -70,7 +80,7 @@ export default function DashboardDireccion() {
 
   if (isLoading) return <DashboardSkeleton />;
 
-  const all = entidades || [];
+  const all = entidades;
   const totalAct = all.reduce((s, e) => s + e.total_actividades, 0);
   const completadas = all.reduce((s, e) => s + e.actividades_completadas, 0);
   const totalPpto = all.reduce((s, e) => s + e.presupuesto_seco_total, 0);
@@ -79,7 +89,7 @@ export default function DashboardDireccion() {
   const avFinGlobal = totalPpto > 0 ? Math.round((totalEjec / totalPpto) * 100) : 0;
 
   const mecA = all.filter((e) => e.mecanismo === "A");
-  const mecB = all.filter((e) => e.mecanismo === "B");
+  const mecB = all.filter((e) => e.mecanismo !== "A");
   const avgOp = (arr: typeof all) => arr.length > 0 ? Math.round(arr.reduce((s, e) => s + (e.avance_operativo_promedio || 0), 0) / arr.length) : 0;
   const avgFin = (arr: typeof all) => arr.length > 0 ? Math.round(arr.reduce((s, e) => s + e.pct_ejecucion_seco, 0) / arr.length) : 0;
 
@@ -93,6 +103,8 @@ export default function DashboardDireccion() {
   return (
     <div>
       <Header title="Dashboard Ejecutivo" subtitle="Dirección" />
+
+      <DashboardFilters showMecanismo showEntidad showRegion showPeriodo />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <KpiCard label="Avance Operativo Global" value={`${avOpGlobal}%`} />
