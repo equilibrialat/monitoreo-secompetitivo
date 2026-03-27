@@ -178,9 +178,15 @@ export default function TramaFisicoFinanciera() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
         <CardTitle className="text-lg">Trama Físico-Financiera</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => exportCSV(filtered)}>
-          <Download className="h-4 w-4 mr-1" /> Exportar CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleConsistency} disabled={aiLoading}>
+            {aiLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
+            {aiLoading ? "Verificando..." : "🔍 Verificar consistencia"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => exportCSV(filtered)}>
+            <Download className="h-4 w-4 mr-1" /> Exportar CSV
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
