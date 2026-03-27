@@ -337,6 +337,41 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
                     />
                   </>
                 )}
+
+                {/* SECCIÓN D — SEGUIMIENTO Y COMPROMISOS */}
+                <Separator />
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    📋 D — Seguimiento y Compromisos
+                  </h3>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Limitaciones / dificultades encontradas</label>
+                    <textarea
+                      className="flex min-h-[70px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      placeholder="Describa las dificultades que afectaron el avance de esta actividad..."
+                      value={limitaciones}
+                      onChange={(e) => { setLimitaciones(e.target.value); markDirty(); }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Prioridades para el próximo mes</label>
+                    <textarea
+                      className="flex min-h-[70px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      placeholder="¿Qué planifica ejecutar el próximo mes en esta actividad?"
+                      value={prioridades}
+                      onChange={(e) => { setPrioridades(e.target.value); markDirty(); }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Compromisos asumidos</label>
+                    <textarea
+                      className="flex min-h-[70px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      placeholder="Acuerdos o compromisos de las reuniones de seguimiento..."
+                      value={compromisos}
+                      onChange={(e) => { setCompromisos(e.target.value); markDirty(); }}
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </ScrollArea>

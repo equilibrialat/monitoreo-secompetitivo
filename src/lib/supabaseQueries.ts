@@ -153,7 +153,7 @@ export async function fetchRegistroExistente(
 ): Promise<RegistroMensualExistente | null> {
   const { data, error } = await (supabase as any)
     .from("registros_mensuales")
-    .select("id, avance_valor, estado, descripcion_avance, fecha_ejecucion, estado_registro, observaciones_revision")
+    .select("id, avance_valor, estado, descripcion_avance, fecha_ejecucion, estado_registro, observaciones_revision, limitaciones, prioridades_proximo_mes, compromisos")
     .eq("actividad_id", actividadId)
     .eq("anio", anio)
     .eq("mes", mes)
