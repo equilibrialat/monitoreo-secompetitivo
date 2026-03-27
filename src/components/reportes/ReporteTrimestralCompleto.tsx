@@ -739,7 +739,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION 8 — INDICADORES CONTEXTUALES */}
         {(innovaciones.length > 0 || gei.length > 0 || nuevosProductos.length > 0 || normativo.length > 0) && (
           <>
-            <SectionTitle icon={Leaf} title="INDICADORES CONTEXTUALES" number={8} />
+            <SectionTitle icon={Leaf} title="INDICADORES CONTEXTUALES" number={9} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 space-y-4">
               {innovaciones.length > 0 && (
                 <div>
