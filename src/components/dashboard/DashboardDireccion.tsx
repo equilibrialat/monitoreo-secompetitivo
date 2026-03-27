@@ -11,6 +11,7 @@ import { useRole } from "@/contexts/RoleContext";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import DashboardFilters from "@/components/DashboardFilters";
+import { AprobacionTrimestral } from "./AprobacionTrimestral";
 
 export default function DashboardDireccion() {
   const { data: allEntidades, isLoading } = useDashboardData();
