@@ -174,6 +174,8 @@ export default function DashboardMonitoreo({
     <div className="space-y-6">
       <Header title={title} subtitle={subtitle || "Vista consolidada del programa SeCompetitivo"} />
 
+      <DashboardFilters showMecanismo showEntidad showRegion showPeriodo />
+
       {/* Review section */}
       <SeccionRevision
         title={reviewTitle} estadoFiltro={reviewEstado}
