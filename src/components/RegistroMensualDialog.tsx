@@ -12,7 +12,11 @@ import { SeccionIndicadoresContextuales } from "./registro/SeccionIndicadoresCon
 import { useRole } from "@/contexts/RoleContext";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import { saveRegistroMensual, fetchRegistroExistente } from "@/lib/supabaseQueries";
-import type { FuenteFinanciera, RegistroCapacitacion } from "@/types/registroMensual";
+import type { FuenteFinanciera, ContextualData } from "@/types/registroMensual";
+import {
+  createEmptyCapacitacion, createEmptyInnovacion,
+  createEmptyGei, createEmptyNuevoProducto,
+} from "@/types/registroMensual";
 
 interface RegistroMensualDialogProps {
   actividad: ActividadDB | null;
@@ -28,10 +32,14 @@ function buildFuentes(act: ActividadDB): FuenteFinanciera[] {
   ];
 }
 
-const EMPTY_CAPACITACION: RegistroCapacitacion = {
-  tema: "", num_participantes_hombres: 0, num_participantes_mujeres: 0,
-  horas_capacitacion: 0, lugar: "", fecha: undefined, metodologia: "",
-};
+function buildContextual(tags: string[]): ContextualData {
+  return {
+    capacitacion: tags.includes("capacitacion") ? createEmptyCapacitacion() : undefined,
+    innovacion: tags.includes("innovacion") ? createEmptyInnovacion() : undefined,
+    gei: tags.includes("gei") ? createEmptyGei() : undefined,
+    nuevo_producto: tags.includes("nuevo_producto") ? createEmptyNuevoProducto() : undefined,
+  };
+}
 
 export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMensualDialogProps) {
   const { entidadId } = useRole();
@@ -43,7 +51,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [descripcion, setDescripcion] = useState("");
   const [fechaEjecucion, setFechaEjecucion] = useState<Date | undefined>();
   const [fuentes, setFuentes] = useState<FuenteFinanciera[]>([]);
-  const [capacitacion, setCapacitacion] = useState<RegistroCapacitacion>({ ...EMPTY_CAPACITACION });
+  const [contextual, setContextual] = useState<ContextualData>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
@@ -53,16 +61,15 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   if (actividad && actividad.id !== lastActId) {
     setLastActId(actividad.id);
     setFuentes(buildFuentes(actividad));
+    setContextual(buildContextual(actividad.tags ?? []));
     setValorAvance(0);
     setEstado("");
     setDescripcion("");
     setFechaEjecucion(undefined);
-    setCapacitacion({ ...EMPTY_CAPACITACION });
     setIsEdit(false);
     setValidationErrors({});
   }
 
-  // Preload existing registro when activity or month/year changes
   const loadExisting = useCallback(async () => {
     if (!actividad) return;
     setLoading(true);
@@ -96,9 +103,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
     const errors: Record<string, string> = {};
     if (!draft) {
       if (valorAvance <= 0) errors.avance = "El valor de avance es obligatorio";
-      if (!estado) errors.estado = "Selecciona un estado";
     }
-    // Always require estado for any save
     if (!estado) errors.estado = "Selecciona un estado";
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -109,7 +114,6 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
       toast.error("Selecciona una entidad primero");
       return;
     }
-
     if (!validate(draft)) {
       toast.error("Completa los campos obligatorios");
       return;
@@ -140,16 +144,15 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
         descripcion_avance: descripcion,
         estado_registro: draft ? "borrador" : "enviado",
       },
-      allGastos
+      allGastos,
+      contextual
     );
 
     setSaving(false);
 
     if (result.success) {
       toast.success(
-        draft
-          ? (isEdit ? "Borrador actualizado" : "Borrador guardado exitosamente")
-          : "Registro enviado para revisión",
+        draft ? (isEdit ? "Borrador actualizado" : "Borrador guardado exitosamente") : "Registro enviado para revisión",
         { description: `${actividad.codigo} — ${actividad.nombre}` }
       );
       onClose();
@@ -192,12 +195,16 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
               />
               <Separator />
               <SeccionEjecucionFinanciera fuentes={fuentes} onFuentesChange={setFuentes} />
-              <Separator />
-              <SeccionIndicadoresContextuales
-                tags={actividad.tags ?? []}
-                capacitacion={capacitacion}
-                onCapacitacionChange={setCapacitacion}
-              />
+              {(actividad.tags ?? []).some((t) => ["capacitacion", "innovacion", "gei", "nuevo_producto"].includes(t)) && (
+                <>
+                  <Separator />
+                  <SeccionIndicadoresContextuales
+                    tags={actividad.tags ?? []}
+                    contextual={contextual}
+                    onContextualChange={setContextual}
+                  />
+                </>
+              )}
             </div>
           )}
         </ScrollArea>
