@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer } from "lucide-react";
+import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer, RefreshCw } from "lucide-react";
 import { downloadCSV, formatCurrency, TRIMESTRES_MESES, MESES_NOMBRE } from "@/lib/reportUtils";
 import { invokeAnalysis } from "@/lib/aiAnalysis";
 import { generateTrimestralDocx } from "@/lib/generateDocx";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 import type { EntidadOption } from "@/contexts/RoleContext";
 
 interface Props {
