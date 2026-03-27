@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+const MESES_NOMBRE: Record<number, string> = {
+  1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
+  7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic",
+};
+
 export interface DashboardEntidad {
   entidad_id: string;
   codigo: string;
@@ -22,6 +27,23 @@ export interface DashboardEntidad {
   desfases_tecnico_financiero: number;
   avance_operativo_promedio: number;
   pendientes_revision: number;
+  // New enriched fields
+  actividades_sin_iniciar: number;
+  registros_observados: number;
+  registros_borrador: number;
+  tiene_observado: boolean;
+  meses_sin_reporte: string[];
+  registros_en_revision: number;
+  observaciones_detalle: string[];
+}
+
+export interface SobregirosDetalle {
+  entidad_nombre: string;
+  actividad_codigo: string;
+  actividad_nombre: string;
+  presupuesto: number;
+  ejecutado: number;
+  pct: number;
 }
 
 async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
@@ -38,33 +60,87 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   const entidadIds = rows.map((d: any) => d.entidad_id).filter(Boolean);
   if (entidadIds.length === 0) return [];
 
-  // Avg avance per entidad
-  const { data: actData } = await (supabase as any)
-    .from("actividades")
-    .select("entidad_id, avance_operativo_pct")
-    .in("entidad_id", entidadIds);
+  // Parallel fetches
+  const [actResult, pendResult, regResult, noIniciadaResult] = await Promise.all([
+    // Avg avance per entidad
+    (supabase as any)
+      .from("actividades")
+      .select("entidad_id, avance_operativo_pct")
+      .in("entidad_id", entidadIds),
+    // Pending registros
+    (supabase as any)
+      .from("registros_mensuales")
+      .select("entidad_id")
+      .in("estado_registro", ["borrador", "en_revision_tecnica", "en_revision_financiera"]),
+    // All registros for T4 2025 status analysis
+    (supabase as any)
+      .from("registros_mensuales")
+      .select("entidad_id, mes, anio, estado_registro, observaciones_revision")
+      .eq("anio", 2025)
+      .in("mes", [10, 11, 12]),
+    // Activities sin iniciar
+    (supabase as any)
+      .from("actividades")
+      .select("entidad_id, estado_actual")
+      .in("entidad_id", entidadIds)
+      .eq("estado_actual", "no_iniciada"),
+  ]);
 
   const avanceMap = new Map<string, { sum: number; count: number }>();
-  for (const a of actData || []) {
+  for (const a of actResult.data || []) {
     const cur = avanceMap.get(a.entidad_id) || { sum: 0, count: 0 };
     cur.sum += Number(a.avance_operativo_pct || 0);
     cur.count += 1;
     avanceMap.set(a.entidad_id, cur);
   }
 
-  // Pending registros
-  const { data: pendData } = await (supabase as any)
-    .from("registros_mensuales")
-    .select("entidad_id")
-    .in("estado_registro", ["borrador", "en_revision_tecnica", "en_revision_financiera"]);
-
   const pendMap = new Map<string, number>();
-  for (const p of pendData || []) {
+  for (const p of pendResult.data || []) {
     pendMap.set(p.entidad_id, (pendMap.get(p.entidad_id) || 0) + 1);
+  }
+
+  // Registros analysis per entity
+  const regByEntity = new Map<string, any[]>();
+  for (const r of regResult.data || []) {
+    const arr = regByEntity.get(r.entidad_id) || [];
+    arr.push(r);
+    regByEntity.set(r.entidad_id, arr);
+  }
+
+  // No iniciada count per entity
+  const noIniciadaMap = new Map<string, number>();
+  for (const a of noIniciadaResult.data || []) {
+    noIniciadaMap.set(a.entidad_id, (noIniciadaMap.get(a.entidad_id) || 0) + 1);
   }
 
   return rows.map((d: any) => {
     const av = avanceMap.get(d.entidad_id);
+    const regs = regByEntity.get(d.entidad_id) || [];
+
+    // Missing months (T4 2025: 10, 11, 12)
+    const mesesConRegistro = new Set(regs.map((r: any) => r.mes));
+    const mesesFaltantes: string[] = [];
+    for (const m of [10, 11, 12]) {
+      if (!mesesConRegistro.has(m)) {
+        mesesFaltantes.push(`${MESES_NOMBRE[m]} 2025`);
+      }
+    }
+
+    // Observados
+    const observados = regs.filter((r: any) => r.estado_registro === "observado");
+    const borradores = regs.filter((r: any) => r.estado_registro === "borrador");
+    const enRevision = regs.filter((r: any) =>
+      ["enviado", "en_revision_tecnica", "en_revision_financiera", "en_revision_coordinador"].includes(r.estado_registro)
+    );
+
+    // Observaciones detail
+    const obsDetalle: string[] = [];
+    for (const o of observados) {
+      if (o.observaciones_revision) {
+        obsDetalle.push(`${MESES_NOMBRE[o.mes]}: ${o.observaciones_revision}`);
+      }
+    }
+
     return {
       entidad_id: d.entidad_id,
       codigo: d.codigo || "",
@@ -86,6 +162,14 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       desfases_tecnico_financiero: Number(d.desfases_tecnico_financiero || 0),
       avance_operativo_promedio: av ? Math.round(av.sum / av.count) : 0,
       pendientes_revision: pendMap.get(d.entidad_id) || 0,
+      // New fields
+      actividades_sin_iniciar: noIniciadaMap.get(d.entidad_id) || 0,
+      registros_observados: observados.length,
+      registros_borrador: borradores.length,
+      tiene_observado: observados.length > 0,
+      meses_sin_reporte: mesesFaltantes,
+      registros_en_revision: enRevision.length,
+      observaciones_detalle: obsDetalle,
     };
   });
 }
@@ -96,4 +180,33 @@ export function useDashboardData() {
     queryFn: fetchDashboardEntidades,
     staleTime: 30_000,
   });
+}
+
+export async function fetchSobregiroDetalle(): Promise<SobregirosDetalle[]> {
+  const { data: actividades } = await (supabase as any)
+    .from("actividades")
+    .select("id, codigo, nombre, entidad_id, presupuesto_seco, ejecutado_seco_acum");
+
+  if (!actividades) return [];
+
+  const { data: entidades } = await (supabase as any)
+    .from("entidades")
+    .select("id, nombre_corto");
+
+  const entMap = new Map((entidades || []).map((e: any) => [e.id, e.nombre_corto]));
+
+  return actividades
+    .filter((a: any) => {
+      const ppto = Number(a.presupuesto_seco || 0);
+      const ejec = Number(a.ejecutado_seco_acum || 0);
+      return ppto > 0 && ejec > ppto;
+    })
+    .map((a: any) => ({
+      entidad_nombre: entMap.get(a.entidad_id) || "",
+      actividad_codigo: a.codigo,
+      actividad_nombre: a.nombre,
+      presupuesto: Number(a.presupuesto_seco || 0),
+      ejecutado: Number(a.ejecutado_seco_acum || 0),
+      pct: Math.round((Number(a.ejecutado_seco_acum || 0) / Number(a.presupuesto_seco || 1)) * 100),
+    }));
 }

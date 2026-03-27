@@ -18,6 +18,7 @@ const REGISTRO_BADGE: Record<string, { label: string; icon: any; className: stri
   enviado: { label: "Enviado", icon: Send, className: "bg-primary/10 text-primary" },
   en_revision_tecnica: { label: "Rev. Técnica", icon: Clock, className: "bg-warning/15 text-warning" },
   en_revision_financiera: { label: "Rev. Financiera", icon: Clock, className: "bg-accent/15 text-accent-foreground" },
+  en_revision_coordinador: { label: "Rev. Coordinador", icon: Clock, className: "bg-primary/15 text-primary" },
   aprobado: { label: "Aprobado", icon: CheckCircle2, className: "bg-success/15 text-success" },
   observado: { label: "Observado", icon: AlertTriangle, className: "bg-destructive/15 text-destructive" },
 };
