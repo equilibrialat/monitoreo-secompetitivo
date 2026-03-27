@@ -38,7 +38,7 @@ export async function fetchActividadesByEntidad(entidadId: string): Promise<Acti
       id, codigo, nombre, meta_valor, meta_unidad_medida,
       presupuesto_seco, presupuesto_contrapartida_monetaria, presupuesto_contrapartida_no_monetaria,
       ejecutado_seco_acum, ejecutado_cm_acum, ejecutado_cnm_acum,
-      avance_operativo_pct, estado_actual, tags,
+      avance_operativo_pct, estado_actual, tags, indicadores_vinculados,
       producto_id, entidad_id,
       productos!inner (
         codigo, nombre,
