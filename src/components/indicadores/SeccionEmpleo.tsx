@@ -38,6 +38,7 @@ interface Props {
   periodo: string;
   cadenaValor: string;
   onSaved: () => void;
+  onDirty?: () => void;
 }
 
 function mapRowToDb(row: any, entidadId: string, anio: number, periodo: string, cadenaValor: string) {
@@ -79,7 +80,7 @@ function mapRowToDb(row: any, entidadId: string, anio: number, periodo: string, 
   return base;
 }
 
-export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }: Props) {
+export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved, onDirty }: Props) {
   const [rows, setRows] = useState<EmpleoRow[]>([]);
   const [ingresos, setIngresos] = useState<IngresoData>({ ingreso_promedio_lb: 0, ingreso_promedio_intermedia: 0, ingreso_promedio_final: 0 });
   const [saving, setSaving] = useState(false);
@@ -132,6 +133,7 @@ export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved }
       }
       return copy;
     });
+    onDirty?.();
   };
 
   const handleSave = async () => {

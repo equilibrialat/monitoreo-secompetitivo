@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FinanceBar } from "@/components/FinanceBar";
-import { ClipboardPlus, CheckCircle2, Clock, Send, AlertTriangle } from "lucide-react";
+import { ClipboardPlus, CheckCircle2, Clock, Send, AlertTriangle, Minus } from "lucide-react";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import type { RegistroPendiente } from "@/lib/registroAprobacion";
 
@@ -14,6 +14,7 @@ const ESTADO_CONFIG: Record<string, { label: string; className: string }> = {
 };
 
 const REGISTRO_BADGE: Record<string, { label: string; icon: any; className: string }> = {
+  borrador: { label: "Borrador", icon: Minus, className: "bg-warning/15 text-warning" },
   enviado: { label: "Enviado", icon: Send, className: "bg-primary/10 text-primary" },
   en_revision_tecnica: { label: "Rev. Técnica", icon: Clock, className: "bg-warning/15 text-warning" },
   en_revision_financiera: { label: "Rev. Financiera", icon: Clock, className: "bg-accent/15 text-accent-foreground" },
@@ -32,9 +33,10 @@ interface ActivityCardProps {
   actividad: ActividadDB;
   onRegistrar?: (actividad: ActividadDB) => void;
   ultimoRegistro?: RegistroPendiente;
+  currentMonthStatus?: string | null;
 }
 
-export function ActivityCard({ actividad, onRegistrar, ultimoRegistro }: ActivityCardProps) {
+export function ActivityCard({ actividad, onRegistrar, ultimoRegistro, currentMonthStatus }: ActivityCardProps) {
   const estado = ESTADO_CONFIG[actividad.estado_actual] ?? ESTADO_CONFIG.no_iniciada;
   const semaforoColor = getSemaforoColor(actividad.avance_operativo_pct);
 
@@ -45,6 +47,11 @@ export function ActivityCard({ actividad, onRegistrar, ultimoRegistro }: Activit
     ultimoRegistro?.estado_registro === "en_revision_financiera" ||
     isAprobado;
 
+  // Current month completeness badge
+  const monthBadge = currentMonthStatus
+    ? REGISTRO_BADGE[currentMonthStatus]
+    : { label: "Sin registro", icon: Minus, className: "bg-muted text-muted-foreground" };
+
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -54,7 +61,12 @@ export function ActivityCard({ actividad, onRegistrar, ultimoRegistro }: Activit
         </div>
         <div className="flex flex-col items-end gap-1">
           <Badge className={`shrink-0 text-xs ${estado.className}`}>{estado.label}</Badge>
-          {regBadge && (
+          {/* Current month status badge */}
+          <Badge className={`shrink-0 text-[10px] ${monthBadge.className}`}>
+            <monthBadge.icon className="h-3 w-3 mr-0.5" />
+            {monthBadge.label}
+          </Badge>
+          {regBadge && ultimoRegistro?.estado_registro !== currentMonthStatus && (
             <Badge className={`shrink-0 text-[10px] ${regBadge.className}`}>
               <regBadge.icon className="h-3 w-3 mr-0.5" />
               {regBadge.label}

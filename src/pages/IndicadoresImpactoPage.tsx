@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useRole } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -13,6 +13,9 @@ import { SeccionComercializacion } from "@/components/indicadores/SeccionComerci
 import { SeccionGobernanza } from "@/components/indicadores/SeccionGobernanza";
 import { SeccionVentasTurismo } from "@/components/indicadores/SeccionVentasTurismo";
 import { SeccionAtractivos } from "@/components/indicadores/SeccionAtractivos";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useAutoSave } from "@/hooks/useAutoSave";
 
 const currentYear = new Date().getFullYear();
 const ANIOS = [currentYear - 1, currentYear, currentYear + 1];
@@ -21,6 +24,7 @@ interface SectionDef {
   key: string;
   label: string;
   component: React.ReactNode;
+  saveRef?: React.RefObject<(() => Promise<void>) | null>;
 }
 
 export default function IndicadoresImpactoPage() {
@@ -29,14 +33,31 @@ export default function IndicadoresImpactoPage() {
   const [semestre, setSemestre] = useState(() => new Date().getMonth() < 6 ? "S1" : "S2");
   const [currentSection, setCurrentSection] = useState(0);
   const [savedSections, setSavedSections] = useState<Set<string>>(new Set());
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
 
   const entidad = entidades.find((e) => e.id === entidadId);
   const tipoEntidad = entidad?.tipo_entidad ?? "";
   const cadenaValor = entidad?.cadena_valor ?? "";
   const periodo = semestre;
 
+  // Auto-save tracking
+  const sectionSaveRef = useRef<(() => Promise<void>) | null>(null);
+
+  const doAutoSave = useCallback(async () => {
+    if (sectionSaveRef.current) {
+      await sectionSaveRef.current();
+    }
+  }, []);
+
+  const { isDirty, isSaving: autoSaving, lastSaved, markDirty, markClean } = useAutoSave({
+    onSave: doAutoSave,
+    enabled: !!entidadId && tipoEntidad !== "mec_a",
+    interval: 30000,
+  });
+
   const markSaved = (key: string) => {
     setSavedSections((prev) => new Set(prev).add(key));
+    markClean();
   };
 
   const sections: SectionDef[] = useMemo(() => {
@@ -51,7 +72,7 @@ export default function IndicadoresImpactoPage() {
 
     if (tipoEntidad === "mec_b_turismo") {
       return [
-        { key: "empleo", label: "Empleo", component: <SeccionEmpleo {...common} onSaved={() => markSaved("empleo")} /> },
+        { key: "empleo", label: "Empleo", component: <SeccionEmpleo {...common} onSaved={() => markSaved("empleo")} onDirty={markDirty} /> },
         { key: "ventas_turismo", label: "Ventas Turismo", component: <SeccionVentasTurismo entidadId={entidadId!} anio={anio} periodo={periodo} onSaved={() => markSaved("ventas_turismo")} /> },
         { key: "atractivos", label: "Atractivos", component: <SeccionAtractivos entidadId={entidadId!} anio={anio} periodo={periodo} onSaved={() => markSaved("atractivos")} /> },
         { key: "gobernanza", label: "Gobernanza", component: <SeccionGobernanza {...common} sectionNumber={4} onSaved={() => markSaved("gobernanza")} /> },
@@ -60,7 +81,7 @@ export default function IndicadoresImpactoPage() {
 
     // mec_b_agro (default for B entities)
     return [
-      { key: "empleo", label: "Empleo", component: <SeccionEmpleo {...common} onSaved={() => markSaved("empleo")} /> },
+      { key: "empleo", label: "Empleo", component: <SeccionEmpleo {...common} onSaved={() => markSaved("empleo")} onDirty={markDirty} /> },
       { key: "productividad", label: "Productividad", component: <SeccionProductividad entidadId={entidadId!} anio={anio} cadenaValor={cadenaValor} onSaved={() => markSaved("productividad")} /> },
       { key: "comercializacion", label: "Comercialización", component: <SeccionComercializacion entidadId={entidadId!} anio={anio} cadenaValor={cadenaValor} onSaved={() => markSaved("comercializacion")} /> },
       { key: "gobernanza", label: "Gobernanza", component: <SeccionGobernanza {...common} sectionNumber={4} onSaved={() => markSaved("gobernanza")} /> },
@@ -94,6 +115,14 @@ export default function IndicadoresImpactoPage() {
   const progressPct = ((currentSection + 1) / totalSections) * 100;
   const isLast = currentSection === totalSections - 1;
 
+  const handleSectionChange = (newSection: number) => {
+    // Auto-save current section before switching (fire and forget)
+    if (isDirty && sectionSaveRef.current) {
+      sectionSaveRef.current();
+    }
+    setCurrentSection(newSection);
+  };
+
   const handleEnviar = async () => {
     const tables = tipoEntidad === "mec_b_turismo"
       ? ["reporte_empleo", "reporte_turismo_ventas", "reporte_turismo_atractivos", "reporte_gobernanza"]
@@ -102,7 +131,7 @@ export default function IndicadoresImpactoPage() {
     for (const table of tables) {
       await updateEstadoRegistro(table, entidadId!, anio, periodo, "enviado");
     }
-    toast.success("Reporte completo enviado para revisión");
+    toast.success("✅ Reporte completo enviado para revisión");
   };
 
   return (
@@ -116,6 +145,9 @@ export default function IndicadoresImpactoPage() {
           {entidad?.nombre_corto} · {cadenaValor}
         </p>
       </div>
+
+      {/* Auto-save indicator */}
+      <AutoSaveIndicator isSaving={autoSaving} lastSaved={lastSaved} isDirty={isDirty} />
 
       {/* Period selectors */}
       <div className="flex items-center gap-3">
@@ -150,7 +182,7 @@ export default function IndicadoresImpactoPage() {
                 key={s.key}
                 variant={i === currentSection ? "default" : savedSections.has(s.key) ? "secondary" : "outline"}
                 className="text-[9px] cursor-pointer"
-                onClick={() => setCurrentSection(i)}
+                onClick={() => handleSectionChange(i)}
               >
                 {s.label}
               </Badge>
@@ -170,24 +202,34 @@ export default function IndicadoresImpactoPage() {
           size="sm"
           className="text-xs"
           disabled={currentSection === 0}
-          onClick={() => setCurrentSection((p) => p - 1)}
+          onClick={() => handleSectionChange(currentSection - 1)}
         >
           <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Anterior
         </Button>
 
         <div className="flex gap-2">
           {!isLast && (
-            <Button size="sm" className="text-xs" onClick={() => setCurrentSection((p) => p + 1)}>
+            <Button size="sm" className="text-xs" onClick={() => handleSectionChange(currentSection + 1)}>
               Siguiente <ChevronRight className="h-3.5 w-3.5 ml-1" />
             </Button>
           )}
           {isLast && (
-            <Button size="sm" className="text-xs bg-success text-success-foreground hover:bg-success/90" onClick={handleEnviar}>
+            <Button size="sm" className="text-xs bg-success text-success-foreground hover:bg-success/90" onClick={() => setShowSendConfirm(true)}>
               <Send className="h-3.5 w-3.5 mr-1.5" /> Enviar reporte completo
             </Button>
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showSendConfirm}
+        onCancel={() => setShowSendConfirm(false)}
+        onConfirm={() => { setShowSendConfirm(false); handleEnviar(); }}
+        title="Confirmar envío de reporte"
+        description="Una vez enviado no podrás editar este reporte hasta que sea devuelto. ¿Confirmas el envío?"
+        confirmLabel="Sí, enviar reporte"
+        cancelLabel="Cancelar"
+      />
     </div>
   );
 }

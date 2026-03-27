@@ -6,7 +6,7 @@ import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroApr
 import { TreeBranch } from "@/components/TreeBranch";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle2, Clock, Send } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 export default function MisActividades() {
   const { entidadId } = useRole();
@@ -44,6 +44,17 @@ export default function MisActividades() {
     }
   }
 
+  // Current month status map
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const currentMonthStatusMap = new Map<string, string | null>();
+  for (const act of actividades) {
+    const reg = registros.find(
+      (r) => r.actividad_id === act.id && r.anio === currentYear && r.mes === currentMonth
+    );
+    currentMonthStatusMap.set(act.id, reg?.estado_registro ?? null);
+  }
+
   // Observados
   const observados = registros.filter((r) => r.estado_registro === "observado");
 
@@ -66,7 +77,7 @@ export default function MisActividades() {
             <AlertTriangle className="h-4 w-4" /> Registros Observados
           </h2>
           {observados.map((r) => (
-            <div key={r.id} className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
+            <div key={r.id} className="rounded-md border-2 border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono text-xs text-muted-foreground">{r.actividad_codigo}</span>
                 <span className="font-medium">{r.actividad_nombre}</span>
@@ -103,6 +114,7 @@ export default function MisActividades() {
               defaultOpen
               onRegistrar={(act) => setSelectedActividad(act)}
               registroMap={registroMap}
+              currentMonthStatusMap={currentMonthStatusMap}
             />
           ))}
         </div>
@@ -113,7 +125,6 @@ export default function MisActividades() {
         open={!!selectedActividad}
         onClose={() => {
           setSelectedActividad(null);
-          // Refresh registros
           if (entidadId) {
             fetchRegistrosEntidad(entidadId).then(setRegistros);
           }
