@@ -86,6 +86,12 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
   };
 
   const handleSave = async () => {
+    for (const r of rows) {
+      if (r.num_productores > 0 && r.num_productores !== r.num_productores_masculino + r.num_productores_femenino) {
+        toast.error("Validación", { description: `Total productores debe ser = Hombres + Mujeres en "${r.organizacion_productores}"` });
+        return;
+      }
+    }
     setSaving(true);
     await deleteRows("reporte_productividad", deletedIds);
     const dbRows = rows.filter((r) => r.organizacion_productores.trim()).map((r) => {
@@ -98,7 +104,8 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
         organizacion_productores: r.organizacion_productores,
         region: r.region,
         num_productores: r.num_productores,
-        genero_productores: r.genero_productores,
+        num_productores_masculino: r.num_productores_masculino,
+        num_productores_femenino: r.num_productores_femenino,
         superficie_has: r.superficie_has,
         produccion_campo_tn: r.produccion_campo_tn,
         productividad_tn_ha: c.productividad,
