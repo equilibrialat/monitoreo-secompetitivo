@@ -23,6 +23,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 export interface EntidadOption {
   id: string;
   nombre_corto: string;
+  tipo_entidad: string;
+  cadena_valor: string | null;
 }
 
 interface RoleContextValue {
@@ -47,7 +49,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       setLoadingEntidades(true);
       const { data, error } = await (supabase as any)
         .from("entidades")
-        .select("id, nombre_corto")
+        .select("id, nombre_corto, tipo_entidad, cadena_valor")
         .order("nombre_corto");
 
       if (!error && data && data.length > 0) {
