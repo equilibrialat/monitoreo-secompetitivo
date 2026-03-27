@@ -784,7 +784,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION 9 — CONTRATOS */}
         {contratos.length > 0 && (
           <>
-            <SectionTitle icon={Briefcase} title="CONTRATOS VIGENTES" number={9} />
+            <SectionTitle icon={Briefcase} title="CONTRATOS VIGENTES" number={10} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
               <Table>
                 <TableHeader>
