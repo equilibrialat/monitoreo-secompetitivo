@@ -186,6 +186,13 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
             </div>
           ) : (
             <div className="py-4 space-y-6">
+              {observaciones && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3">
+                  <p className="text-xs font-semibold text-destructive mb-1">⚠️ Observaciones del revisor:</p>
+                  <p className="text-xs text-destructive/80 italic">"{observaciones}"</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Corrige y vuelve a enviar.</p>
+                </div>
+              )}
               <SeccionAvanceOperativo
                 mes={mes} anio={anio} valorAvance={valorAvance} estado={estado}
                 descripcion={descripcion} fechaEjecucion={fechaEjecucion}
