@@ -131,6 +131,19 @@ export default function MisActividades() {
           <p className="text-xs text-muted-foreground mt-1">Selecciona una entidad en el menú lateral.</p>
         </div>
       ) : (
+        {/* Mapa del Marco Lógico */}
+        {indicadores.length > 0 && (
+          <div className="mb-6 border rounded-lg p-4 bg-card">
+            <h2 className="text-sm font-semibold text-foreground mb-3">📊 Mapa del Marco Lógico</h2>
+            <MapaMarcoLogico
+              indicadores={indicadores}
+              actividades={actividades}
+              grouped={grouped}
+              compact
+            />
+          </div>
+        )}
+
         <div className="space-y-2">
           {tree.map((node, i) => (
             <TreeBranch
