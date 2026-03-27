@@ -15,6 +15,8 @@ interface IndicadorMin {
   nombre: string;
   meta: number | null;
   linea_base: number | null;
+  nivel: string;
+  unidad_medida: string | null;
 }
 
 export default function MisActividades() {
