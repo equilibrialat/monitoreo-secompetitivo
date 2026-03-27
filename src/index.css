@@ -68,3 +68,39 @@
     font-family: var(--font-sans);
   }
 }
+
+/* Mobile-first responsive utilities */
+@layer utilities {
+  .table-responsive {
+    @apply overflow-x-auto -mx-4 px-4;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-responsive::after {
+    content: '';
+    @apply block text-center text-xs text-muted-foreground py-1;
+  }
+}
+
+/* Mobile touch target and font minimums */
+@media (max-width: 767px) {
+  /* Minimum font size */
+  body {
+    font-size: 14px;
+  }
+
+  /* Increase button padding for touch */
+  button, [role="button"], a[class*="btn"], .min-touch {
+    min-height: 40px;
+  }
+
+  /* Full-width selects on mobile */
+  [role="combobox"] {
+    min-height: 44px;
+  }
+
+  /* Dialog takes full width */
+  [role="alertdialog"] > div {
+    max-width: calc(100vw - 2rem) !important;
+  }
+}
