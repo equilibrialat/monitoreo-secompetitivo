@@ -3,6 +3,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, Clock, TrendingDown } from "lucide-react";
 import { useDashboardData, type DashboardEntidad } from "@/hooks/useDashboardData";
 import { Header, KpiCard, MecanismoBadge, Semaforo, fmt, DashboardSkeleton } from "./DashboardEntidad";
+import { SeccionRevision } from "./SeccionRevision";
 
 interface Props {
   filterFn?: (e: DashboardEntidad) => boolean;
