@@ -56,6 +56,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [loading, setLoading] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [acumuladoAnterior, setAcumuladoAnterior] = useState(0);
   const [observaciones, setObservaciones] = useState<string | null>(null);
   const [lastActId, setLastActId] = useState<string | null>(null);
   if (actividad && actividad.id !== lastActId) {
