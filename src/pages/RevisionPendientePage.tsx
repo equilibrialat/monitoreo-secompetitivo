@@ -1,5 +1,6 @@
 import { useRole } from "@/contexts/RoleContext";
 import { SeccionRevision } from "@/components/dashboard/SeccionRevision";
+import { ReunionesSeguimiento } from "@/components/ReunionesSeguimiento";
 import type { RegistroPendiente } from "@/lib/registroAprobacion";
 
 const ROLE_CONFIG: Record<string, {
@@ -8,14 +9,15 @@ const ROLE_CONFIG: Record<string, {
   estadoAprobar: string;
   labelAprobar: string;
   filterFn?: (r: RegistroPendiente) => boolean;
+  showReuniones?: boolean;
 }> = {
   coordinador_regional: {
     title: "Revisión Pendiente — Coordinador Regional",
     estadoFiltro: "enviado",
     estadoAprobar: "en_revision_tecnica",
     labelAprobar: "Aprobar (→ Rev. Técnica)",
-    // Coordinadores regionales ven AMBOS mecanismos de su región (no solo Mec B)
     filterFn: (r) => r.region !== "Nacional",
+    showReuniones: true,
   },
   coordinador_cadenas: {
     title: "Revisión Pendiente — Cadenas de Valor (Mec B)",
@@ -23,13 +25,13 @@ const ROLE_CONFIG: Record<string, {
     estadoAprobar: "en_revision_tecnica",
     labelAprobar: "Aprobar (→ Rev. Técnica)",
     filterFn: (r) => r.mecanismo === "B",
+    showReuniones: true,
   },
   asesora_politicas: {
     title: "Revisión Pendiente — Políticas Públicas (Mec A)",
     estadoFiltro: "enviado",
     estadoAprobar: "en_revision_tecnica",
     labelAprobar: "Aprobar (→ Rev. Técnica)",
-    // Claudia ve solo Mec A (tanto nacionales directos como los que pasaron por coordinador regional)
     filterFn: (r) => r.mecanismo === "A",
   },
   monitoreo: {
@@ -64,6 +66,7 @@ export default function RevisionPendientePage() {
         labelAprobar={config.labelAprobar}
         filterFn={config.filterFn}
       />
+      {config.showReuniones && <ReunionesSeguimiento />}
     </div>
   );
 }
