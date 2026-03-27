@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase } from "lucide-react";
+import { Download, X, Copy, Sparkles, Loader2, Check, Calendar, DollarSign, BarChart3, FileText, Users, Leaf, Package, Scale, Briefcase, FileDown, Printer } from "lucide-react";
 import { downloadCSV, formatCurrency, TRIMESTRES_MESES, MESES_NOMBRE } from "@/lib/reportUtils";
 import { invokeAnalysis } from "@/lib/aiAnalysis";
+import { generateTrimestralDocx } from "@/lib/generateDocx";
 import { toast } from "sonner";
 import type { EntidadOption } from "@/contexts/RoleContext";
 
@@ -262,6 +263,28 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
     downloadCSV(rows, `reporte_trimestral_${entidadNombre}_${trimestre}_${anio}.csv`);
   }
 
+  async function handleDocx() {
+    toast.info("Generando documento Word...");
+    try {
+      await generateTrimestralDocx({
+        entidadNombre, entidad, trimestre, anio, mesLabels, meses,
+        actividades, registros, gastos, capacitaciones, innovaciones, gei,
+        nuevosProductos, normativo, contratos, desembolsos, aiSummary,
+        actConAvance, actCulminadas, totalSeco, totalCM, totalCNM,
+        totalPresupuestoSeco, totalEjecAcumSeco, pctEjecTotal,
+        regByActMes, grouped, gastosByActFuente, capByAct,
+      });
+      toast.success("Documento Word descargado");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al generar el documento");
+    }
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
   const noData = registros.length === 0 && !loading;
 
   if (loading) {
@@ -373,6 +396,8 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
             <p className="text-white/50 text-xs mt-1">Fecha de generación: {new Date().toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" })}</p>
           </div>
           <div className="flex gap-2 print:hidden">
+            <Button variant="secondary" size="sm" onClick={handleDocx}><FileDown className="h-4 w-4 mr-1" />Word</Button>
+            <Button variant="secondary" size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />PDF</Button>
             <Button variant="secondary" size="sm" onClick={handleCSV}><Download className="h-4 w-4 mr-1" />CSV</Button>
             <Button variant="ghost" size="sm" className="text-white hover:text-white/80" onClick={onClose}><X className="h-4 w-4" /></Button>
           </div>
@@ -759,7 +784,9 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* FOOTER */}
         <div className="flex items-center justify-between pt-6 border-t print:hidden">
           <p className="text-xs text-muted-foreground">Generado automáticamente por el Sistema de Monitoreo SeCompetitivo</p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" onClick={handleDocx}><FileDown className="h-4 w-4 mr-1" />Descargar Word</Button>
+            <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />Descargar PDF</Button>
             <Button variant="outline" size="sm" onClick={handleCSV}><Download className="h-4 w-4 mr-1" />Descargar CSV</Button>
             {aiSummary && <Button variant="outline" size="sm" onClick={handleCopySummary}><Copy className="h-4 w-4 mr-1" />Copiar resumen</Button>}
             <Button variant="outline" size="sm" onClick={handleAI} disabled={aiLoading}>
