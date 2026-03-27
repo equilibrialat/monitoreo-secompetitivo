@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole =
   | "entidad"
@@ -19,17 +20,49 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   direccion: "Dirección",
 };
 
+export interface EntidadOption {
+  id: string;
+  nombre_corto: string;
+}
+
 interface RoleContextValue {
   role: AppRole;
   setRole: (r: AppRole) => void;
+  entidadId: string | null;
+  setEntidadId: (id: string | null) => void;
+  entidades: EntidadOption[];
+  loadingEntidades: boolean;
 }
 
 const RoleContext = createContext<RoleContextValue | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole>("entidad");
+  const [entidadId, setEntidadId] = useState<string | null>(null);
+  const [entidades, setEntidades] = useState<EntidadOption[]>([]);
+  const [loadingEntidades, setLoadingEntidades] = useState(true);
+
+  useEffect(() => {
+    async function fetchEntidades() {
+      setLoadingEntidades(true);
+      const { data, error } = await supabase
+        .from("entidades")
+        .select("id, nombre_corto")
+        .order("nombre_corto");
+
+      if (!error && data && data.length > 0) {
+        setEntidades(data as EntidadOption[]);
+        if (!entidadId) setEntidadId((data as EntidadOption[])[0].id);
+      }
+      setLoadingEntidades(false);
+    }
+    fetchEntidades();
+  }, []);
+
   return (
-    <RoleContext.Provider value={{ role, setRole }}>
+    <RoleContext.Provider
+      value={{ role, setRole, entidadId, setEntidadId, entidades, loadingEntidades }}
+    >
       {children}
     </RoleContext.Provider>
   );
