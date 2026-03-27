@@ -25,7 +25,7 @@ interface ActivityCardProps {
 }
 
 export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
-  const estado = ESTADO_CONFIG[actividad.estado_actual] ?? ESTADO_CONFIG.pendiente;
+  const estado = ESTADO_CONFIG[actividad.estado_actual] ?? ESTADO_CONFIG.no_iniciada;
   const semaforoColor = getSemaforoColor(actividad.avance_operativo_pct);
 
   return (
