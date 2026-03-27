@@ -824,7 +824,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION 10 — DESEMBOLSOS */}
         {desembolsos.length > 0 && (
           <>
-            <SectionTitle icon={Scale} title="ESTADO DE DESEMBOLSOS" number={10} />
+            <SectionTitle icon={Scale} title="ESTADO DE DESEMBOLSOS" number={11} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
               <Table>
                 <TableHeader>
