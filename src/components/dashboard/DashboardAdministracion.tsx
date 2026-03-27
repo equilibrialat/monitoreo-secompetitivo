@@ -19,6 +19,14 @@ export default function DashboardAdministracion() {
     <div>
       <Header title="Dashboard Financiero" subtitle="Administración" />
 
+      {/* Financial review section */}
+      <SeccionRevision
+        title="Revisión Financiera Pendiente"
+        estadoFiltro="en_revision_financiera"
+        estadoAprobar="aprobado"
+        labelAprobar="Aprobar (Final)"
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <KpiCard label="Total Ejecutado SECO" value={`USD ${fmt(totalEjecutado)}`} sub={`de USD ${fmt(totalPresupuesto)}`} />
         <KpiCard label="% Ejecución Global" value={totalPresupuesto > 0 ? `${Math.round((totalEjecutado / totalPresupuesto) * 100)}%` : "0%"} />
