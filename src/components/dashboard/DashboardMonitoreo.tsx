@@ -373,9 +373,28 @@ export default function DashboardMonitoreo({
                     </div>
                     <MecanismoBadge mec={ent.mecanismo} />
                   </div>
-                  <div className="flex gap-1.5 mt-1">
+                  {/* Status badges */}
+                  <div className="flex flex-wrap gap-1 mt-1">
                     {ent.cadena_valor && <Badge variant="outline" className="text-[9px] px-1">{ent.cadena_valor}</Badge>}
                     {ent.region && <Badge variant="outline" className="text-[9px] px-1">{ent.region}</Badge>}
+                    {ent.sobregiros_seco > 0 && (
+                      <Badge variant="destructive" className="text-[9px] px-1">🔴 Sobregiro</Badge>
+                    )}
+                    {ent.tiene_observado && (
+                      <Badge className="text-[9px] px-1 bg-orange-500/15 text-orange-600">⚠ Observado</Badge>
+                    )}
+                    {ent.actividades_sin_iniciar > 0 && (
+                      <Badge className="text-[9px] px-1 bg-warning/15 text-warning">{ent.actividades_sin_iniciar} sin iniciar</Badge>
+                    )}
+                    {ent.meses_sin_reporte.length > 0 && (
+                      <Badge className="text-[9px] px-1 bg-destructive/10 text-destructive">{ent.meses_sin_reporte.join(", ")} sin reportar</Badge>
+                    )}
+                    {ent.registros_borrador > 0 && (
+                      <Badge className="text-[9px] px-1 bg-muted text-muted-foreground">{ent.registros_borrador} borrador(es)</Badge>
+                    )}
+                    {ent.registros_en_revision > 0 && (
+                      <Badge className="text-[9px] px-1 bg-primary/10 text-primary">{ent.registros_en_revision} en revisión</Badge>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -417,7 +436,7 @@ export default function DashboardMonitoreo({
                   <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1 border-t">
                     <span>{ent.actividades_completadas}/{ent.total_actividades} actividades</span>
                     {(ent.pendientes_revision ?? 0) > 0 && (
-                      <span className="text-yellow-600 flex items-center gap-1"><Clock className="h-3 w-3" />{ent.pendientes_revision} pend.</span>
+                      <span className="flex items-center gap-1 text-warning"><Clock className="h-3 w-3" />{ent.pendientes_revision} pend.</span>
                     )}
                     {ent.sobregiros_seco > 0 && (
                       <Badge variant="destructive" className="text-[9px]">{ent.sobregiros_seco} sobregiro(s)</Badge>
