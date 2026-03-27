@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Sparkles, Loader2 } from "lucide-react";
-import { invocarAnalisis } from "@/lib/aiAnalysis";
+import { invokeAnalysis } from "@/lib/aiAnalysis";
 import {
   PeriodSelector, usePeriodSelector, Semaforo, EmptyState, DownloadButton,
   Card, CardContent, CardHeader, CardTitle, Badge, Button,
