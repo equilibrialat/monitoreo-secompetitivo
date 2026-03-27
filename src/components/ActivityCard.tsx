@@ -5,10 +5,11 @@ import { ClipboardPlus } from "lucide-react";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 
 const ESTADO_CONFIG: Record<string, { label: string; className: string }> = {
-  pendiente: { label: "Pendiente", className: "bg-muted text-muted-foreground" },
-  en_ejecucion: { label: "En ejecución", className: "bg-primary/15 text-primary" },
-  atrasado: { label: "Atrasado", className: "bg-destructive/15 text-destructive" },
-  completado: { label: "Completado", className: "bg-success/15 text-success" },
+  no_iniciada: { label: "No iniciada", className: "bg-muted text-muted-foreground" },
+  iniciado_1_35: { label: "Iniciado (1-35%)", className: "bg-warning/15 text-warning" },
+  en_proceso_36_65: { label: "En proceso (36-65%)", className: "bg-primary/15 text-primary" },
+  proceso_avanzado_66_99: { label: "Avanzado (66-99%)", className: "bg-success/15 text-success" },
+  culminado_100: { label: "Culminado", className: "bg-success/20 text-success font-medium" },
 };
 
 function getSemaforoColor(avance: number): string {
