@@ -135,7 +135,9 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
               <TableRow>
                 <TableHead className="text-[10px]">Organización</TableHead>
                 <TableHead className="text-[10px]">Región</TableHead>
-                <TableHead className="text-[10px] text-right">Productores</TableHead>
+                <TableHead className="text-[10px] text-right">Hombres</TableHead>
+                <TableHead className="text-[10px] text-right">Mujeres</TableHead>
+                <TableHead className="text-[10px] text-right">Total Prod.</TableHead>
                 <TableHead className="text-[10px] text-right">Sup. (ha)</TableHead>
                 <TableHead className="text-[10px] text-right">Prod. (TN)</TableHead>
                 <TableHead className="text-[10px] text-right">TN/ha</TableHead>
@@ -148,11 +150,14 @@ export function SeccionProductividad({ entidadId, anio, cadenaValor, onSaved }: 
             <TableBody>
               {rows.map((r, i) => {
                 const c = calc(r);
+                const mismatch = r.num_productores > 0 && r.num_productores !== r.num_productores_masculino + r.num_productores_femenino;
                 return (
                   <TableRow key={i}>
                     <TableCell><Input className="h-7 text-xs min-w-[140px]" value={r.organizacion_productores} onChange={(e) => update(i, "organizacion_productores", e.target.value)} placeholder="Nombre" /></TableCell>
                     <TableCell><Input className="h-7 text-xs w-24" value={r.region} onChange={(e) => update(i, "region", e.target.value)} /></TableCell>
-                    <TableCell className="text-right"><Input type="number" min={0} className="h-7 w-16 text-xs text-right ml-auto" value={r.num_productores || ""} onChange={(e) => update(i, "num_productores", Number(e.target.value))} /></TableCell>
+                    <TableCell className="text-right"><Input type="number" min={0} className="h-7 w-16 text-xs text-right ml-auto" value={r.num_productores_masculino || ""} onChange={(e) => update(i, "num_productores_masculino", Number(e.target.value))} /></TableCell>
+                    <TableCell className="text-right"><Input type="number" min={0} className="h-7 w-16 text-xs text-right ml-auto" value={r.num_productores_femenino || ""} onChange={(e) => update(i, "num_productores_femenino", Number(e.target.value))} /></TableCell>
+                    <TableCell className={`text-right text-xs font-bold ${mismatch ? "text-destructive" : ""}`}>{r.num_productores}</TableCell>
                     <TableCell className="text-right"><Input type="number" min={0} step="any" className="h-7 w-20 text-xs text-right ml-auto" value={r.superficie_has || ""} onChange={(e) => update(i, "superficie_has", Number(e.target.value))} /></TableCell>
                     <TableCell className="text-right"><Input type="number" min={0} step="any" className="h-7 w-20 text-xs text-right ml-auto" value={r.produccion_campo_tn || ""} onChange={(e) => update(i, "produccion_campo_tn", Number(e.target.value))} /></TableCell>
                     <TableCell className="text-right text-xs font-bold text-primary">{c.productividad}</TableCell>
