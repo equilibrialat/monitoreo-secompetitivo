@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download, ArrowUpDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Download, ArrowUpDown, Search, Loader2, Bot, ChevronDown } from "lucide-react";
+import { invokeAnalysis } from "@/lib/aiAnalysis";
 
 interface TramaRow {
   item: number | null;
@@ -86,6 +88,34 @@ export default function TramaFisicoFinanciera() {
   const [filterResultado, setFilterResultado] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(true);
+
+  const handleConsistency = async () => {
+    if (!rows.length) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    const sample = rows.slice(0, 50).map((r) => ({
+      codigo: r.c_actividad,
+      actividad: r.n_actividad,
+      proyecto: r.cod_proy_e_iniciativa,
+      resultado: r.cod_resultado,
+      meta: r.meta,
+      avance: r.valor_de_avance,
+      estado: r.estado,
+      ppto_seco: r.presupuesto_cofinanc_seco_p,
+      ejec_seco: r.ejecucion_presupuesto_cof_seco,
+      pct_seco: r.pct_avance_cof_seco,
+      mecanismo: r.mecanismo,
+    }));
+    const { resultado, error } = await invokeAnalysis("consistencia", { trama: sample });
+    setAiLoading(false);
+    if (error) setAiError(error);
+    else setAiResult(resultado ?? null);
+  };
 
   useEffect(() => {
     (async () => {
@@ -148,11 +178,38 @@ export default function TramaFisicoFinanciera() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
         <CardTitle className="text-lg">Trama Físico-Financiera</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => exportCSV(filtered)}>
-          <Download className="h-4 w-4 mr-1" /> Exportar CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleConsistency} disabled={aiLoading}>
+            {aiLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
+            {aiLoading ? "Verificando..." : "🔍 Verificar consistencia"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => exportCSV(filtered)}>
+            <Download className="h-4 w-4 mr-1" /> Exportar CSV
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* AI Result */}
+        {aiError && (
+          <div className="rounded-md border border-destructive p-3">
+            <p className="text-sm text-destructive">{aiError}</p>
+          </div>
+        )}
+        {aiResult && (
+          <Collapsible open={aiOpen} onOpenChange={setAiOpen}>
+            <div className="rounded-md border-2 border-primary p-4">
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+                <Bot className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold flex-1">Resultado del análisis de consistencia</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${aiOpen ? "rotate-180" : ""}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground mt-3">{aiResult}</div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        )}
+
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
           <Input placeholder="Buscar actividad…" value={search} onChange={e => setSearch(e.target.value)} className="max-w-xs" />

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarIcon, HelpCircle } from "lucide-react";
+import { CalendarIcon, HelpCircle, Sparkles, Loader2 } from "lucide-react";
+import { invokeAnalysis } from "@/lib/aiAnalysis";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +39,8 @@ interface SeccionAvanceProps {
   unidadMedida: string;
   metaValor: number;
   acumuladoAnterior: number;
+  actividadNombre?: string;
+  actividadCodigo?: string;
   onMesChange: (v: number) => void;
   onAnioChange: (v: number) => void;
   onValorAvanceChange: (v: number) => void;
@@ -74,10 +78,11 @@ function getTooltipText(unidad: string): string {
 
 export function SeccionAvanceOperativo({
   mes, anio, valorAvance, estado, descripcion, fechaEjecucion, unidadMedida,
-  metaValor, acumuladoAnterior,
+  metaValor, acumuladoAnterior, actividadNombre, actividadCodigo,
   onMesChange, onAnioChange, onValorAvanceChange, onEstadoChange,
   onDescripcionChange, onFechaEjecucionChange, errors = {},
 }: SeccionAvanceProps) {
+  const [suggestLoading, setSuggestLoading] = useState(false);
   const totalProyectado = acumuladoAnterior + valorAvance;
   const progressPct = metaValor > 0 ? Math.min((totalProyectado / metaValor) * 100, 100) : 0;
   const superaMeta = metaValor > 0 && totalProyectado > metaValor;
@@ -219,7 +224,33 @@ export function SeccionAvanceOperativo({
 
       {/* Descripción */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Descripción / Observaciones</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Descripción / Observaciones</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[11px] px-2"
+            disabled={suggestLoading}
+            onClick={async () => {
+              setSuggestLoading(true);
+              const { resultado, error } = await invokeAnalysis("narrativa", {
+                actividad: actividadNombre || "Actividad",
+                codigo: actividadCodigo || "",
+                avance: valorAvance,
+                unidad_medida: unidadMedida,
+                meta: metaValor,
+                acumulado: acumuladoAnterior,
+                estado,
+              });
+              setSuggestLoading(false);
+              if (resultado) onDescripcionChange(resultado);
+            }}
+          >
+            {suggestLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+            ✨ Sugerir descripción
+          </Button>
+        </div>
         <Textarea
           value={descripcion}
           onChange={(e) => onDescripcionChange(e.target.value)}
