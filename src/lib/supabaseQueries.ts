@@ -119,6 +119,9 @@ export interface RegistroMensualInsert {
   estado: string;
   descripcion_avance: string;
   estado_registro: string;
+  limitaciones?: string;
+  prioridades_proximo_mes?: string;
+  compromisos?: string;
 }
 
 export interface EjecucionFinancieraInsert {
@@ -138,6 +141,9 @@ export interface RegistroMensualExistente {
   fecha_ejecucion: string | null;
   estado_registro: string | null;
   observaciones_revision: string | null;
+  limitaciones: string | null;
+  prioridades_proximo_mes: string | null;
+  compromisos: string | null;
 }
 
 export async function fetchRegistroExistente(
@@ -147,7 +153,7 @@ export async function fetchRegistroExistente(
 ): Promise<RegistroMensualExistente | null> {
   const { data, error } = await (supabase as any)
     .from("registros_mensuales")
-    .select("id, avance_valor, estado, descripcion_avance, fecha_ejecucion, estado_registro, observaciones_revision")
+    .select("id, avance_valor, estado, descripcion_avance, fecha_ejecucion, estado_registro, observaciones_revision, limitaciones, prioridades_proximo_mes, compromisos")
     .eq("actividad_id", actividadId)
     .eq("anio", anio)
     .eq("mes", mes)
