@@ -917,6 +917,53 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
           </>
         )}
 
+        {/* SECTION 13 — COMPROMISOS Y PRIORIDADES */}
+        {actividades.some(a => {
+          const regs = regByActMes.get(a.id);
+          return regs && Array.from(regs.values()).some(r => r.limitaciones || r.prioridades_proximo_mes || r.compromisos);
+        }) && (
+          <>
+            <SectionTitle icon={ClipboardList} title="COMPROMISOS Y PRIORIDADES" number={13} />
+            <div className="border border-t-0 rounded-b-lg p-4 mb-2 space-y-3">
+              {actividades.filter(a => {
+                const regs = regByActMes.get(a.id);
+                return regs && Array.from(regs.values()).some(r => r.limitaciones || r.prioridades_proximo_mes || r.compromisos);
+              }).map(a => {
+                const regs = regByActMes.get(a.id);
+                const allRegs = regs ? Array.from(regs.values()) : [];
+                const limitaciones = allRegs.map(r => r.limitaciones).filter(Boolean);
+                const prioridades = allRegs.map(r => r.prioridades_proximo_mes).filter(Boolean);
+                const compromisos = allRegs.map(r => r.compromisos).filter(Boolean);
+                return (
+                  <div key={a.id} className="border rounded-lg p-3 bg-muted/10">
+                    <h4 className="font-semibold text-sm mb-2">{a.codigo} — {a.nombre}</h4>
+                    <div className="space-y-1.5 text-sm">
+                      {limitaciones.length > 0 && (
+                        <div className="pl-3 border-l-2 border-destructive/30">
+                          <span className="text-xs font-medium text-destructive">Limitaciones:</span>
+                          {limitaciones.map((l, i) => <p key={i} className="text-foreground">{l}</p>)}
+                        </div>
+                      )}
+                      {prioridades.length > 0 && (
+                        <div className="pl-3 border-l-2 border-primary/30">
+                          <span className="text-xs font-medium text-primary">Prioridades próximo período:</span>
+                          {prioridades.map((p, i) => <p key={i} className="text-foreground">{p}</p>)}
+                        </div>
+                      )}
+                      {compromisos.length > 0 && (
+                        <div className="pl-3 border-l-2 border-amber-500/30">
+                          <span className="text-xs font-medium text-amber-600">Compromisos:</span>
+                          {compromisos.map((c, i) => <p key={i} className="text-foreground">{c}</p>)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
         {/* FOOTER */}
         <div className="flex items-center justify-between pt-6 border-t print:hidden">
           <p className="text-xs text-muted-foreground">Generado automáticamente por el Sistema de Monitoreo SeCompetitivo</p>
