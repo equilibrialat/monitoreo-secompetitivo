@@ -76,11 +76,7 @@ export default function DashboardMonitoreo({
   const alertasAtencion: { text: string; entidad: string }[] = [];
   const entidadesAlDia: string[] = [];
 
-  const contratosProximos = contratos.filter(c => {
-    if (!c.fecha_fin) return false;
-    const diff = (new Date(c.fecha_fin).getTime() - Date.now()) / 86400000;
-    return diff > 0 && diff < 30;
-  });
+  /* contratosProximos moved into alerts block above */
 
   entidades.forEach((e) => {
     const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
