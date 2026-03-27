@@ -283,6 +283,23 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
                     <p className="text-[10px] text-muted-foreground mt-1">Corrige y vuelve a enviar.</p>
                   </div>
                 )}
+                {/* Indicator context */}
+                {linkedIndicadores.length > 0 && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                    <p className="text-xs font-semibold text-primary mb-2">📊 Esta actividad contribuye a:</p>
+                    <div className="space-y-1.5">
+                      {linkedIndicadores.map((ind) => (
+                        <div key={ind.codigo} className="flex items-center gap-2 text-xs">
+                          <Badge className="text-[9px] bg-primary/10 text-primary border-primary/20">{ind.codigo}</Badge>
+                          <span className="text-foreground">{ind.nombre}</span>
+                          {ind.meta && (
+                            <span className="text-muted-foreground ml-auto shrink-0">Meta: {ind.meta.toLocaleString()}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <SeccionAvanceOperativo
                   mes={mes} anio={anio} valorAvance={valorAvance} estado={estado}
                   descripcion={descripcion} fechaEjecucion={fechaEjecucion}
