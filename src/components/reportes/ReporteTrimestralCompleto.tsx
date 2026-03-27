@@ -859,7 +859,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION — CONTRIBUCIÓN A INDICADORES */}
         {indicadores.length > 0 && (
           <>
-            <SectionTitle icon={Target} title="CONTRIBUCIÓN A INDICADORES DEL MARCO LÓGICO" number={11} />
+            <SectionTitle icon={Target} title="CONTRIBUCIÓN A INDICADORES DEL MARCO LÓGICO" number={12} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
               <Table>
                 <TableHeader>
