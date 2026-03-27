@@ -20,6 +20,11 @@ import NotificacionesPage from "./pages/NotificacionesPage";
 import IndicadoresMonitoreoPage from "./pages/IndicadoresMonitoreoPage";
 import VerificacionPage from "./pages/VerificacionPage";
 import GenerarReportesPage from "./pages/GenerarReportesPage";
+import ReportesFinancierosPage from "./pages/ReportesFinancierosPage";
+import ReportesEjecutivosPage from "./pages/ReportesEjecutivosPage";
+import ReportesMecBPage from "./pages/ReportesMecBPage";
+import ReportesMecAPage from "./pages/ReportesMecAPage";
+import ReportesRegionalesPage from "./pages/ReportesRegionalesPage";
 
 const queryClient = new QueryClient();
 
@@ -55,9 +60,16 @@ const App = () => (
               <Route path="/desembolsos" element={<DesembolsosPage />} />
               <Route path="/viaticos" element={<ViaticosPage />} />
               <Route path="/reasignaciones" element={<ReasignacionesPage />} />
+              <Route path="/reportes-financieros" element={<ReportesFinancierosPage />} />
 
               {/* Direccion routes */}
               <Route path="/aprobaciones" element={<PlaceholderPage title="Aprobaciones" />} />
+              <Route path="/reportes-ejecutivos" element={<ReportesEjecutivosPage />} />
+
+              {/* Role-specific report routes */}
+              <Route path="/reportes-mec-b" element={<ReportesMecBPage />} />
+              <Route path="/reportes-mec-a" element={<ReportesMecAPage />} />
+              <Route path="/reportes-regionales" element={<ReportesRegionalesPage />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
