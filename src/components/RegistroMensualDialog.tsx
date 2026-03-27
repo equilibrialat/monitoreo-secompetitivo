@@ -202,6 +202,8 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
                 mes={mes} anio={anio} valorAvance={valorAvance} estado={estado}
                 descripcion={descripcion} fechaEjecucion={fechaEjecucion}
                 unidadMedida={actividad.meta_unidad_medida}
+                metaValor={actividad.meta_valor ?? 0}
+                acumuladoAnterior={acumuladoAnterior}
                 onMesChange={setMes} onAnioChange={setAnio}
                 onValorAvanceChange={setValorAvance} onEstadoChange={setEstado}
                 onDescripcionChange={setDescripcion} onFechaEjecucionChange={setFechaEjecucion}
