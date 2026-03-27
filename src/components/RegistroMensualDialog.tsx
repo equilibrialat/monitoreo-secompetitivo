@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Save, Send, Loader2 } from "lucide-react";
+import { Save, Send, Loader2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -17,6 +17,7 @@ import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import { saveRegistroMensual, fetchRegistroExistente, fetchAcumuladoAnterior } from "@/lib/supabaseQueries";
+import { fetchHistorialRegistro, type HistorialEntry } from "@/lib/registroAprobacion";
 import type { FuenteFinanciera, ContextualData } from "@/types/registroMensual";
 import {
   createEmptyCapacitacion, createEmptyInnovacion,
