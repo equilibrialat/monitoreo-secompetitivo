@@ -845,6 +845,67 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
           </>
         )}
 
+        {/* SECTION — CONTRIBUCIÓN A INDICADORES */}
+        {indicadores.length > 0 && (
+          <>
+            <SectionTitle icon={Target} title="CONTRIBUCIÓN A INDICADORES DEL MARCO LÓGICO" number={11} />
+            <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>Código</TableHead>
+                    <TableHead>Indicador</TableHead>
+                    <TableHead>Nivel</TableHead>
+                    <TableHead className="text-right">Meta</TableHead>
+                    <TableHead className="text-right">L. Base</TableHead>
+                    <TableHead>Actividades Vinculadas</TableHead>
+                    <TableHead>Estado Actividades</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {indicadores.map((ind: any) => {
+                    const linked = actividades.filter(a =>
+                      (a.indicadores_vinculados || []).includes(ind.codigo)
+                    );
+                    if (linked.length === 0) return null;
+                    const avgAvance = linked.length > 0
+                      ? Math.round(linked.reduce((s: number, a: any) => s + (a.avance_operativo_pct || 0), 0) / linked.length)
+                      : 0;
+                    return (
+                      <TableRow key={ind.codigo}>
+                        <TableCell className="font-mono text-xs">{ind.codigo}</TableCell>
+                        <TableCell className="text-xs max-w-[200px]">{ind.nombre}</TableCell>
+                        <TableCell className="text-xs">
+                          <Badge variant="outline" className="text-[9px]">
+                            {ind.nivel === "RESULTADO DE IMPACTO" ? "Impacto" : ind.nivel === "RESULTADO FINAL" ? "R. Final" : "R. Intermedio"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs">{ind.meta ?? "—"}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{ind.linea_base ?? "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex flex-wrap gap-1">
+                            {linked.map((a: any) => (
+                              <Badge key={a.id} className="text-[9px] bg-primary/10 text-primary border-primary/20">
+                                {a.codigo}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <Semaforo pct={avgAvance} />
+                            <span className="font-mono">{avgAvance}% prom.</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
+
         {/* FOOTER */}
         <div className="flex items-center justify-between pt-6 border-t print:hidden">
           <p className="text-xs text-muted-foreground">Generado automáticamente por el Sistema de Monitoreo SeCompetitivo</p>
