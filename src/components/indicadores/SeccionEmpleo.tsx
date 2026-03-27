@@ -38,6 +38,7 @@ interface Props {
   periodo: string;
   cadenaValor: string;
   onSaved: () => void;
+  onDirty?: () => void;
 }
 
 function mapRowToDb(row: any, entidadId: string, anio: number, periodo: string, cadenaValor: string) {
