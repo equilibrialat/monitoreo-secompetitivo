@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { TreeNode } from "@/data/mockActividades";
-import type { Actividad } from "@/data/mockActividades";
+import type { TreeNode, ActividadDB } from "@/lib/supabaseQueries";
 import { ActivityCard } from "@/components/ActivityCard";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
@@ -9,7 +8,7 @@ interface TreeBranchProps {
   node: TreeNode;
   depth?: number;
   defaultOpen?: boolean;
-  onRegistrar?: (actividad: Actividad) => void;
+  onRegistrar?: (actividad: ActividadDB) => void;
 }
 
 export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar }: TreeBranchProps) {
@@ -37,21 +36,13 @@ export function TreeBranch({ node, depth = 0, defaultOpen = true, onRegistrar }:
             open && "rotate-90"
           )}
         />
-        <span
-          className={cn(
-            "text-sm font-medium text-foreground",
-            depth === 0 && "text-base font-semibold"
-          )}
-        >
+        <span className={cn("text-sm font-medium text-foreground", depth === 0 && "text-base font-semibold")}>
           {node.label}
         </span>
         {hasChildren && (
-          <span className="text-xs text-muted-foreground ml-auto">
-            {node.children!.length}
-          </span>
+          <span className="text-xs text-muted-foreground ml-auto">{node.children!.length}</span>
         )}
       </button>
-
       {open && hasChildren && (
         <div className="space-y-1 mt-1">
           {node.children!.map((child, i) => (

@@ -1,5 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Building2 } from "lucide-react";
 import { useRole, ROLE_LABELS, type AppRole } from "@/contexts/RoleContext";
 import { getNavForRole } from "@/config/navigation";
 import {
@@ -8,11 +8,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const ALL_ROLES = Object.keys(ROLE_LABELS) as AppRole[];
 
 export function AppSidebar() {
-  const { role, setRole } = useRole();
+  const { role, setRole, entidadId, setEntidadId, entidades, loadingEntidades } = useRole();
   const location = useLocation();
   const navItems = getNavForRole(role);
 
@@ -26,7 +33,7 @@ export function AppSidebar() {
       </div>
 
       {/* Role selector */}
-      <div className="px-3 pb-4">
+      <div className="px-3 pb-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center justify-between w-full rounded-md bg-sidebar-accent px-3 py-2 text-sm text-sidebar-active hover:bg-sidebar-accent/80 transition-colors">
@@ -47,6 +54,29 @@ export function AppSidebar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Entidad selector */}
+      {entidades.length > 0 && (
+        <div className="px-3 pb-4">
+          <Select
+            value={entidadId ?? ""}
+            onValueChange={setEntidadId}
+            disabled={loadingEntidades}
+          >
+            <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-none text-sidebar-active">
+              <Building2 className="h-3 w-3 mr-1.5 shrink-0" />
+              <SelectValue placeholder="Seleccionar entidad" />
+            </SelectTrigger>
+            <SelectContent>
+              {entidades.map((e) => (
+                <SelectItem key={e.id} value={e.id} className="text-xs">
+                  {e.nombre_corto}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-1">
