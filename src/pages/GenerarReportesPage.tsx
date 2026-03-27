@@ -226,17 +226,8 @@ export default function GenerarReportesPage() {
           onClose={() => setActiveReport(null)}
         />
       )}
-      {activeReport === "trimestral-operativo" && (
-        <ReporteTrimestralOperativo
-          entidadId={effectiveEntidadId}
-          trimestre={trimestre}
-          anio={parseInt(anioTrimestral)}
-          entidades={entidades}
-          onClose={() => setActiveReport(null)}
-        />
-      )}
-      {activeReport === "trimestral-financiero" && (
-        <ReporteTrimestralFinanciero
+      {activeReport === "trimestral" && (
+        <ReporteTrimestralCompleto
           entidadId={effectiveEntidadId}
           trimestre={trimestre}
           anio={parseInt(anioTrimestral)}
