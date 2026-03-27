@@ -30,6 +30,7 @@ const App = () => (
               {/* Entidad routes */}
               <Route path="/actividades" element={<MisActividades />} />
               <Route path="/registro-mensual" element={<PlaceholderPage title="Registro Mensual" />} />
+              <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
 
               {/* Shared routes */}
               <Route path="/reportes" element={<PlaceholderPage title="Reportes" />} />
