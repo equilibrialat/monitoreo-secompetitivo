@@ -153,6 +153,12 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
     const { data: desData } = await desQ;
     setDesembolsos(desData || []);
 
+    // 11. Indicadores del Marco Lógico
+    let indQ = (supabase as any).from("indicadores_proyecto").select("codigo, nombre, nivel, meta, linea_base, unidad_medida");
+    if (entidadId && entidadId !== "consolidado") indQ = indQ.eq("entidad_id", entidadId);
+    const { data: indData } = await indQ;
+    setIndicadores(indData || []);
+
     setLoading(false);
   }
 
