@@ -68,6 +68,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
     setFechaEjecucion(undefined);
     setIsEdit(false);
     setValidationErrors({});
+    setObservaciones(null);
   }
 
   const loadExisting = useCallback(async () => {
