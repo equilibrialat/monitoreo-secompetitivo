@@ -7,7 +7,6 @@ import { Download, X } from "lucide-react";
 import { downloadCSV, formatCurrency, SEMESTRES_MESES } from "@/lib/reportUtils";
 import type { EntidadOption } from "@/contexts/RoleContext";
 import AIAnalysisCard from "./AIAnalysisCard";
-import type { EntidadOption } from "@/contexts/RoleContext";
 
 interface Props {
   entidadId: string | null;
