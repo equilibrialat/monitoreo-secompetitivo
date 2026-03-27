@@ -35,7 +35,8 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   }
 
   // Enrich with avg avance_operativo and pending registros
-  const entidadIds = (data || []).map((d: any) => d.entidad_id);
+  const entidadIds = (data || []).filter((d: any) => d.entidad_id).map((d: any) => d.entidad_id);
+  if (entidadIds.length === 0) return (data || []).map(mapRow);
 
   // Fetch avg avance per entidad
   const { data: actData } = await (supabase as any)
