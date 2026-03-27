@@ -164,12 +164,18 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
       setLimitaciones(existing.limitaciones ?? "");
       setPrioridades(existing.prioridades_proximo_mes ?? "");
       setCompromisos(existing.compromisos ?? "");
+      setRegistroId(existing.id);
+      // Load historial
+      const hist = await fetchHistorialRegistro(existing.id);
+      setHistorial(hist);
     } else {
       setValorAvance(0);
       setEstado("");
       setDescripcion("");
       setFechaEjecucion(undefined);
       setIsEdit(false);
+      setHistorial([]);
+      setRegistroId(null);
     }
     setValidationErrors({});
     markClean();
