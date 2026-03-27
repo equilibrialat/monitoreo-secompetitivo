@@ -1,0 +1,1 @@
+ALTER TABLE actividades ADD COLUMN IF NOT EXISTS indicadores_vinculados TEXT[] DEFAULT '{}';

@@ -28,6 +28,7 @@ export type Database = {
           fecha_fin_prog: string | null
           fecha_inicio_prog: string | null
           id: string
+          indicadores_vinculados: string[] | null
           medio_verificacion: string | null
           meta_unidad_medida: string | null
           meta_valor: number | null
@@ -54,6 +55,7 @@ export type Database = {
           fecha_fin_prog?: string | null
           fecha_inicio_prog?: string | null
           id?: string
+          indicadores_vinculados?: string[] | null
           medio_verificacion?: string | null
           meta_unidad_medida?: string | null
           meta_valor?: number | null
@@ -80,6 +82,7 @@ export type Database = {
           fecha_fin_prog?: string | null
           fecha_inicio_prog?: string | null
           id?: string
+          indicadores_vinculados?: string[] | null
           medio_verificacion?: string | null
           meta_unidad_medida?: string | null
           meta_valor?: number | null
