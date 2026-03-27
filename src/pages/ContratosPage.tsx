@@ -228,6 +228,7 @@ export default function ContratosPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
