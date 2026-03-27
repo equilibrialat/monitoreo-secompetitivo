@@ -15,6 +15,7 @@ import {
   FileDown,
   Settings,
   Briefcase,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";

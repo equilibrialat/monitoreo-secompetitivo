@@ -47,6 +47,7 @@ const App = () => (
               {/* Entidad routes */}
               <Route path="/actividades" element={<MisActividades />} />
               <Route path="/registro-mensual" element={<RegistroMensualPage />} />
+              <Route path="/registro-rapido" element={<RegistroRapidoPage />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
 
               {/* Gestor routes */}
