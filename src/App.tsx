@@ -71,6 +71,7 @@ const App = () => (
               <Route path="/reportes-mec-b" element={<ReportesMecBPage />} />
               <Route path="/reportes-mec-a" element={<ReportesMecAPage />} />
               <Route path="/reportes-regionales" element={<ReportesRegionalesPage />} />
+              <Route path="/administracion" element={<AdministracionPage />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
