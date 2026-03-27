@@ -26,7 +26,7 @@ function headerCell(text: string, width: number): TableCell {
   });
 }
 
-function dataCell(text: string, width: number, opts?: { bold?: boolean; color?: string; align?: typeof AlignmentType.RIGHT; shade?: string }): TableCell {
+function dataCell(text: string, width: number, opts?: { bold?: boolean; color?: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; shade?: string }): TableCell {
   return new TableCell({
     borders: cellBorders,
     width: { size: width, type: WidthType.DXA },
