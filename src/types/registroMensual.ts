@@ -8,7 +8,7 @@ export interface GastoItem {
 }
 
 export interface FuenteFinanciera {
-  key: "seco" | "cm" | "cnm";
+  key: "cofinanciamiento_seco" | "contrapartida_monetaria" | "contrapartida_no_monetaria";
   label: string;
   presupuesto: number;
   ejecutado_acum: number;

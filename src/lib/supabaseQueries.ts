@@ -121,7 +121,7 @@ export interface RegistroMensualInsert {
 export interface EjecucionFinancieraInsert {
   registro_mensual_id: string;
   actividad_id: string;
-  fuente: string;
+  fuente: string; // 'cofinanciamiento_seco' | 'contrapartida_monetaria' | 'contrapartida_no_monetaria'
   monto: number;
   tipo_gasto: string;
   fecha_gasto: string;
