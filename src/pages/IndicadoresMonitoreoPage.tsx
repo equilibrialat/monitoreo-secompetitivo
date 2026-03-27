@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Filter } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { BarChart3, Filter, ChevronDown } from "lucide-react";
 
 interface IndicadorRow {
   id: string;
@@ -18,6 +19,13 @@ interface IndicadorRow {
   entidad_id: string;
   entidad_nombre: string;
   mecanismo: string;
+}
+
+interface LinkedActivity {
+  codigo: string;
+  nombre: string;
+  avance_operativo_pct: number;
+  estado_actual: string;
 }
 
 const NIVEL_ORDER = ["RESULTADO DE IMPACTO", "RESULTADO FINAL", "RESULTADO INTERMEDIO"];
@@ -33,7 +41,9 @@ export default function IndicadoresMonitoreoPage() {
   const [filtroMecanismo, setFiltroMecanismo] = useState<string>("todos");
   const [filtroEntidad, setFiltroEntidad] = useState<string>("todos");
   const [indicadores, setIndicadores] = useState<IndicadorRow[]>([]);
+  const [linkedActivities, setLinkedActivities] = useState<Map<string, LinkedActivity[]>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [expandedIndicador, setExpandedIndicador] = useState<string | null>(null);
 
   useEffect(() => {
     fetchIndicadores();
@@ -41,17 +51,20 @@ export default function IndicadoresMonitoreoPage() {
 
   async function fetchIndicadores() {
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from("indicadores_proyecto")
-      .select("id, codigo, nombre, nivel, unidad_medida, linea_base, meta, entidad_id")
-      .order("codigo");
+    const [indResult, actResult] = await Promise.all([
+      (supabase as any)
+        .from("indicadores_proyecto")
+        .select("id, codigo, nombre, nivel, unidad_medida, linea_base, meta, entidad_id")
+        .order("codigo"),
+      (supabase as any)
+        .from("actividades")
+        .select("codigo, nombre, avance_operativo_pct, estado_actual, indicadores_vinculados, entidad_id"),
+    ]);
 
-    if (error || !data) {
-      setLoading(false);
-      return;
-    }
+    const data = indResult.data || [];
+    const acts = actResult.data || [];
 
-    const enriched: IndicadorRow[] = (data as any[]).map((ind) => {
+    const enriched: IndicadorRow[] = data.map((ind: any) => {
       const ent = entidades.find((e) => e.id === ind.entidad_id);
       return {
         ...ind,
@@ -60,7 +73,23 @@ export default function IndicadoresMonitoreoPage() {
       };
     });
 
+    // Build linked activities map: indicador_codigo -> activities
+    const linkMap = new Map<string, LinkedActivity[]>();
+    for (const act of acts) {
+      const vinculados = act.indicadores_vinculados || [];
+      for (const indCode of vinculados) {
+        if (!linkMap.has(indCode)) linkMap.set(indCode, []);
+        linkMap.get(indCode)!.push({
+          codigo: act.codigo,
+          nombre: act.nombre,
+          avance_operativo_pct: act.avance_operativo_pct ?? 0,
+          estado_actual: act.estado_actual ?? "no_iniciada",
+        });
+      }
+    }
+
     setIndicadores(enriched);
+    setLinkedActivities(linkMap);
     setLoading(false);
   }
 
@@ -70,7 +99,6 @@ export default function IndicadoresMonitoreoPage() {
     if (filtroMecanismo !== "todos") {
       const ent = entidades.find((e) => e.id === ind.entidad_id);
       if (!ent) return false;
-      // Map mecanismo filter to entidad field
       if (filtroMecanismo === "mec_a" && (ent as any).tipo_entidad !== "iniciativa") return false;
       if (filtroMecanismo === "mec_b" && (ent as any).tipo_entidad !== "proyecto") return false;
     }
@@ -79,12 +107,19 @@ export default function IndicadoresMonitoreoPage() {
 
   function getSemaforo(meta: number | null, lineaBase: number | null) {
     if (!meta || meta === 0) return { icon: "⚪", label: "Sin meta", className: "bg-muted text-muted-foreground" };
-    // Since no actual progress data yet, show 0%
     return { icon: "🔴", label: "0%", className: "bg-destructive/10 text-destructive" };
   }
 
-  // Get unique niveles from data
-  const nivelesPresentes = NIVEL_ORDER.filter(n => indicadores.some(i => i.nivel === n));
+  function getEstadoLabel(estado: string) {
+    const map: Record<string, string> = {
+      no_iniciada: "No iniciada",
+      iniciado_1_35: "Iniciado",
+      en_proceso_36_65: "En proceso",
+      proceso_avanzado_66_99: "Avanzado",
+      culminado_100: "Culminado",
+    };
+    return map[estado] || estado;
+  }
 
   return (
     <div className="space-y-6">
@@ -169,42 +204,93 @@ export default function IndicadoresMonitoreoPage() {
                     No hay indicadores de este nivel con los filtros actuales.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[100px]">Código</TableHead>
-                          <TableHead>Indicador</TableHead>
-                          <TableHead>Entidad</TableHead>
-                          <TableHead>Unidad</TableHead>
-                          <TableHead className="text-right">Línea Base</TableHead>
-                          <TableHead className="text-right">Meta</TableHead>
-                          <TableHead className="text-right">Valor Actual</TableHead>
-                          <TableHead className="text-center">% Cumpl.</TableHead>
-                          <TableHead className="text-center">Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {indNivel.map((ind) => {
-                          const sem = getSemaforo(ind.meta, ind.linea_base);
-                          return (
-                            <TableRow key={ind.id}>
-                              <TableCell className="font-mono text-xs">{ind.codigo}</TableCell>
-                              <TableCell className="max-w-[300px] text-sm">{ind.nombre}</TableCell>
-                              <TableCell className="text-sm">{ind.entidad_nombre}</TableCell>
-                              <TableCell className="text-xs text-muted-foreground">{ind.unidad_medida || "—"}</TableCell>
-                              <TableCell className="text-right font-mono text-sm">{ind.linea_base ?? "—"}</TableCell>
-                              <TableCell className="text-right font-mono text-sm">{ind.meta ?? "—"}</TableCell>
-                              <TableCell className="text-right font-mono text-sm text-muted-foreground">—</TableCell>
-                              <TableCell className="text-center">
-                                <Badge className={sem.className}>{sem.label}</Badge>
-                              </TableCell>
-                              <TableCell className="text-center">{sem.icon}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                  <div className="space-y-0">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[40px]" />
+                            <TableHead className="w-[100px]">Código</TableHead>
+                            <TableHead>Indicador</TableHead>
+                            <TableHead>Entidad</TableHead>
+                            <TableHead>Unidad</TableHead>
+                            <TableHead className="text-right">Línea Base</TableHead>
+                            <TableHead className="text-right">Meta</TableHead>
+                            <TableHead className="text-right">Valor Actual</TableHead>
+                            <TableHead className="text-center">% Cumpl.</TableHead>
+                            <TableHead className="text-center">Estado</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {indNivel.map((ind) => {
+                            const sem = getSemaforo(ind.meta, ind.linea_base);
+                            const linked = linkedActivities.get(ind.codigo) || [];
+                            const isExpanded = expandedIndicador === ind.id;
+                            return (
+                              <>
+                                <TableRow
+                                  key={ind.id}
+                                  className={`cursor-pointer hover:bg-muted/50 ${isExpanded ? "bg-muted/30" : ""}`}
+                                  onClick={() => setExpandedIndicador(isExpanded ? null : ind.id)}
+                                >
+                                  <TableCell className="w-[40px] px-2">
+                                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">{ind.codigo}</TableCell>
+                                  <TableCell className="max-w-[300px] text-sm">{ind.nombre}</TableCell>
+                                  <TableCell className="text-sm">{ind.entidad_nombre}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">{ind.unidad_medida || "—"}</TableCell>
+                                  <TableCell className="text-right font-mono text-sm">{ind.linea_base ?? "—"}</TableCell>
+                                  <TableCell className="text-right font-mono text-sm">{ind.meta ?? "—"}</TableCell>
+                                  <TableCell className="text-right font-mono text-sm text-muted-foreground">—</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge className={sem.className}>{sem.label}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">{sem.icon}</TableCell>
+                                </TableRow>
+                                {isExpanded && (
+                                  <TableRow key={`${ind.id}-expanded`}>
+                                    <TableCell colSpan={10} className="bg-muted/20 p-0">
+                                      <div className="px-6 py-3">
+                                        <p className="text-xs font-semibold text-primary mb-2">
+                                          Actividades que contribuyen a este indicador:
+                                        </p>
+                                        {linked.length === 0 ? (
+                                          <p className="text-xs text-muted-foreground italic">
+                                            No hay actividades vinculadas a este indicador.
+                                          </p>
+                                        ) : (
+                                          <div className="space-y-1.5">
+                                            {linked.map((act) => (
+                                              <div key={act.codigo} className="flex items-center gap-3 text-xs">
+                                                <span className="font-mono text-muted-foreground w-12">{act.codigo}</span>
+                                                <span className="text-foreground flex-1">{act.nombre}</span>
+                                                <Badge variant="outline" className="text-[10px]">
+                                                  {getEstadoLabel(act.estado_actual)}
+                                                </Badge>
+                                                <span className="font-mono text-muted-foreground w-12 text-right">
+                                                  {act.avance_operativo_pct}%
+                                                </span>
+                                                <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                                                  <div
+                                                    className={`h-full rounded-full ${act.avance_operativo_pct >= 66 ? "bg-emerald-500" : act.avance_operativo_pct >= 33 ? "bg-amber-500" : "bg-destructive"}`}
+                                                    style={{ width: `${Math.min(act.avance_operativo_pct, 100)}%` }}
+                                                  />
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 )}
               </CardContent>
