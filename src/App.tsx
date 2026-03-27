@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import MisActividades from "./pages/MisActividades";
 import NotFound from "./pages/NotFound";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import RevisionPendientePage from "./pages/RevisionPendientePage";
 
 const queryClient = new QueryClient();
 
