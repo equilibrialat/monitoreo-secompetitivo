@@ -233,7 +233,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   return (
     <>
       <Sheet open={open} onOpenChange={(o) => { if (!o) handleCloseAttempt(); }}>
-        <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
+        <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col max-w-[100vw]">
           <SheetHeader className="px-5 pt-5 pb-3 border-b shrink-0">
             <div className="flex items-start justify-between">
               <div className="min-w-0 pr-4">
