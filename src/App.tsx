@@ -60,9 +60,16 @@ const App = () => (
               <Route path="/desembolsos" element={<DesembolsosPage />} />
               <Route path="/viaticos" element={<ViaticosPage />} />
               <Route path="/reasignaciones" element={<ReasignacionesPage />} />
+              <Route path="/reportes-financieros" element={<ReportesFinancierosPage />} />
 
               {/* Direccion routes */}
               <Route path="/aprobaciones" element={<PlaceholderPage title="Aprobaciones" />} />
+              <Route path="/reportes-ejecutivos" element={<ReportesEjecutivosPage />} />
+
+              {/* Role-specific report routes */}
+              <Route path="/reportes-mec-b" element={<ReportesMecBPage />} />
+              <Route path="/reportes-mec-a" element={<ReportesMecAPage />} />
+              <Route path="/reportes-regionales" element={<ReportesRegionalesPage />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
