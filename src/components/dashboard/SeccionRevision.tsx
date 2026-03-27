@@ -24,9 +24,14 @@ const ESTADO_LABELS: Record<string, string> = {
   borrador: "Borrador",
 };
 
+async function fetchMultipleEstados(estados: string[]): Promise<RegistroPendiente[]> {
+  const results = await Promise.all(estados.map(fetchRegistrosPorEstado));
+  return results.flat();
+}
+
 interface Props {
   title: string;
-  /** Estado(s) a filtrar — puede ser uno o varios separados por coma */
+  /** Estado(s) to filter — comma-separated for multiple */
   estadoFiltro: string;
   estadoAprobar: string;
   labelAprobar?: string;
@@ -37,19 +42,13 @@ export function SeccionRevision({ title, estadoFiltro, estadoAprobar, labelAprob
   const queryClient = useQueryClient();
   const estados = estadoFiltro.split(",").map((s) => s.trim());
 
-  // Fetch each estado in parallel via separate queries
-  const queries = estados.map((est) =>
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useQuery({
-      queryKey: ["registros-pendientes", est],
-      queryFn: () => fetchRegistrosPorEstado(est),
-      staleTime: 15_000,
-    })
-  );
+  const { data: allRegistros, isLoading } = useQuery({
+    queryKey: ["registros-pendientes", ...estados],
+    queryFn: () => fetchMultipleEstados(estados),
+    staleTime: 15_000,
+  });
 
-  const isLoading = queries.some((q) => q.isLoading);
-  const allRegistros = queries.flatMap((q) => q.data || []);
-  const filtered = filterFn ? allRegistros.filter(filterFn) : allRegistros;
+  const filtered = filterFn ? (allRegistros || []).filter(filterFn) : (allRegistros || []);
 
   if (isLoading) return null;
   if (filtered.length === 0) return null;
@@ -112,7 +111,6 @@ function RevisionRow({
   const [showObs, setShowObs] = useState(false);
   const [obs, setObs] = useState("");
 
-  // For multi-estado views, determine next state based on current estado
   const nextEstado = (() => {
     if (registro.estado_registro === "enviado") return "en_revision_tecnica";
     if (registro.estado_registro === "en_revision_tecnica") return "en_revision_financiera";
@@ -133,70 +131,69 @@ function RevisionRow({
   };
 
   return (
-    <>
-      <TableRow>
-        <TableCell className="font-medium text-xs">{registro.entidad_nombre}</TableCell>
-        <TableCell className="text-xs">
-          <span className="font-mono text-muted-foreground mr-1">{registro.actividad_codigo}</span>
-          {registro.actividad_nombre}
-        </TableCell>
-        <TableCell className="text-xs">
-          {MESES[registro.mes - 1]} {registro.anio}
-        </TableCell>
-        <TableCell className="text-right font-bold text-sm">{registro.avance_valor ?? 0}</TableCell>
-        <TableCell>
-          <Badge variant="outline" className="text-[10px]">
-            {ESTADO_LABELS[registro.estado_registro || ""] || registro.estado_registro}
-          </Badge>
-        </TableCell>
-        <TableCell className="text-right">
-          {showObs ? (
-            <div className="flex flex-col gap-2 min-w-[200px]">
-              <Textarea
-                placeholder="Observaciones..."
-                value={obs}
-                onChange={(e) => setObs(e.target.value)}
-                className="text-xs min-h-[50px]"
-              />
-              <div className="flex gap-1 justify-end">
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="text-xs h-7"
-                  disabled={!obs.trim() || acting}
-                  onClick={() => handleAction("observado", obs)}
-                >
-                  {acting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <MessageSquare className="h-3 w-3 mr-1" />}
-                  Enviar
-                </Button>
-                <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowObs(false)}>
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          ) : (
+    <TableRow>
+      <TableCell className="font-medium text-xs">{registro.entidad_nombre}</TableCell>
+      <TableCell className="text-xs">
+        <span className="font-mono text-muted-foreground mr-1">{registro.actividad_codigo}</span>
+        {registro.actividad_nombre}
+      </TableCell>
+      <TableCell className="text-xs">
+        {MESES[registro.mes - 1]} {registro.anio}
+      </TableCell>
+      <TableCell className="text-right font-bold text-sm">{registro.avance_valor ?? 0}</TableCell>
+      <TableCell>
+        <Badge variant="outline" className="text-[10px]">
+          {ESTADO_LABELS[registro.estado_registro || ""] || registro.estado_registro}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-right">
+        {showObs ? (
+          <div className="flex flex-col gap-2 min-w-[200px]">
+            <Textarea
+              placeholder="Observaciones..."
+              value={obs}
+              onChange={(e) => setObs(e.target.value)}
+              className="text-xs min-h-[50px]"
+            />
             <div className="flex gap-1 justify-end">
               <Button
                 size="sm"
-                className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
-                disabled={acting}
-                onClick={() => handleAction(nextEstado)}
+                variant="destructive"
+                className="text-xs h-7"
+                disabled={!obs.trim() || acting}
+                onClick={() => handleAction("observado", obs)}
               >
-                {acting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
-                Aprobar
+                {acting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <MessageSquare className="h-3 w-3 mr-1" />}
+                Enviar
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs h-7 border-amber-400 text-amber-600 hover:bg-amber-50"
-                onClick={() => setShowObs(true)}
-              >
-                <Undo2 className="h-3 w-3 mr-1" /> Observar
+              <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowObs(false)}>
+                Cancelar
               </Button>
             </div>
-          )}
-        </TableCell>
-      </TableRow>
-    </>
+          </div>
+        ) : (
+          <div className="flex gap-1 justify-end">
+            <Button
+              size="sm"
+              className="text-xs h-7"
+              variant="default"
+              disabled={acting}
+              onClick={() => handleAction(nextEstado)}
+            >
+              {acting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+              ✅ Aprobar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-7"
+              onClick={() => setShowObs(true)}
+            >
+              <Undo2 className="h-3 w-3 mr-1" /> ↩ Observar
+            </Button>
+          </div>
+        )}
+      </TableCell>
+    </TableRow>
   );
 }
