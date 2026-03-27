@@ -4,9 +4,11 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Clock, TrendingDown, Activity, DollarSign, FileCheck, AlertCircle, CheckCircle2, Eye } from "lucide-react";
 import { useDashboardData, type DashboardEntidad } from "@/hooks/useDashboardData";
-import { Header, MecanismoBadge, Semaforo, fmt, DashboardSkeleton } from "./DashboardEntidad";
+import { Header, MecanismoBadge, Semaforo, fmt, DashboardSkeleton, ClickableKpiCard } from "./DashboardEntidad";
 import { SeccionRevision } from "./SeccionRevision";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useRole } from "@/contexts/RoleContext";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, Cell, ReferenceLine, Legend,
@@ -52,17 +54,22 @@ export default function DashboardMonitoreo({
   const { data: allEntidades, isLoading } = useDashboardData();
   const [indicadoresStats, setIndicadoresStats] = useState({ total: 0, completed: 0 });
   const [contratos, setContratos] = useState<any[]>([]);
+  const navigate = useNavigate();
+  const { setEntidadId } = useRole();
 
   const entidades = filterFn ? (allEntidades || []).filter(filterFn) : (allEntidades || []);
 
   useEffect(() => {
-    (supabase as any).from("indicadores_proyecto").select("id, entidad_id").then(({ data }: any) => {
-      setIndicadoresStats({ total: data?.length || 0, completed: Math.round((data?.length || 0) * 0.4) });
-    });
+    const entidadIds = entidades.map(e => e.entidad_id);
+    if (entidadIds.length > 0) {
+      (supabase as any).from("indicadores_proyecto").select("id, entidad_id").in("entidad_id", entidadIds).then(({ data }: any) => {
+        setIndicadoresStats({ total: data?.length || 0, completed: Math.round((data?.length || 0) * 0.4) });
+      });
+    }
     (supabase as any).from("contratos").select("id, fecha_fin, estado").eq("estado", "vigente").then(({ data }: any) => {
       setContratos(data || []);
     });
-  }, []);
+  }, [entidades.length]);
 
   if (isLoading) return <DashboardSkeleton />;
 
@@ -72,9 +79,9 @@ export default function DashboardMonitoreo({
   const avgEjecucion = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + e.pct_ejecucion_seco, 0) / entidades.length) : 0;
 
   // Alerts categorization
-  const alertasCriticas: { text: string; entidad: string }[] = [];
-  const alertasAtencion: { text: string; entidad: string }[] = [];
-  const entidadesAlDia: string[] = [];
+  const alertasCriticas: { text: string; entidad: string; entidadId: string; route?: string }[] = [];
+  const alertasAtencion: { text: string; entidad: string; entidadId: string; route?: string }[] = [];
+  const entidadesAlDia: { nombre: string; id: string }[] = [];
 
   const contratosProximos = contratos.filter(c => {
     if (!c.fecha_fin) return false;
@@ -87,39 +94,49 @@ export default function DashboardMonitoreo({
     let hasIssue = false;
 
     if (e.sobregiros_seco > 0) {
-      alertasCriticas.push({ text: `${e.sobregiros_seco} sobregiro(s) SECO`, entidad: e.nombre_corto });
+      alertasCriticas.push({ text: `${e.sobregiros_seco} sobregiro(s) SECO`, entidad: e.nombre_corto, entidadId: e.entidad_id, route: "/desembolsos" });
       hasIssue = true;
     }
     if (e.tiene_observado) {
-      alertasCriticas.push({ text: `Registro(s) observado(s) — ${e.observaciones_detalle.join("; ") || "requiere corrección"}`, entidad: e.nombre_corto });
+      alertasCriticas.push({ text: `Registro(s) observado(s) — requiere corrección`, entidad: e.nombre_corto, entidadId: e.entidad_id, route: "/revision-pendiente" });
       hasIssue = true;
     }
     if (e.actividades_sin_iniciar > 0) {
-      alertasAtencion.push({ text: `${e.actividades_sin_iniciar} actividad(es) sin iniciar`, entidad: e.nombre_corto });
+      alertasAtencion.push({ text: `${e.actividades_sin_iniciar} actividad(es) sin iniciar`, entidad: e.nombre_corto, entidadId: e.entidad_id, route: "/mis-actividades" });
       hasIssue = true;
     }
     if (e.meses_sin_reporte.length > 0) {
-      alertasAtencion.push({ text: `Sin reporte: ${e.meses_sin_reporte.join(", ")}`, entidad: e.nombre_corto });
+      alertasAtencion.push({ text: `Sin reporte: ${e.meses_sin_reporte.join(", ")}`, entidad: e.nombre_corto, entidadId: e.entidad_id, route: "/verificacion" });
       hasIssue = true;
     }
     if (e.registros_borrador > 0) {
-      alertasAtencion.push({ text: `${e.registros_borrador} registro(s) en borrador`, entidad: e.nombre_corto });
+      alertasAtencion.push({ text: `${e.registros_borrador} registro(s) en borrador`, entidad: e.nombre_corto, entidadId: e.entidad_id, route: "/registro-mensual" });
       hasIssue = true;
     }
     if (e.registros_en_revision > 0) {
-      alertasAtencion.push({ text: `${e.registros_en_revision} registro(s) en revisión`, entidad: e.nombre_corto });
+      alertasAtencion.push({ text: `${e.registros_en_revision} registro(s) en revisión`, entidad: e.nombre_corto, entidadId: e.entidad_id, route: "/revision-pendiente" });
       hasIssue = true;
     }
     if (desfase > 30) {
-      alertasCriticas.push({ text: `Desfase técnico-financiero ${desfase}%`, entidad: e.nombre_corto });
+      alertasCriticas.push({ text: `Desfase técnico-financiero ${desfase}%`, entidad: e.nombre_corto, entidadId: e.entidad_id });
       hasIssue = true;
     } else if (desfase > 15) {
-      alertasAtencion.push({ text: `Desfase ${desfase}%`, entidad: e.nombre_corto });
+      alertasAtencion.push({ text: `Desfase ${desfase}%`, entidad: e.nombre_corto, entidadId: e.entidad_id });
       hasIssue = true;
     }
 
-    if (!hasIssue) entidadesAlDia.push(e.nombre_corto);
+    if (!hasIssue) entidadesAlDia.push({ nombre: e.nombre_corto, id: e.entidad_id });
   });
+
+  const handleEntityClick = (entidadId: string) => {
+    setEntidadId(entidadId);
+    navigate("/mis-actividades");
+  };
+
+  const handleAlertClick = (alert: { entidadId: string; route?: string }) => {
+    setEntidadId(alert.entidadId);
+    if (alert.route) navigate(alert.route);
+  };
 
   // Chart data
   const avanceBarData = [...entidades]
@@ -174,37 +191,26 @@ export default function DashboardMonitoreo({
             <GaugeCircle value={avgEjecucion} label="Ejec. SECO" color="hsl(var(--chart-2))" />
           </CardContent>
         </Card>
-        <Card className={pendientesTotal > 0 ? "border-warning/50" : ""}>
-          <CardContent className="pt-4 pb-3 text-center">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Pendientes Revisión</p>
-            <div className="flex items-center justify-center gap-1">
-              <p className="text-3xl font-bold text-foreground">{pendientesTotal}</p>
-              {pendientesTotal > 0 && <Badge variant="destructive" className="text-[9px] px-1.5">!</Badge>}
-            </div>
-            <p className="text-[10px] text-muted-foreground">registros mensuales</p>
-          </CardContent>
-        </Card>
-        <Card className={sobregiros.length > 0 ? "border-destructive/50" : ""}>
-          <CardContent className="pt-4 pb-3 text-center">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Sobregiros Activos</p>
-            <p className={`text-3xl font-bold ${sobregiros.length > 0 ? "text-destructive" : "text-foreground"}`}>{sobregiros.length}</p>
-            <p className="text-[10px] text-muted-foreground">entidades</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 text-center">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Indicadores Impacto</p>
-            <p className="text-3xl font-bold text-foreground">{indicadoresStats.completed}<span className="text-lg text-muted-foreground">/{indicadoresStats.total}</span></p>
-            <p className="text-[10px] text-muted-foreground">completados</p>
-          </CardContent>
-        </Card>
+        <ClickableKpiCard
+          label="Pendientes Revisión" value={String(pendientesTotal)} sub="registros mensuales"
+          onClick={() => navigate("/revision-pendiente")}
+          className={pendientesTotal > 0 ? "border-warning/50" : ""}
+        />
+        <ClickableKpiCard
+          label="Sobregiros Activos" value={String(sobregiros.length)} sub="entidades"
+          onClick={() => navigate("/desembolsos")}
+          className={sobregiros.length > 0 ? "border-destructive/50" : ""}
+        />
+        <ClickableKpiCard
+          label="Indicadores Impacto" value={`${indicadoresStats.completed}/${indicadoresStats.total}`} sub="completados"
+          onClick={() => navigate("/indicadores-impacto")}
+        />
       </div>
 
       {/* Middle section: Charts + Alerts */}
       <div className="grid gap-4 lg:grid-cols-5">
         {/* Charts left (3 cols) */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Horizontal bar: avance by entity */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">Avance Operativo por Entidad</CardTitle>
@@ -227,7 +233,6 @@ export default function DashboardMonitoreo({
             </CardContent>
           </Card>
 
-          {/* Mec A vs B comparison */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">Comparativa Mec A vs Mec B</CardTitle>
@@ -247,7 +252,6 @@ export default function DashboardMonitoreo({
             </CardContent>
           </Card>
 
-          {/* Scatter: tech vs financial */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">Avance Técnico vs Financiero</CardTitle>
@@ -282,7 +286,6 @@ export default function DashboardMonitoreo({
 
         {/* Alerts right (2 cols) */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Critical */}
           <Card className="border-destructive/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -295,7 +298,10 @@ export default function DashboardMonitoreo({
               ) : (
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {alertasCriticas.map((a, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs rounded bg-destructive/5 p-2">
+                    <div key={i}
+                      className="flex items-start gap-2 text-xs rounded bg-destructive/5 p-2 cursor-pointer hover:bg-destructive/10 transition-colors"
+                      onClick={() => handleAlertClick(a)}
+                    >
                       <span className="inline-block h-2 w-2 rounded-full bg-destructive mt-1 shrink-0" />
                       <span><strong>{a.entidad}</strong>: {a.text}</span>
                     </div>
@@ -305,7 +311,6 @@ export default function DashboardMonitoreo({
             </CardContent>
           </Card>
 
-          {/* Attention */}
           <Card className="border-warning/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -318,13 +323,19 @@ export default function DashboardMonitoreo({
               ) : (
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {alertasAtencion.map((a, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs rounded bg-yellow-500/5 p-2">
+                    <div key={i}
+                      className="flex items-start gap-2 text-xs rounded bg-yellow-500/5 p-2 cursor-pointer hover:bg-yellow-500/10 transition-colors"
+                      onClick={() => handleAlertClick(a)}
+                    >
                       <span className="inline-block h-2 w-2 rounded-full bg-yellow-500 mt-1 shrink-0" />
                       <span><strong>{a.entidad}</strong>: {a.text}</span>
                     </div>
                   ))}
                   {contratosProximos.length > 0 && (
-                    <div className="flex items-start gap-2 text-xs rounded bg-yellow-500/5 p-2">
+                    <div
+                      className="flex items-start gap-2 text-xs rounded bg-yellow-500/5 p-2 cursor-pointer hover:bg-yellow-500/10 transition-colors"
+                      onClick={() => navigate("/contratos")}
+                    >
                       <span className="inline-block h-2 w-2 rounded-full bg-yellow-500 mt-1 shrink-0" />
                       <span>{contratosProximos.length} contrato(s) por vencer en &lt;30 días</span>
                     </div>
@@ -334,7 +345,6 @@ export default function DashboardMonitoreo({
             </CardContent>
           </Card>
 
-          {/* All good */}
           <Card className="border-green-500/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -347,7 +357,10 @@ export default function DashboardMonitoreo({
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {entidadesAlDia.map((n) => (
-                    <Badge key={n} variant="outline" className="text-[10px] border-green-500/50 text-green-700">{n}</Badge>
+                    <Badge key={n.id} variant="outline"
+                      className="text-[10px] border-green-500/50 text-green-700 cursor-pointer hover:bg-green-500/10"
+                      onClick={() => handleEntityClick(n.id)}
+                    >{n.nombre}</Badge>
                   ))}
                 </div>
               )}
@@ -364,7 +377,10 @@ export default function DashboardMonitoreo({
             const desfase = (ent.avance_operativo_promedio || 0) - ent.pct_ejecucion_seco;
             const disponible = ent.presupuesto_seco_total - ent.ejecutado_seco_total;
             return (
-              <Card key={ent.entidad_id} className="hover:shadow-md transition-shadow">
+              <Card key={ent.entidad_id}
+                className="hover:shadow-md transition-shadow cursor-pointer hover:border-primary/30"
+                onClick={() => handleEntityClick(ent.entidad_id)}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
@@ -373,7 +389,6 @@ export default function DashboardMonitoreo({
                     </div>
                     <MecanismoBadge mec={ent.mecanismo} />
                   </div>
-                  {/* Status badges */}
                   <div className="flex flex-wrap gap-1 mt-1">
                     {ent.cadena_valor && <Badge variant="outline" className="text-[9px] px-1">{ent.cadena_valor}</Badge>}
                     {ent.region && <Badge variant="outline" className="text-[9px] px-1">{ent.region}</Badge>}
@@ -398,7 +413,6 @@ export default function DashboardMonitoreo({
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Progress bars */}
                   <div>
                     <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
                       <span className="flex items-center gap-1"><Activity className="h-3 w-3" /> Operativo</span>
@@ -414,7 +428,6 @@ export default function DashboardMonitoreo({
                     <Progress value={ent.pct_ejecucion_seco} className="h-2" />
                   </div>
 
-                  {/* Mini finance table */}
                   <div className="bg-muted/30 rounded p-2 text-[11px]">
                     <div className="grid grid-cols-3 gap-1 text-center">
                       <div>
@@ -432,7 +445,6 @@ export default function DashboardMonitoreo({
                     </div>
                   </div>
 
-                  {/* Footer */}
                   <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1 border-t">
                     <span>{ent.actividades_completadas}/{ent.total_actividades} actividades</span>
                     {(ent.pendientes_revision ?? 0) > 0 && (

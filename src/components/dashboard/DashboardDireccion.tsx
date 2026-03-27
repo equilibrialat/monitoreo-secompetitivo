@@ -4,14 +4,18 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Loader2, Bot } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import { Header, KpiCard, MecanismoBadge, Semaforo, fmt, DashboardSkeleton } from "./DashboardEntidad";
+import { Header, ClickableKpiCard, KpiCard, MecanismoBadge, Semaforo, fmt, DashboardSkeleton } from "./DashboardEntidad";
 import { invokeAnalysis } from "@/lib/aiAnalysis";
+import { useNavigate } from "react-router-dom";
+import { useRole } from "@/contexts/RoleContext";
 
 export default function DashboardDireccion() {
   const { data: entidades, isLoading } = useDashboardData();
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { setEntidadId } = useRole();
 
   const handleAnalysis = async () => {
     if (!entidades?.length) return;
@@ -54,20 +58,25 @@ export default function DashboardDireccion() {
 
   const sorted = [...all].sort((a, b) => (b.avance_operativo_promedio || 0) - (a.avance_operativo_promedio || 0));
 
+  const handleEntityClick = (entidadId: string) => {
+    setEntidadId(entidadId);
+    navigate("/mis-actividades");
+  };
+
   return (
     <div>
       <Header title="Dashboard Ejecutivo" subtitle="Dirección" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <KpiCard label="Avance Operativo Global" value={`${avOpGlobal}%`} />
-        <KpiCard label="Avance Financiero SECO" value={`${avFinGlobal}%`} sub={`USD ${fmt(totalEjec)} / ${fmt(totalPpto)}`} />
-        <KpiCard label="Entidades Activas" value={String(all.length)} />
-        <KpiCard label="Actividades Completadas" value={`${completadas}/${totalAct}`} />
+        <ClickableKpiCard label="Avance Financiero SECO" value={`${avFinGlobal}%`} sub={`USD ${fmt(totalEjec)} / ${fmt(totalPpto)}`} onClick={() => navigate("/desembolsos")} />
+        <ClickableKpiCard label="Entidades Activas" value={String(all.length)} onClick={() => navigate("/verificacion")} />
+        <ClickableKpiCard label="Actividades Completadas" value={`${completadas}/${totalAct}`} onClick={() => navigate("/mis-actividades")} />
       </div>
 
       {/* Mec A vs Mec B */}
       <div className="grid gap-4 sm:grid-cols-2 mb-6">
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/reportes-mec-a")}>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Mecanismo A — Políticas Públicas</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div><div className="flex justify-between text-xs text-muted-foreground mb-1"><span>Avance operativo</span><span>{avgOp(mecA)}%</span></div><Progress value={avgOp(mecA)} className="h-2" /></div>
@@ -75,7 +84,7 @@ export default function DashboardDireccion() {
             <p className="text-xs text-muted-foreground">{mecA.length} entidades</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/reportes-mec-b")}>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Mecanismo B — Cadenas de Valor</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div><div className="flex justify-between text-xs text-muted-foreground mb-1"><span>Avance operativo</span><span>{avgOp(mecB)}%</span></div><Progress value={avgOp(mecB)} className="h-2" /></div>
@@ -87,21 +96,14 @@ export default function DashboardDireccion() {
 
       {/* AI Analysis */}
       <div className="mb-6">
-        <Button
-          onClick={handleAnalysis}
-          disabled={aiLoading}
-          variant="outline"
-          className="mb-3"
-        >
+        <Button onClick={handleAnalysis} disabled={aiLoading} variant="outline" className="mb-3">
           {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
           {aiLoading ? "Analizando datos del programa..." : "🤖 Generar análisis ejecutivo"}
         </Button>
 
         {aiError && (
           <Card className="border-destructive">
-            <CardContent className="py-3">
-              <p className="text-sm text-destructive">{aiError}</p>
-            </CardContent>
+            <CardContent className="py-3"><p className="text-sm text-destructive">{aiError}</p></CardContent>
           </Card>
         )}
 
@@ -125,7 +127,7 @@ export default function DashboardDireccion() {
         {sorted.map((e, i) => {
           const desfase = (e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco;
           return (
-            <Card key={e.entidad_id}>
+            <Card key={e.entidad_id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleEntityClick(e.entidad_id)}>
               <CardContent className="flex items-center gap-4 py-3">
                 <span className="text-lg font-bold text-muted-foreground w-6 text-center">{i + 1}</span>
                 <div className="flex-1 min-w-0">
