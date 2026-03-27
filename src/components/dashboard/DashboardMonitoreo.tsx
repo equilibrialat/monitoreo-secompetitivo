@@ -6,6 +6,7 @@ import { AlertTriangle, Clock, TrendingDown, Activity, DollarSign, FileCheck, Al
 import { useDashboardData, type DashboardEntidad } from "@/hooks/useDashboardData";
 import { Header, MecanismoBadge, Semaforo, fmt, DashboardSkeleton, ClickableKpiCard } from "./DashboardEntidad";
 import { SeccionRevision } from "./SeccionRevision";
+import { ResumenRegional } from "./ResumenRegional";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";

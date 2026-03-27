@@ -731,3 +731,204 @@ export async function generateResumenEjecutivoDocx(data: ResumenEjecutivoData) {
   const buffer = await Packer.toBlob(doc);
   saveAs(buffer, `Resumen_Ejecutivo_${trimestre}_${anio}.docx`);
 }
+
+// ---- RESUMEN REGIONAL MENSUAL ----
+interface ResumenRegionalData {
+  region: string;
+  mes: number;
+  anio: number;
+  entidades: {
+    nombre: string;
+    mecanismo: string;
+    cadenaValor: string;
+    avanceOp: number;
+    ejecSeco: number;
+    ejecutadoMes: { seco: number; cm: number; cnm: number };
+    estadoAprobacion: string;
+    alertas: string[];
+    prioridades: string | null;
+    compromisos: string | null;
+    presupuesto: number;
+    ejecutado: number;
+    actConAvance: number;
+    totalRegistros: number;
+  }[];
+  aiSummary: string | null;
+}
+
+export async function generateResumenRegionalDocx(data: ResumenRegionalData) {
+  const { region, mes, anio, entidades, aiSummary } = data;
+  const mesNombre = MESES_NOMBRE[mes] || String(mes);
+  const children: (Paragraph | Table)[] = [];
+
+  // Title
+  children.push(new Paragraph({
+    spacing: { after: 100 },
+    children: [new TextRun({ text: `RESUMEN REGIONAL — ${region}`, bold: true, font: "Arial", size: 36, color: BLUE_DARK })],
+  }));
+  children.push(new Paragraph({
+    spacing: { after: 60 },
+    children: [new TextRun({ text: `${mesNombre} ${anio} — Programa SeCompetitivo`, font: "Arial", size: 22, color: "666666" })],
+  }));
+  children.push(new Paragraph({
+    spacing: { after: 200 },
+    children: [new TextRun({ text: `Generado: ${new Date().toLocaleDateString("es-PE")}`, font: "Arial", size: 18, color: "999999" })],
+  }));
+
+  // Section 1: KPIs
+  children.push(sectionHeading(1, "ESTADO GENERAL"));
+  const conReporte = entidades.filter(e => e.estadoAprobacion !== "Sin registro").length;
+  const totalAlertas = entidades.reduce((s, e) => s + e.alertas.length, 0);
+  const kpiW = Math.floor(9360 / 4);
+  children.push(new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: [kpiW, kpiW, kpiW, kpiW],
+    rows: [new TableRow({ children: [
+      { label: "Entidades", value: String(entidades.length) },
+      { label: "Con reporte", value: String(conReporte) },
+      { label: "Pendientes", value: String(entidades.length - conReporte) },
+      { label: "Alertas", value: String(totalAlertas) },
+    ].map(k => new TableCell({
+      borders: cellBorders, width: { size: kpiW, type: WidthType.DXA },
+      shading: { fill: BLUE_LIGHT, type: ShadingType.CLEAR }, margins: cellMargins,
+      children: [
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: k.label, font: "Arial", size: 16, color: "666666" })] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: k.value, font: "Arial", size: 28, bold: true })] }),
+      ],
+    })) })],
+  }));
+
+  // Section 2: Detail per entity
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+  children.push(sectionHeading(2, "DETALLE POR ENTIDAD"));
+
+  const colWidths = [2200, 1000, 1200, 1200, 1200, 1200, 1360];
+
+  for (const ent of entidades) {
+    children.push(new Paragraph({
+      spacing: { before: 240, after: 100 },
+      shading: { fill: BLUE_LIGHT, type: ShadingType.CLEAR },
+      children: [new TextRun({ text: `  ${ent.nombre} (MEC-${ent.mecanismo}) — ${ent.cadenaValor}`, bold: true, font: "Arial", size: 22 })],
+    }));
+
+    children.push(new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [2340, 2340, 2340, 2340],
+      rows: [new TableRow({ children: [
+        { l: "Avance Op.", v: `${ent.avanceOp}%` },
+        { l: "Ejec. SECO", v: `${ent.ejecSeco}%` },
+        { l: "Acts. con avance", v: `${ent.actConAvance}/${ent.totalRegistros}` },
+        { l: "Estado", v: ent.estadoAprobacion },
+      ].map(k => new TableCell({
+        borders: cellBorders, width: { size: 2340, type: WidthType.DXA },
+        margins: cellMargins,
+        children: [
+          new Paragraph({ children: [new TextRun({ text: k.l, font: "Arial", size: 16, color: "666666" })] }),
+          new Paragraph({ children: [new TextRun({ text: k.v, font: "Arial", size: 20, bold: true })] }),
+        ],
+      })) })],
+    }));
+
+    // Financiero del mes
+    children.push(new Paragraph({
+      spacing: { before: 80, after: 40 },
+      children: [new TextRun({ text: "Ejecución del mes:", font: "Arial", size: 18, bold: true, color: "444444" })],
+    }));
+    children.push(new Paragraph({
+      indent: { left: 360 },
+      children: [new TextRun({ text: `SECO: ${formatCurrency(ent.ejecutadoMes.seco)} | CM: ${formatCurrency(ent.ejecutadoMes.cm)} | CNM: ${formatCurrency(ent.ejecutadoMes.cnm)}`, font: "Arial", size: 18 })],
+    }));
+
+    if (ent.prioridades) {
+      children.push(new Paragraph({
+        spacing: { before: 60 }, indent: { left: 360 },
+        children: [
+          new TextRun({ text: "Prioridades: ", font: "Arial", size: 18, bold: true, color: "444444" }),
+          new TextRun({ text: ent.prioridades, font: "Arial", size: 18 }),
+        ],
+      }));
+    }
+    if (ent.compromisos) {
+      children.push(new Paragraph({
+        indent: { left: 360 },
+        children: [
+          new TextRun({ text: "Compromisos: ", font: "Arial", size: 18, bold: true, color: "444444" }),
+          new TextRun({ text: ent.compromisos, font: "Arial", size: 18 }),
+        ],
+      }));
+    }
+
+    if (ent.alertas.length > 0) {
+      children.push(new Paragraph({
+        spacing: { before: 60 },
+        shading: { fill: "FEF2F2", type: ShadingType.CLEAR },
+        children: [new TextRun({ text: `  ⚠️ ${ent.alertas.join(" | ")}`, font: "Arial", size: 18, color: RED })],
+      }));
+    }
+  }
+
+  // Section 3: AI
+  if (aiSummary) {
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+    children.push(sectionHeading(3, "ANÁLISIS REGIONAL (IA)"));
+    aiSummary.split("\n").filter(Boolean).forEach(p => {
+      const trimmed = p.trim();
+      if (trimmed.startsWith("##")) {
+        children.push(new Paragraph({
+          spacing: { before: 200, after: 100 },
+          children: [new TextRun({ text: trimmed.replace(/^#+\s*/, ""), bold: true, font: "Arial", size: 24, color: BLUE_DARK })],
+        }));
+      } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+        children.push(new Paragraph({
+          spacing: { after: 60 }, indent: { left: 360 },
+          children: [new TextRun({ text: `• ${trimmed.replace(/^[-*]\s*/, "")}`, font: "Arial", size: 20 })],
+        }));
+      } else {
+        children.push(new Paragraph({
+          spacing: { after: 100 },
+          children: [new TextRun({ text: trimmed, font: "Arial", size: 20 })],
+        }));
+      }
+    });
+  }
+
+  children.push(new Paragraph({
+    spacing: { before: 400 },
+    children: [new TextRun({ text: "Generado automáticamente por el Sistema de Monitoreo SeCompetitivo", font: "Arial", size: 16, color: "999999", italics: true })],
+  }));
+
+  const doc = new Document({
+    styles: { default: { document: { run: { font: "Arial", size: 22 } } } },
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+        },
+      },
+      headers: {
+        default: new Header({
+          children: [new Paragraph({
+            border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: BLUE_DARK, space: 4 } },
+            children: [new TextRun({ text: `SeCompetitivo — Resumen Regional ${region} — ${mesNombre} ${anio}`, font: "Arial", size: 16, color: "999999" })],
+          })],
+        }),
+      },
+      footers: {
+        default: new Footer({
+          children: [new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({ text: "Página ", font: "Arial", size: 16, color: "999999" }),
+              new TextRun({ children: [PageNumber.CURRENT], font: "Arial", size: 16, color: "999999" }),
+            ],
+          })],
+        }),
+      },
+      children,
+    }],
+  });
+
+  const buffer = await Packer.toBlob(doc);
+  saveAs(buffer, `Resumen_Regional_${region}_${mesNombre}_${anio}.docx`);
+}
