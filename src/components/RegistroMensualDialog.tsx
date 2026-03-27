@@ -294,11 +294,50 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
               </div>
             ) : (
               <div className="py-4 space-y-6">
-                {observaciones && (
-                  <div className="rounded-md border-2 border-destructive bg-destructive/5 px-4 py-3">
-                    <p className="text-xs font-semibold text-destructive mb-1">⚠️ Observaciones del revisor:</p>
-                    <p className="text-xs text-destructive/80 italic">"{observaciones}"</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Corrige y vuelve a enviar.</p>
+                {/* Historial de revisión / observaciones */}
+                {(observaciones || historial.length > 0) && (
+                  <div className="rounded-md border-2 border-destructive/60 bg-destructive/5 px-4 py-3 space-y-2">
+                    <p className="text-xs font-semibold text-destructive flex items-center gap-1">
+                      ⚠️ {observaciones ? "REGISTRO OBSERVADO" : "Historial de revisión"}
+                    </p>
+                    {observaciones && (
+                      <p className="text-xs text-destructive/80 italic mb-2">Última observación: "{observaciones}"</p>
+                    )}
+                    {historial.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase">Línea de tiempo:</p>
+                        {historial.map((h) => (
+                          <div key={h.id} className={`flex items-start gap-2 text-[10px] rounded px-2 py-1 ${
+                            h.accion === "observar" ? "bg-destructive/10" :
+                            h.accion === "comentar" ? "bg-primary/10" :
+                            "bg-muted/50"
+                          }`}>
+                            <Clock className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                            <div>
+                              <span className="text-muted-foreground">
+                                {h.created_at ? new Date(h.created_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                              </span>
+                              <span className="mx-1">|</span>
+                              <span className="font-medium">{h.nombre_usuario || "Sistema"}</span>
+                              <span className="mx-1">→</span>
+                              <span className={
+                                h.accion === "aprobar" ? "text-emerald-700" :
+                                h.accion === "observar" ? "text-destructive" :
+                                "text-primary"
+                              }>
+                                {h.accion === "aprobar" ? "✅ Aprobó" : h.accion === "observar" ? "↩ Observó" : "💬 Comentó"}
+                              </span>
+                              {h.observaciones && (
+                                <p className="text-foreground italic mt-0.5">"{h.observaciones}"</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {observaciones && (
+                      <p className="text-[10px] text-muted-foreground mt-1">Corrige los campos necesarios y haz clic en "Reenviar con correcciones".</p>
+                    )}
                   </div>
                 )}
                 {/* Indicator context */}
