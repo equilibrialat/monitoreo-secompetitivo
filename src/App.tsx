@@ -12,6 +12,10 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import RevisionPendientePage from "./pages/RevisionPendientePage";
 import IndicadoresImpactoPage from "./pages/IndicadoresImpactoPage";
 import ReportesPage from "./pages/ReportesPage";
+import ContratosPage from "./pages/ContratosPage";
+import DesembolsosPage from "./pages/DesembolsosPage";
+import ViaticosPage from "./pages/ViaticosPage";
+import ReasignacionesPage from "./pages/ReasignacionesPage";
 
 const queryClient = new QueryClient();
 
