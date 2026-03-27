@@ -693,7 +693,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         {/* SECTION 7 — CAPACITACIONES */}
         {capacitaciones.length > 0 && (
           <>
-            <SectionTitle icon={Users} title="CAPACITACIONES DEL TRIMESTRE" number={7} />
+            <SectionTitle icon={Users} title="CAPACITACIONES DEL TRIMESTRE" number={8} />
             <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
               <Table>
                 <TableHeader>
