@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, X } from "lucide-react";
 import { downloadCSV, formatCurrency, TRIMESTRES_MESES } from "@/lib/reportUtils";
 import type { EntidadOption } from "@/contexts/RoleContext";
+import AIAnalysisCard from "./AIAnalysisCard";
 
 interface Props {
   entidadId: string | null;
