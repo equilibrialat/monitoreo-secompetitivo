@@ -102,14 +102,17 @@ function FormCapacitacion({ data, onChange }: { data: RegistroCapacitacion; onCh
 
       {/* Participantes */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs font-medium">{data.participantes.length} participantes ({totalH} hombres, {totalM} mujeres)</span>
           </div>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onChange({ ...data, participantes: [...data.participantes, createEmptyParticipante()] })}>
-            <Plus className="h-3 w-3 mr-1" /> Agregar
-          </Button>
+          <div className="flex items-center gap-2">
+            <BulkUploadParticipantes onImport={(imported) => onChange({ ...data, participantes: [...data.participantes, ...imported] })} />
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onChange({ ...data, participantes: [...data.participantes, createEmptyParticipante()] })}>
+              <Plus className="h-3 w-3 mr-1" /> Agregar
+            </Button>
+          </div>
         </div>
 
         {data.participantes.length > 0 && (
