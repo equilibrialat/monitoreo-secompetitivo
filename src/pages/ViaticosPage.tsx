@@ -173,7 +173,7 @@ export default function ViaticosPage() {
                   {isAdmin && <TableHead>Entidad</TableHead>}
                   <TableHead>Viajero</TableHead><TableHead>Destino</TableHead><TableHead>Motivo</TableHead>
                   <TableHead>Salida</TableHead><TableHead>Retorno</TableHead>
-                  <TableHead className="text-right">Estimado</TableHead><TableHead className="text-right">Liquidado</TableHead>
+                  <TableHead className="text-right">Solicitado</TableHead><TableHead className="text-right">Liquidado</TableHead>
                   <TableHead>Estado</TableHead><TableHead></TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -182,11 +182,11 @@ export default function ViaticosPage() {
                     <TableRow key={v.id}>
                       {isAdmin && <TableCell className="text-xs">{entName(v.entidad_id)}</TableCell>}
                       <TableCell className="text-xs font-medium">{v.nombre_viajero}</TableCell>
-                      <TableCell className="text-xs">{v.destino_ciudad}</TableCell>
+                      <TableCell className="text-xs">{v.destino}</TableCell>
                       <TableCell className="text-xs max-w-[150px] truncate">{v.motivo}</TableCell>
                       <TableCell className="text-xs">{v.fecha_salida ?? "—"}</TableCell>
                       <TableCell className="text-xs">{v.fecha_retorno ?? "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-xs">{fmt(v.monto_estimado)}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">{fmt(v.monto_solicitado)}</TableCell>
                       <TableCell className="text-right font-mono text-xs">{fmt(v.monto_liquidado)}</TableCell>
                       <TableCell><Badge variant="outline">{ESTADO_LABELS[v.estado] ?? v.estado}</Badge></TableCell>
                       <TableCell>
