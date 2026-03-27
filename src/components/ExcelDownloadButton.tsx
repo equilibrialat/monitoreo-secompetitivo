@@ -1,4 +1,4 @@
-import { downloadCSV } from "@/lib/reportUtils";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 
@@ -11,8 +11,10 @@ interface Props {
 export default function ExcelDownloadButton({ data, filename, label = "Excel" }: Props) {
   function handleDownload() {
     if (data.length === 0) return;
-    // Use CSV with BOM for Excel compatibility (already UTF-8 with BOM in reportUtils)
-    downloadCSV(data, filename.replace(/\.xlsx$/, ".csv"));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Datos");
+    XLSX.writeFile(wb, filename.replace(/\.csv$/, ".xlsx"), { bookType: "xlsx", type: "binary" });
   }
 
   return (

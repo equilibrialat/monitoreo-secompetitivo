@@ -10,8 +10,8 @@ function fmt(n: number | null | undefined) { return n == null ? "—" : n.toLoca
 function pct(n: number, d: number) { return d > 0 ? ((n / d) * 100).toFixed(1) + "%" : "—"; }
 
 function exportCSV(headers: string[], rows: any[][], filename: string) {
-  const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${v ?? ""}"`).join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
+  const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
 }
 
