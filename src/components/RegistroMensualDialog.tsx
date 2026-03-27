@@ -11,7 +11,7 @@ import { SeccionEjecucionFinanciera } from "./registro/SeccionEjecucionFinancier
 import { SeccionIndicadoresContextuales } from "./registro/SeccionIndicadoresContextuales";
 import { useRole } from "@/contexts/RoleContext";
 import type { ActividadDB } from "@/lib/supabaseQueries";
-import { saveRegistroMensual, fetchRegistroExistente } from "@/lib/supabaseQueries";
+import { saveRegistroMensual, fetchRegistroExistente, fetchAcumuladoAnterior } from "@/lib/supabaseQueries";
 import type { FuenteFinanciera, ContextualData } from "@/types/registroMensual";
 import {
   createEmptyCapacitacion, createEmptyInnovacion,
