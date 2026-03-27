@@ -30,7 +30,7 @@ export interface TreeNode {
 }
 
 export async function fetchActividadesByEntidad(entidadId: string): Promise<ActividadDB[]> {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("actividades")
     .select(`
       id, codigo, nombre, meta_valor, meta_unidad_medida,
