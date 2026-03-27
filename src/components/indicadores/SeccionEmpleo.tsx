@@ -133,6 +133,7 @@ export function SeccionEmpleo({ entidadId, anio, periodo, cadenaValor, onSaved, 
       }
       return copy;
     });
+    onDirty?.();
   };
 
   const handleSave = async () => {
