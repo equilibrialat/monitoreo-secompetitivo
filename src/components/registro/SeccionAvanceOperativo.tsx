@@ -78,10 +78,11 @@ function getTooltipText(unidad: string): string {
 
 export function SeccionAvanceOperativo({
   mes, anio, valorAvance, estado, descripcion, fechaEjecucion, unidadMedida,
-  metaValor, acumuladoAnterior,
+  metaValor, acumuladoAnterior, actividadNombre, actividadCodigo,
   onMesChange, onAnioChange, onValorAvanceChange, onEstadoChange,
   onDescripcionChange, onFechaEjecucionChange, errors = {},
 }: SeccionAvanceProps) {
+  const [suggestLoading, setSuggestLoading] = useState(false);
   const totalProyectado = acumuladoAnterior + valorAvance;
   const progressPct = metaValor > 0 ? Math.min((totalProyectado / metaValor) * 100, 100) : 0;
   const superaMeta = metaValor > 0 && totalProyectado > metaValor;
