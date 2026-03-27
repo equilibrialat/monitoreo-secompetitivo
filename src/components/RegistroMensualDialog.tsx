@@ -55,7 +55,9 @@ function buildContextual(tags: string[]): ContextualData {
 }
 
 export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMensualDialogProps) {
-  const { entidadId } = useRole();
+  const { entidadId, entidades } = useRole();
+  const currentEntidad = entidades.find(e => e.id === entidadId);
+  const isMecA = currentEntidad?.mecanismo === "A" || currentEntidad?.tipo_entidad === "mec_a";
   const now = new Date();
   const [mes, setMes] = useState(now.getMonth());
   const [anio, setAnio] = useState(now.getFullYear());
