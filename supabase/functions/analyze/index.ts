@@ -63,12 +63,14 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" };
+
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(
         JSON.stringify({ error: "LOVABLE_API_KEY no está configurada" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: jsonHeaders }
       );
     }
 
@@ -77,7 +79,7 @@ Deno.serve(async (req) => {
     if (!tipo || !datos) {
       return new Response(
         JSON.stringify({ error: "Se requieren los campos 'tipo' y 'datos'" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: jsonHeaders }
       );
     }
 
@@ -85,7 +87,7 @@ Deno.serve(async (req) => {
     if (!systemPrompt) {
       return new Response(
         JSON.stringify({ error: `Tipo de análisis no soportado: ${tipo}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: jsonHeaders }
       );
     }
 
@@ -111,20 +113,20 @@ Deno.serve(async (req) => {
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Límite de solicitudes excedido. Intente en unos minutos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 429, headers: jsonHeaders }
         );
       }
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: "Créditos de IA agotados. Contacte al administrador." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 402, headers: jsonHeaders }
         );
       }
       const errorBody = await response.text();
       console.error("AI gateway error:", response.status, errorBody);
       return new Response(
         JSON.stringify({ error: `Error de la API de IA [${response.status}]` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 502, headers: jsonHeaders }
       );
     }
 
@@ -133,13 +135,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ resultado: text }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" } }
+      { status: 200, headers: jsonHeaders }
     );
   } catch (error) {
     console.error("Edge function error:", error);
     return new Response(
       JSON.stringify({ error: "No se pudo generar el análisis. Intente nuevamente." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: jsonHeaders }
     );
   }
 });
