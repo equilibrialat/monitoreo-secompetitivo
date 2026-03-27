@@ -23,6 +23,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 export interface EntidadOption {
   id: string;
   nombre_corto: string;
+  tipo_entidad: string;
+  cadena_valor: string | null;
 }
 
 interface RoleContextValue {
