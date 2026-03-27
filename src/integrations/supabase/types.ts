@@ -598,6 +598,8 @@ export type Database = {
           campo: string | null
           created_at: string | null
           id: string
+          nombre_usuario: string | null
+          observaciones: string | null
           registro_id: string
           tabla: string
           usuario_id: string | null
@@ -609,6 +611,8 @@ export type Database = {
           campo?: string | null
           created_at?: string | null
           id?: string
+          nombre_usuario?: string | null
+          observaciones?: string | null
           registro_id: string
           tabla: string
           usuario_id?: string | null
@@ -620,6 +624,8 @@ export type Database = {
           campo?: string | null
           created_at?: string | null
           id?: string
+          nombre_usuario?: string | null
+          observaciones?: string | null
           registro_id?: string
           tabla?: string
           usuario_id?: string | null

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Save, Send, Loader2 } from "lucide-react";
+import { Save, Send, Loader2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -17,6 +17,7 @@ import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import { saveRegistroMensual, fetchRegistroExistente, fetchAcumuladoAnterior } from "@/lib/supabaseQueries";
+import { fetchHistorialRegistro, type HistorialEntry } from "@/lib/registroAprobacion";
 import type { FuenteFinanciera, ContextualData } from "@/types/registroMensual";
 import {
   createEmptyCapacitacion, createEmptyInnovacion,
@@ -77,6 +78,8 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const [limitaciones, setLimitaciones] = useState("");
   const [prioridades, setPrioridades] = useState("");
   const [compromisos, setCompromisos] = useState("");
+  const [historial, setHistorial] = useState<HistorialEntry[]>([]);
+  const [registroId, setRegistroId] = useState<string | null>(null);
 
   // Refs for auto-save to access latest state
   const stateRef = useRef({ valorAvance, estado, descripcion, fechaEjecucion, fuentes, contextual, mes, anio });
@@ -161,12 +164,18 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
       setLimitaciones(existing.limitaciones ?? "");
       setPrioridades(existing.prioridades_proximo_mes ?? "");
       setCompromisos(existing.compromisos ?? "");
+      setRegistroId(existing.id);
+      // Load historial
+      const hist = await fetchHistorialRegistro(existing.id);
+      setHistorial(hist);
     } else {
       setValorAvance(0);
       setEstado("");
       setDescripcion("");
       setFechaEjecucion(undefined);
       setIsEdit(false);
+      setHistorial([]);
+      setRegistroId(null);
     }
     setValidationErrors({});
     markClean();
@@ -285,11 +294,50 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
               </div>
             ) : (
               <div className="py-4 space-y-6">
-                {observaciones && (
-                  <div className="rounded-md border-2 border-destructive bg-destructive/5 px-4 py-3">
-                    <p className="text-xs font-semibold text-destructive mb-1">⚠️ Observaciones del revisor:</p>
-                    <p className="text-xs text-destructive/80 italic">"{observaciones}"</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Corrige y vuelve a enviar.</p>
+                {/* Historial de revisión / observaciones */}
+                {(observaciones || historial.length > 0) && (
+                  <div className="rounded-md border-2 border-destructive/60 bg-destructive/5 px-4 py-3 space-y-2">
+                    <p className="text-xs font-semibold text-destructive flex items-center gap-1">
+                      ⚠️ {observaciones ? "REGISTRO OBSERVADO" : "Historial de revisión"}
+                    </p>
+                    {observaciones && (
+                      <p className="text-xs text-destructive/80 italic mb-2">Última observación: "{observaciones}"</p>
+                    )}
+                    {historial.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase">Línea de tiempo:</p>
+                        {historial.map((h) => (
+                          <div key={h.id} className={`flex items-start gap-2 text-[10px] rounded px-2 py-1 ${
+                            h.accion === "observar" ? "bg-destructive/10" :
+                            h.accion === "comentar" ? "bg-primary/10" :
+                            "bg-muted/50"
+                          }`}>
+                            <Clock className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                            <div>
+                              <span className="text-muted-foreground">
+                                {h.created_at ? new Date(h.created_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                              </span>
+                              <span className="mx-1">|</span>
+                              <span className="font-medium">{h.nombre_usuario || "Sistema"}</span>
+                              <span className="mx-1">→</span>
+                              <span className={
+                                h.accion === "aprobar" ? "text-emerald-700" :
+                                h.accion === "observar" ? "text-destructive" :
+                                "text-primary"
+                              }>
+                                {h.accion === "aprobar" ? "✅ Aprobó" : h.accion === "observar" ? "↩ Observó" : "💬 Comentó"}
+                              </span>
+                              {h.observaciones && (
+                                <p className="text-foreground italic mt-0.5">"{h.observaciones}"</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {observaciones && (
+                      <p className="text-[10px] text-muted-foreground mt-1">Corrige los campos necesarios y haz clic en "Reenviar con correcciones".</p>
+                    )}
                   </div>
                 )}
                 {/* Indicator context */}
@@ -383,7 +431,7 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
             </Button>
             <Button size="sm" className="flex-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90 min-h-[44px]" onClick={() => setShowSendConfirm(true)} disabled={saving || loading}>
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-              Enviar para revisión
+              {observaciones ? "Reenviar con correcciones" : "Enviar para revisión"}
             </Button>
           </div>
         </SheetContent>

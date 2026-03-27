@@ -18,6 +18,17 @@ export interface RegistroPendiente {
   region?: string;
 }
 
+export interface HistorialEntry {
+  id: string;
+  accion: string;
+  campo: string | null;
+  valor_anterior: string | null;
+  valor_nuevo: string | null;
+  observaciones: string | null;
+  nombre_usuario: string | null;
+  created_at: string | null;
+}
+
 export async function fetchRegistrosPorEstado(estadoRegistro: string): Promise<RegistroPendiente[]> {
   const { data, error } = await (supabase as any)
     .from("registros_mensuales")
@@ -55,10 +66,27 @@ export async function fetchRegistrosPorEstado(estadoRegistro: string): Promise<R
   }));
 }
 
+export async function fetchHistorialRegistro(registroId: string): Promise<HistorialEntry[]> {
+  const { data, error } = await (supabase as any)
+    .from("historial_cambios")
+    .select("id, accion, campo, valor_anterior, valor_nuevo, observaciones, nombre_usuario, created_at")
+    .eq("tabla", "registros_mensuales")
+    .eq("registro_id", registroId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching historial:", error);
+    return [];
+  }
+  return data || [];
+}
+
 export async function cambiarEstadoRegistro(
   registroId: string,
   nuevoEstado: string,
-  observaciones?: string
+  observaciones?: string,
+  nombreUsuario?: string,
+  estadoAnterior?: string
 ): Promise<{ success: boolean; error?: string }> {
   const updateData: any = { estado_registro: nuevoEstado };
   if (observaciones !== undefined) {
@@ -78,16 +106,37 @@ export async function cambiarEstadoRegistro(
     return { success: false, error: error.message };
   }
 
-  // Log to historial_cambios
+  const accion = nuevoEstado === "observado" ? "observar" : "aprobar";
+
   await (supabase as any).from("historial_cambios").insert({
     tabla: "registros_mensuales",
     registro_id: registroId,
-    accion: "cambio_estado",
+    accion,
     campo: "estado_registro",
+    valor_anterior: estadoAnterior || null,
     valor_nuevo: nuevoEstado,
-    ...(observaciones ? { valor_anterior: observaciones } : {}),
+    observaciones: observaciones || null,
+    nombre_usuario: nombreUsuario || null,
   });
 
+  return { success: true };
+}
+
+export async function agregarComentario(
+  registroId: string,
+  comentario: string,
+  nombreUsuario?: string
+): Promise<{ success: boolean; error?: string }> {
+  const { error } = await (supabase as any).from("historial_cambios").insert({
+    tabla: "registros_mensuales",
+    registro_id: registroId,
+    accion: "comentar",
+    campo: "estado_registro",
+    observaciones: comentario,
+    nombre_usuario: nombreUsuario || null,
+  });
+
+  if (error) return { success: false, error: error.message };
   return { success: true };
 }
 
