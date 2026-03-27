@@ -546,6 +546,49 @@ export type Database = {
         }
         Relationships: []
       }
+      gestor_entidades: {
+        Row: {
+          created_at: string | null
+          entidad_id: string
+          gestor_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          entidad_id: string
+          gestor_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          entidad_id?: string
+          gestor_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gestor_entidades_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gestor_entidades_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
+            foreignKeyName: "gestor_entidades_gestor_id_fkey"
+            columns: ["gestor_id"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historial_cambios: {
         Row: {
           accion: string
@@ -2741,6 +2784,7 @@ export type Database = {
         | "administracion"
         | "direccion"
         | "admin_sistema"
+        | "gestor"
       tipo_contrato: "persona_natural" | "persona_juridica"
       tipo_entidad: "mec_b_agro" | "mec_b_turismo" | "mec_b_mixto" | "mec_a"
     }
@@ -2916,6 +2960,7 @@ export const Constants = {
         "administracion",
         "direccion",
         "admin_sistema",
+        "gestor",
       ],
       tipo_contrato: ["persona_natural", "persona_juridica"],
       tipo_entidad: ["mec_b_agro", "mec_b_turismo", "mec_b_mixto", "mec_a"],
