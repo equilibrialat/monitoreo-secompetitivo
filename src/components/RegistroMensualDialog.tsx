@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { SeccionAvanceOperativo } from "./registro/SeccionAvanceOperativo";
 import { SeccionEjecucionFinanciera } from "./registro/SeccionEjecucionFinanciera";
 import { SeccionIndicadoresContextuales } from "./registro/SeccionIndicadoresContextuales";
@@ -13,9 +14,21 @@ import { AutoSaveIndicator } from "./AutoSaveIndicator";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useRole } from "@/contexts/RoleContext";
+import { supabase } from "@/integrations/supabase/client";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import { saveRegistroMensual, fetchRegistroExistente, fetchAcumuladoAnterior } from "@/lib/supabaseQueries";
 import type { FuenteFinanciera, ContextualData } from "@/types/registroMensual";
+import {
+  createEmptyCapacitacion, createEmptyInnovacion,
+  createEmptyGei, createEmptyNuevoProducto,
+} from "@/types/registroMensual";
+
+interface IndicadorLinked {
+  codigo: string;
+  nombre: string;
+  meta: number | null;
+  linea_base: number | null;
+}
 import {
   createEmptyCapacitacion, createEmptyInnovacion,
   createEmptyGei, createEmptyNuevoProducto,
