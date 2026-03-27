@@ -48,6 +48,19 @@ export default function MisActividades() {
 
   const tree = buildActivityTree(actividades);
 
+  // Build grouped data for MapaMarcoLogico
+  const grouped = useMemo(() => {
+    const map = new Map<string, Map<string, any[]>>();
+    actividades.forEach(a => {
+      const res = `${a.resultado_codigo} — ${a.resultado_nombre}`;
+      const prod = `${a.producto_codigo} — ${a.producto_nombre}`;
+      if (!map.has(res)) map.set(res, new Map());
+      if (!map.get(res)!.has(prod)) map.get(res)!.set(prod, []);
+      map.get(res)!.get(prod)!.push(a);
+    });
+    return map;
+  }, [actividades]);
+
   // Build a map: actividad_id -> latest registro
   const registroMap = new Map<string, RegistroPendiente>();
   for (const r of registros) {
