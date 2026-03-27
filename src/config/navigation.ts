@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Plane,
   Shuffle,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/contexts/RoleContext";
@@ -36,20 +37,24 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   gestor_mec_a: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   coordinador_mec_b: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   monitoreo: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Indicadores", path: "/indicadores", icon: BarChart3 },
     { label: "Verificación", path: "/verificacion", icon: Eye },
     { label: "Reportes", path: "/reportes", icon: FolderOpen },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   administracion: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -57,11 +62,13 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { label: "Desembolsos", path: "/desembolsos", icon: Banknote },
     { label: "Viáticos", path: "/viaticos", icon: Plane },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
   direccion: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Aprobaciones", path: "/aprobaciones", icon: ClipboardCheck },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
+    { label: "Notificaciones", path: "/notificaciones", icon: Bell },
   ],
 };
 

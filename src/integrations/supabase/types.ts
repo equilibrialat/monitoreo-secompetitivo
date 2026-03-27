@@ -657,6 +657,64 @@ export type Database = {
           },
         ]
       }
+      notificaciones: {
+        Row: {
+          asunto: string
+          created_at: string | null
+          destinatarios: Json
+          entidad_destino_id: string | null
+          id: string
+          leido: boolean | null
+          mensaje: string
+          remitente_id: string | null
+          tipo: string
+        }
+        Insert: {
+          asunto: string
+          created_at?: string | null
+          destinatarios?: Json
+          entidad_destino_id?: string | null
+          id?: string
+          leido?: boolean | null
+          mensaje: string
+          remitente_id?: string | null
+          tipo: string
+        }
+        Update: {
+          asunto?: string
+          created_at?: string | null
+          destinatarios?: Json
+          entidad_destino_id?: string | null
+          id?: string
+          leido?: boolean | null
+          mensaje?: string
+          remitente_id?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_entidad_destino_id_fkey"
+            columns: ["entidad_destino_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificaciones_entidad_destino_id_fkey"
+            columns: ["entidad_destino_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
+            foreignKeyName: "notificaciones_remitente_id_fkey"
+            columns: ["remitente_id"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participantes_capacitacion: {
         Row: {
           apellidos: string

@@ -16,6 +16,7 @@ import ContratosPage from "./pages/ContratosPage";
 import DesembolsosPage from "./pages/DesembolsosPage";
 import ViaticosPage from "./pages/ViaticosPage";
 import ReasignacionesPage from "./pages/ReasignacionesPage";
+import NotificacionesPage from "./pages/NotificacionesPage";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +29,6 @@ const App = () => (
         <RoleProvider>
           <AppLayout>
             <Routes>
-              {/* Redirect root to /dashboard */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Index />} />
 
@@ -40,6 +40,7 @@ const App = () => (
               {/* Shared routes */}
               <Route path="/reportes" element={<ReportesPage />} />
               <Route path="/revision-pendiente" element={<RevisionPendientePage />} />
+              <Route path="/notificaciones" element={<NotificacionesPage />} />
 
               {/* Monitoreo routes */}
               <Route path="/indicadores" element={<PlaceholderPage title="Indicadores" />} />
