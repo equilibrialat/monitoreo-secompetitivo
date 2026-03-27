@@ -75,7 +75,11 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
   const loadExisting = useCallback(async () => {
     if (!actividad) return;
     setLoading(true);
-    const existing = await fetchRegistroExistente(actividad.id, anio, mes + 1);
+    const [existing, acum] = await Promise.all([
+      fetchRegistroExistente(actividad.id, anio, mes + 1),
+      fetchAcumuladoAnterior(actividad.id, anio, mes + 1),
+    ]);
+    setAcumuladoAnterior(acum);
     if (existing) {
       setValorAvance(existing.avance_valor ?? 0);
       setEstado(existing.estado ?? "");
