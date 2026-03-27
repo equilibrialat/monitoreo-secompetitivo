@@ -268,6 +268,8 @@ export function RegistroMensualDialog({ actividad, open, onClose }: RegistroMens
                   unidadMedida={actividad.meta_unidad_medida}
                   metaValor={actividad.meta_valor ?? 0}
                   acumuladoAnterior={acumuladoAnterior}
+                  actividadNombre={actividad.nombre}
+                  actividadCodigo={actividad.codigo}
                   onMesChange={(v) => { setMes(v); markDirty(); }}
                   onAnioChange={(v) => { setAnio(v); markDirty(); }}
                   onValorAvanceChange={handleFieldChange(setValorAvance)}
