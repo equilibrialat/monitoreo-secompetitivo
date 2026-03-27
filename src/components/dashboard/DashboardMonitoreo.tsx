@@ -34,6 +34,15 @@ export default function DashboardMonitoreo({
     <div>
       <Header title={title} subtitle={subtitle} />
 
+      {/* Review section */}
+      <SeccionRevision
+        title={reviewTitle}
+        estadoFiltro={reviewEstado}
+        estadoAprobar={reviewNextEstado}
+        labelAprobar={reviewLabel}
+        filterFn={reviewFilterFn}
+      />
+
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <KpiCard label="Entidades" value={String(entidades.length)} sub="bajo seguimiento" />
