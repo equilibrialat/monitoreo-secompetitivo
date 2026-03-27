@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import MisActividades from "./pages/MisActividades";
 import NotFound from "./pages/NotFound";
+import PlaceholderPage from "./pages/PlaceholderPage";
 
 const queryClient = new QueryClient();
 
@@ -20,8 +21,29 @@ const App = () => (
         <RoleProvider>
           <AppLayout>
             <Routes>
-              <Route path="/" element={<Index />} />
+              {/* Redirect root to /dashboard */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Index />} />
+
+              {/* Entidad routes */}
               <Route path="/actividades" element={<MisActividades />} />
+              <Route path="/registro-mensual" element={<PlaceholderPage title="Registro Mensual" />} />
+
+              {/* Shared routes */}
+              <Route path="/reportes" element={<PlaceholderPage title="Reportes" />} />
+              <Route path="/revision-pendiente" element={<PlaceholderPage title="Revisión Pendiente" />} />
+
+              {/* Monitoreo routes */}
+              <Route path="/indicadores" element={<PlaceholderPage title="Indicadores" />} />
+              <Route path="/verificacion" element={<PlaceholderPage title="Verificación" />} />
+
+              {/* Administracion routes */}
+              <Route path="/contratos" element={<PlaceholderPage title="Contratos" />} />
+              <Route path="/desembolsos" element={<PlaceholderPage title="Desembolsos" />} />
+
+              {/* Direccion routes */}
+              <Route path="/aprobaciones" element={<PlaceholderPage title="Aprobaciones" />} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
