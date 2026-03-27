@@ -16,6 +16,7 @@ export interface ActividadDB {
   avance_operativo_pct: number;
   estado_actual: string;
   tags: string[] | null;
+  indicadores_vinculados: string[] | null;
   producto_id: string;
   entidad_id: string;
   producto_codigo: string;
