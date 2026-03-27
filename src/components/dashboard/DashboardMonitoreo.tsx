@@ -16,7 +16,12 @@ interface Props {
   reviewFilterFn?: (r: any) => boolean;
 }
 
-export default function DashboardMonitoreo({ filterFn, title = "Dashboard de Monitoreo", subtitle }: Props) {
+export default function DashboardMonitoreo({
+  filterFn, title = "Dashboard de Monitoreo", subtitle,
+  reviewEstado = "en_revision_tecnica", reviewNextEstado = "en_revision_financiera",
+  reviewTitle = "Revisión Técnica Pendiente", reviewLabel = "Aprobar (→ Rev. Financiera)",
+  reviewFilterFn,
+}: Props) {
   const { data: allEntidades, isLoading } = useDashboardData();
   if (isLoading) return <DashboardSkeleton />;
 
