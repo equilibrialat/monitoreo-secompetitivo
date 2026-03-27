@@ -32,7 +32,7 @@ const App = () => (
 
               {/* Shared routes */}
               <Route path="/reportes" element={<PlaceholderPage title="Reportes" />} />
-              <Route path="/revision-pendiente" element={<PlaceholderPage title="Revisión Pendiente" />} />
+              <Route path="/revision-pendiente" element={<RevisionPendientePage />} />
 
               {/* Monitoreo routes */}
               <Route path="/indicadores" element={<PlaceholderPage title="Indicadores" />} />
