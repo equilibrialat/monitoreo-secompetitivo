@@ -38,6 +38,9 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
     onMobileClose?.();
   };
 
+  // Show entity selector for roles that need it
+  const showEntidadSelector = role === "entidad" || role === "gestor";
+
   const sidebarContent = (
     <aside className="flex flex-col w-[220px] min-h-screen bg-sidebar text-sidebar-foreground shrink-0">
       {/* Logo + close button on mobile */}
@@ -61,7 +64,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
               <ChevronDown className="h-4 w-4 opacity-60 shrink-0 ml-1" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[194px]">
+          <DropdownMenuContent align="start" className="w-[220px]">
             {ALL_ROLES.map((r) => (
               <DropdownMenuItem
                 key={r}
@@ -76,7 +79,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
       </div>
 
       {/* Entidad selector */}
-      {role === "entidad" && entidades.length > 0 && (
+      {showEntidadSelector && entidades.length > 0 && (
         <div className="px-3 pb-4">
           <Select value={entidadId ?? ""} onValueChange={setEntidadId} disabled={loadingEntidades}>
             <SelectTrigger className="h-10 text-xs bg-sidebar-accent border-none text-sidebar-active min-h-[44px]">

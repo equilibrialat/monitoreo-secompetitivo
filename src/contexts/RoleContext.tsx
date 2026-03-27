@@ -3,18 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole =
   | "entidad"
+  | "gestor"
   | "coordinador_regional"
-  | "gestor_mec_a"
-  | "coordinador_mec_b"
+  | "asesora_politicas"
+  | "coordinador_cadenas"
   | "monitoreo"
   | "administracion"
   | "direccion";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   entidad: "Entidad",
+  gestor: "Gestor",
   coordinador_regional: "Coordinador Regional",
-  gestor_mec_a: "Gestor MEC-A",
-  coordinador_mec_b: "Coordinador MEC-B",
+  asesora_politicas: "Asesora Políticas Públicas",
+  coordinador_cadenas: "Coordinador Cadenas de Valor",
   monitoreo: "Monitoreo",
   administracion: "Administración",
   direccion: "Dirección",
@@ -25,6 +27,8 @@ export interface EntidadOption {
   nombre_corto: string;
   tipo_entidad: string;
   cadena_valor: string | null;
+  mecanismo?: string;
+  region?: string;
 }
 
 interface RoleContextValue {
@@ -49,7 +53,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       setLoadingEntidades(true);
       const { data, error } = await (supabase as any)
         .from("entidades")
-        .select("id, nombre_corto, tipo_entidad, cadena_valor")
+        .select("id, nombre_corto, tipo_entidad, cadena_valor, mecanismo, region")
         .order("nombre_corto");
 
       if (!error && data && data.length > 0) {

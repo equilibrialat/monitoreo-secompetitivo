@@ -26,6 +26,7 @@ import ReportesMecBPage from "./pages/ReportesMecBPage";
 import ReportesMecAPage from "./pages/ReportesMecAPage";
 import ReportesRegionalesPage from "./pages/ReportesRegionalesPage";
 import AdministracionPage from "./pages/AdministracionPage";
+import MisIniciativasPage from "./pages/MisIniciativasPage";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,9 @@ const App = () => (
               <Route path="/actividades" element={<MisActividades />} />
               <Route path="/registro-mensual" element={<PlaceholderPage title="Registro Mensual" />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
+
+              {/* Gestor routes */}
+              <Route path="/mis-iniciativas" element={<MisIniciativasPage />} />
 
               {/* Shared routes */}
               <Route path="/reportes" element={<ReportesPage />} />
