@@ -90,7 +90,7 @@ export async function generateTrimestralDocx(data: ReportData) {
     regByActMes, grouped, gastosByActFuente, capByAct
   } = data;
 
-  const children: (Paragraph | Table | typeof PageBreak)[] = [];
+  const children: (Paragraph | Table)[] = [];
 
   // ---- HEADER ----
   children.push(new Paragraph({
