@@ -1,13 +1,27 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRole } from "@/contexts/RoleContext";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard } from "lucide-react";
 
 export default function DashboardEntidad() {
   const { entidadId } = useRole();
   const { data: entidades, isLoading } = useDashboardData();
+  const [indicadores, setIndicadores] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!entidadId) return;
+    (supabase as any)
+      .from("indicadores_proyecto")
+      .select("*")
+      .eq("entidad_id", entidadId)
+      .order("codigo")
+      .then(({ data }: any) => setIndicadores(data || []));
+  }, [entidadId]);
 
   const ent = entidades?.find((e) => e.entidad_id === entidadId);
 
@@ -31,9 +45,9 @@ export default function DashboardEntidad() {
         <KpiCard label="Actividades" value={`${ent.actividades_completadas}/${ent.total_actividades}`} sub="completadas" />
         <KpiCard label="Avance Operativo" value={`${avOp}%`} sub="promedio" />
         <KpiCard label="Ejecución SECO" value={`${avFin}%`} sub={`USD ${fmt(ent.ejecutado_seco_total)} / ${fmt(ent.presupuesto_seco_total)}`} />
-        <KpiCard label="Pendientes" value={String(ent.pendientes_revision ?? 0)} sub="registros por revisar" />
+        <KpiCard label="Indicadores" value={String(indicadores.length)} sub="del Marco Lógico" />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 mb-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Avance Operativo</CardTitle></CardHeader>
           <CardContent><Progress value={avOp} className="h-3" /><p className="text-xs text-muted-foreground mt-1">{avOp}%</p></CardContent>
@@ -43,6 +57,43 @@ export default function DashboardEntidad() {
           <CardContent><Progress value={avFin} className="h-3" /><p className="text-xs text-muted-foreground mt-1">{avFin}%</p></CardContent>
         </Card>
       </div>
+
+      {/* Indicadores del Marco Lógico */}
+      {indicadores.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Indicadores del Marco Lógico ({indicadores.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[90px]">Código</TableHead>
+                    <TableHead>Indicador</TableHead>
+                    <TableHead>Nivel</TableHead>
+                    <TableHead>Unidad</TableHead>
+                    <TableHead className="text-right">Línea Base</TableHead>
+                    <TableHead className="text-right">Meta</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {indicadores.map((ind: any) => (
+                    <TableRow key={ind.id}>
+                      <TableCell className="font-mono text-xs">{ind.codigo}</TableCell>
+                      <TableCell className="text-sm">{ind.nombre}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{ind.nivel}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{ind.unidad_medida || "—"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{ind.linea_base ?? "—"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{ind.meta ?? "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
