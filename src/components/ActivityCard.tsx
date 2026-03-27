@@ -91,6 +91,30 @@ export function ActivityCard({ actividad, onRegistrar, ultimoRegistro, currentMo
         </p>
       </div>
 
+      {/* Indicadores vinculados */}
+      {actividad.indicadores_vinculados && actividad.indicadores_vinculados.length > 0 && (
+        <TooltipProvider delayDuration={200}>
+          <div className="flex flex-wrap gap-1 mb-3">
+            {actividad.indicadores_vinculados.map((ind) => {
+              const match = indicadores?.find(i => i.codigo === ind);
+              return (
+                <Tooltip key={ind}>
+                  <TooltipTrigger asChild>
+                    <Badge className="text-[9px] bg-primary/10 text-primary border-primary/20 cursor-help">
+                      {ind}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[250px]">
+                    <p className="text-xs font-medium">{match?.nombre || ind}</p>
+                    {match?.meta && <p className="text-[10px] text-muted-foreground">Meta: {match.meta}</p>}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
+      )}
+
       <div className="space-y-2 mb-4">
         <FinanceBar label="SECO" executed={actividad.ejecutado_seco_acum} budget={actividad.presupuesto_seco} colorClass="bg-primary" />
         <FinanceBar label="CM" executed={actividad.ejecutado_cm_acum} budget={actividad.presupuesto_contrapartida_monetaria} colorClass="bg-accent" />
