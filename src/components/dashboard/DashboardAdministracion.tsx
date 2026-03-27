@@ -75,6 +75,7 @@ export default function DashboardAdministracion() {
               })}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
