@@ -56,6 +56,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
   const [innovaciones, setInnovaciones] = useState<any[]>([]);
   const [gei, setGei] = useState<any[]>([]);
   const [nuevosProductos, setNuevosProductos] = useState<any[]>([]);
+  const [indicadores, setIndicadores] = useState<any[]>([]);
   const [normativo, setNormativo] = useState<any[]>([]);
   const [contratos, setContratos] = useState<any[]>([]);
   const [desembolsos, setDesembolsos] = useState<any[]>([]);
