@@ -13,7 +13,8 @@ interface ProdRow {
   organizacion_productores: string;
   region: string;
   num_productores: number;
-  genero_productores: string;
+  num_productores_masculino: number;
+  num_productores_femenino: number;
   superficie_has: number;
   produccion_campo_tn: number;
   descarte_campo_tn: number;
