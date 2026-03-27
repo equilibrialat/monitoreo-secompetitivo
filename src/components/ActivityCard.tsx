@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FinanceBar } from "@/components/FinanceBar";
-import { ClipboardPlus } from "lucide-react";
+import { ClipboardPlus, CheckCircle2, Clock, Send, AlertTriangle } from "lucide-react";
 import type { ActividadDB } from "@/lib/supabaseQueries";
+import type { RegistroPendiente } from "@/lib/registroAprobacion";
 
 const ESTADO_CONFIG: Record<string, { label: string; className: string }> = {
   no_iniciada: { label: "No iniciada", className: "bg-muted text-muted-foreground" },
@@ -10,6 +11,14 @@ const ESTADO_CONFIG: Record<string, { label: string; className: string }> = {
   en_proceso_36_65: { label: "En proceso (36-65%)", className: "bg-primary/15 text-primary" },
   proceso_avanzado_66_99: { label: "Avanzado (66-99%)", className: "bg-success/15 text-success" },
   culminado_100: { label: "Culminado", className: "bg-success/20 text-success font-medium" },
+};
+
+const REGISTRO_BADGE: Record<string, { label: string; icon: any; className: string }> = {
+  enviado: { label: "Enviado", icon: Send, className: "bg-primary/10 text-primary" },
+  en_revision_tecnica: { label: "Rev. Técnica", icon: Clock, className: "bg-warning/15 text-warning" },
+  en_revision_financiera: { label: "Rev. Financiera", icon: Clock, className: "bg-accent/15 text-accent-foreground" },
+  aprobado: { label: "Aprobado", icon: CheckCircle2, className: "bg-success/15 text-success" },
+  observado: { label: "Observado", icon: AlertTriangle, className: "bg-destructive/15 text-destructive" },
 };
 
 function getSemaforoColor(avance: number): string {
@@ -22,11 +31,19 @@ function getSemaforoColor(avance: number): string {
 interface ActivityCardProps {
   actividad: ActividadDB;
   onRegistrar?: (actividad: ActividadDB) => void;
+  ultimoRegistro?: RegistroPendiente;
 }
 
-export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
+export function ActivityCard({ actividad, onRegistrar, ultimoRegistro }: ActivityCardProps) {
   const estado = ESTADO_CONFIG[actividad.estado_actual] ?? ESTADO_CONFIG.no_iniciada;
   const semaforoColor = getSemaforoColor(actividad.avance_operativo_pct);
+
+  const regBadge = ultimoRegistro ? REGISTRO_BADGE[ultimoRegistro.estado_registro || ""] : null;
+  const isAprobado = ultimoRegistro?.estado_registro === "aprobado";
+  const isLocked = ultimoRegistro?.estado_registro === "enviado" ||
+    ultimoRegistro?.estado_registro === "en_revision_tecnica" ||
+    ultimoRegistro?.estado_registro === "en_revision_financiera" ||
+    isAprobado;
 
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -35,7 +52,15 @@ export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
           <p className="text-xs font-mono text-muted-foreground mb-1">{actividad.codigo}</p>
           <h4 className="text-sm font-semibold text-card-foreground leading-snug">{actividad.nombre}</h4>
         </div>
-        <Badge className={`shrink-0 text-xs ${estado.className}`}>{estado.label}</Badge>
+        <div className="flex flex-col items-end gap-1">
+          <Badge className={`shrink-0 text-xs ${estado.className}`}>{estado.label}</Badge>
+          {regBadge && (
+            <Badge className={`shrink-0 text-[10px] ${regBadge.className}`}>
+              <regBadge.icon className="h-3 w-3 mr-0.5" />
+              {regBadge.label}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="mb-4">
@@ -57,10 +82,22 @@ export function ActivityCard({ actividad, onRegistrar }: ActivityCardProps) {
         <FinanceBar label="CNM" executed={actividad.ejecutado_cnm_acum} budget={actividad.presupuesto_contrapartida_no_monetaria} colorClass="bg-sidebar-primary" />
       </div>
 
-      <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => onRegistrar?.(actividad)}>
-        <ClipboardPlus className="h-3.5 w-3.5 mr-1.5" />
-        Registrar avance
-      </Button>
+      {isAprobado ? (
+        <div className="flex items-center justify-center gap-1.5 py-1.5 text-xs text-success font-medium">
+          <CheckCircle2 className="h-4 w-4" /> Registro aprobado
+        </div>
+      ) : (
+        <Button
+          size="sm"
+          variant={ultimoRegistro?.estado_registro === "observado" ? "destructive" : "outline"}
+          className="w-full text-xs"
+          onClick={() => onRegistrar?.(actividad)}
+          disabled={isLocked}
+        >
+          <ClipboardPlus className="h-3.5 w-3.5 mr-1.5" />
+          {isLocked ? "En revisión" : ultimoRegistro?.estado_registro === "observado" ? "Corregir y reenviar" : "Registrar avance"}
+        </Button>
+      )}
     </div>
   );
 }
