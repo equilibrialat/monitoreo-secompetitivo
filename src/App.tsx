@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import RevisionPendientePage from "./pages/RevisionPendientePage";
 import IndicadoresImpactoPage from "./pages/IndicadoresImpactoPage";
+import ReportesPage from "./pages/ReportesPage";
 
 const queryClient = new QueryClient();
 
