@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-
+import type { ContextualData } from "@/types/registroMensual";
+import { format } from "date-fns";
 export interface ActividadDB {
   id: string;
   codigo: string;
