@@ -36,6 +36,7 @@ interface SeccionAvanceProps {
   onEstadoChange: (v: string) => void;
   onDescripcionChange: (v: string) => void;
   onFechaEjecucionChange: (v: Date | undefined) => void;
+  errors?: Record<string, string>;
 }
 
 const currentYear = new Date().getFullYear();
@@ -44,7 +45,7 @@ const ANIOS = [currentYear - 1, currentYear, currentYear + 1];
 export function SeccionAvanceOperativo({
   mes, anio, valorAvance, estado, descripcion, fechaEjecucion, unidadMedida,
   onMesChange, onAnioChange, onValorAvanceChange, onEstadoChange,
-  onDescripcionChange, onFechaEjecucionChange,
+  onDescripcionChange, onFechaEjecucionChange, errors = {},
 }: SeccionAvanceProps) {
   return (
     <div className="space-y-4">
@@ -84,22 +85,23 @@ export function SeccionAvanceOperativo({
 
       {/* Valor de avance */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Valor de avance ({unidadMedida})</Label>
+        <Label className="text-xs">Valor de avance ({unidadMedida}) <span className="text-destructive">*</span></Label>
         <Input
           type="number"
           min={0}
           value={valorAvance || ""}
           onChange={(e) => onValorAvanceChange(Number(e.target.value))}
-          className="h-9 text-sm"
+          className={cn("h-9 text-sm", errors.avance && "border-destructive")}
           placeholder={`Cantidad de ${unidadMedida}`}
         />
+        {errors.avance && <p className="text-xs text-destructive">{errors.avance}</p>}
       </div>
 
       {/* Estado */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Estado</Label>
+        <Label className="text-xs">Estado <span className="text-destructive">*</span></Label>
         <Select value={estado} onValueChange={onEstadoChange}>
-          <SelectTrigger className="h-9 text-sm">
+          <SelectTrigger className={cn("h-9 text-sm", errors.estado && "border-destructive")}>
             <SelectValue placeholder="Seleccionar estado" />
           </SelectTrigger>
           <SelectContent>
@@ -108,6 +110,7 @@ export function SeccionAvanceOperativo({
             ))}
           </SelectContent>
         </Select>
+        {errors.estado && <p className="text-xs text-destructive">{errors.estado}</p>}
       </div>
 
       {/* Fecha de ejecución */}
