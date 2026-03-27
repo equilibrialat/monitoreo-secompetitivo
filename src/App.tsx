@@ -34,7 +34,7 @@ const App = () => (
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
 
               {/* Shared routes */}
-              <Route path="/reportes" element={<PlaceholderPage title="Reportes" />} />
+              <Route path="/reportes" element={<ReportesPage />} />
               <Route path="/revision-pendiente" element={<RevisionPendientePage />} />
 
               {/* Monitoreo routes */}
