@@ -660,7 +660,7 @@ export default function ReporteTrimestralCompleto({ entidadId, trimestre, anio, 
         </div>
 
         {/* SECTION 6 — DETALLE DE GASTOS */}
-        <SectionTitle icon={DollarSign} title="DETALLE DE GASTOS" number={6} />
+        <SectionTitle icon={DollarSign} title="DETALLE DE GASTOS" number={7} />
         <div className="border border-t-0 rounded-b-lg p-4 mb-2 overflow-x-auto">
           <Table>
             <TableHeader>
