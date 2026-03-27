@@ -102,6 +102,21 @@ export default function ReporteMensualPreview({ entidadId, mes, anio, entidades,
           </div>
         ) : (
           <>
+            {/* AI Analysis */}
+            <AIAnalysisCard
+              tipo="narrativa"
+              datos={{
+                tipo_reporte: "mensual",
+                entidad: entidadNombre,
+                periodo: `${MESES_NOMBRE[mes - 1]} ${anio}`,
+                actividades_con_avance: registros.filter((r: any) => r.avance_valor > 0).length,
+                total_actividades: registros.length,
+                ejecucion_seco: totalSeco,
+                ejecucion_cm: totalCM,
+                ejecucion_cnm: totalCNM,
+              }}
+              label="Generar análisis IA"
+            />
             {/* Section 1: Summary */}
             <div>
               <h3 className="font-semibold text-sm uppercase text-muted-foreground mb-3">Sección 1: Resumen del período</h3>
