@@ -39,6 +39,8 @@ interface SeccionAvanceProps {
   unidadMedida: string;
   metaValor: number;
   acumuladoAnterior: number;
+  actividadNombre?: string;
+  actividadCodigo?: string;
   onMesChange: (v: number) => void;
   onAnioChange: (v: number) => void;
   onValorAvanceChange: (v: number) => void;
