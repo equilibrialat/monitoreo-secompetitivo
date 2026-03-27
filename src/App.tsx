@@ -46,8 +46,9 @@ const App = () => (
               <Route path="/notificaciones" element={<NotificacionesPage />} />
 
               {/* Monitoreo routes */}
-              <Route path="/indicadores" element={<PlaceholderPage title="Indicadores" />} />
-              <Route path="/verificacion" element={<PlaceholderPage title="Verificación" />} />
+              <Route path="/indicadores" element={<IndicadoresMonitoreoPage />} />
+              <Route path="/verificacion" element={<VerificacionPage />} />
+              <Route path="/generar-reportes" element={<GenerarReportesPage />} />
 
               {/* Administracion routes */}
               <Route path="/contratos" element={<ContratosPage />} />
