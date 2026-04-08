@@ -1,70 +1,35 @@
 
+# Plan: Generar Manual Técnico de la Plataforma SeCompetitivo
 
-# Plan: Enrich Dashboards to Display 4 Demo Cases with Differentiated Alerts
+## Objetivo
+Crear un documento Markdown completo (`/mnt/documents/manual_tecnico_secompetitivo.md`) que sirva como referencia técnica para que otra IA pueda entender la arquitectura, los datos, los flujos y la lógica de negocio de la aplicación.
 
-## Problem
-The dashboards currently show basic KPIs and alerts based on the `v_dashboard_entidad` view, but lack entity-specific detail like "activities not started", "months without reports", "observed records", and detailed sobregiro info. The data is in the DB but the UI doesn't surface these granular alerts.
+## Contenido del Manual
 
-## Changes
+El documento incluirá las siguientes secciones:
 
-### 1. Enhance `useDashboardData.ts` — Fetch richer per-entity data
+1. **Descripción General** — Qué es SeCompetitivo, su propósito (monitoreo de programa de cooperación SECO-Perú), mecanismos A y B
+2. **Stack Tecnológico** — React 18, Vite 5, Tailwind CSS, TypeScript, Supabase (Lovable Cloud), TanStack Query, docx, xlsx, lucide-react
+3. **Arquitectura de Roles** — Los 8 roles, qué ve cada uno (navegación, dashboards, permisos), sin autenticación real (selector dropdown MVP)
+4. **Esquema de Base de Datos** — Todas las tablas con columnas, tipos, relaciones lógicas (sin FK formales), enums, triggers, funciones SQL
+5. **Flujos de Negocio Principales**:
+   - Registro mensual de avance por actividad (entidad → envío → revisión técnica/financiera → aprobación)
+   - Diferenciación Mec A vs Mec B en flujo financiero
+   - Aprobación trimestral por Dirección
+   - Indicadores de impacto (productividad, empleo, comercial, gobernanza, etc.)
+   - Generación de reportes (trimestral, semestral, anual)
+   - Notificaciones y historial de cambios
+6. **Estructura de Archivos** — Mapa de carpetas src/pages, src/components, src/lib, src/hooks, src/contexts
+7. **Edge Functions y IA** — Función `analyze` con 4 tipos de análisis (ejecutivo, reporte, consistencia, narrativa), prompts del sistema, modelo usado
+8. **Generación de Documentos** — DOCX con librería docx, CSV con BOM UTF-8, Excel con SheetJS
+9. **Componentes Clave** — MapaMarcoLogico (árbol jerárquico), DashboardCadenasValor (agrupación por cadena), ResumenRegional, AprobacionTrimestral
+10. **Diseño Visual** — Tokens de color (#0f2b46 sidebar, #2a9d8f primario, etc.), fuente DM Sans
 
-Add queries to fetch:
-- **Registros mensuales status per entity** (to detect missing months, observed records, borrador status)
-- **Activities with `estado_actual = 'no_iniciada'`** count per entity
-- **Latest registro date** per entity
+## Implementación
 
-Add new fields to `DashboardEntidad`:
-- `actividades_sin_iniciar: number`
-- `registros_observados: number`
-- `ultimo_registro_mes: number | null`
-- `ultimo_registro_anio: number | null`
-- `meses_sin_reporte: string[]` (e.g., ["Dic 2025"])
-- `tiene_observado: boolean`
-- `registros_borrador: number`
+- Leer los archivos restantes que falten para completar detalles
+- Generar un archivo Markdown extenso y bien estructurado en `/mnt/documents/manual_tecnico_secompetitivo.md`
+- Usar un script Python para escribir el contenido
 
-The fetch function will query `registros_mensuales` grouped by entity to compute these, and `actividades` for `estado_actual` counts.
-
-### 2. Update `DashboardMonitoreo.tsx` — Richer alerts and entity cards
-
-**Alerts section**: Add specific alert messages:
-- SENASA: "Sobregiro en S1.1.3", "Registro Oct observado"
-- CANATUR: "4 actividades sin iniciar", "Dic 2025 sin reportar", "Nov en revisión coordinador"
-
-**Entity cards**: Add badges for:
-- "Sobregiro" badge (red) when `sobregiros_seco > 0`
-- "Observado" badge (orange) when `tiene_observado`
-- "X sin iniciar" when `actividades_sin_iniciar > 0`
-- "Último reporte: Mes YYYY" line
-- Missing month alerts
-
-### 3. Update `DashboardAdministracion.tsx` — Highlight sobregiros
-
-Add a "Sobregiros Detallados" section that queries `ejecucion_financiera` joined with `actividades` to show specific activities with executed > budgeted. This will highlight SENASA S1.1.3 and CANATUR T2.1.2 with their actual amounts.
-
-### 4. Role-specific `filterFn` corrections (already done, verify)
-
-- **Asesora Políticas (Claudia)**: `filterFn={(e) => e.mecanismo === "A"}` — shows COFIDE + SENASA
-- **Coordinador Cadenas (Iván)**: `filterFn={(e) => e.mecanismo === "B"}` — shows APPCACAO + CANATUR
-
-These filters are already in `Index.tsx` and should work with the data.
-
-### 5. `MisActividades.tsx` — Already shows observados
-
-The page already has an "Observados" section that shows records with `estado_registro === "observado"` and displays `observaciones_revision` in red. This should work for SENASA when selected. Verify that the `en_revision_coordinador` status for CANATUR Nov is visible in the status badges.
-
-### 6. Update `ActivityCard.tsx` — Show `en_revision_coordinador` status
-
-Check if the ActivityCard component handles the `en_revision_coordinador` status label. If not, add it to the status label map.
-
-### Files to modify:
-1. **`src/hooks/useDashboardData.ts`** — Add richer entity metrics (sin iniciar, observados, missing months)
-2. **`src/components/dashboard/DashboardMonitoreo.tsx`** — Enhanced alerts with specific messages, richer entity cards with badges
-3. **`src/components/dashboard/DashboardAdministracion.tsx`** — Add sobregiro detail table with activity-level breakdown
-4. **`src/components/ActivityCard.tsx`** — Ensure `en_revision_coordinador` status is labeled properly
-
-### Technical approach:
-- Additional queries in `useDashboardData` to `registros_mensuales` and `actividades` tables
-- Alert logic in `DashboardMonitoreo` checks for `actividades_sin_iniciar`, `tiene_observado`, `meses_sin_reporte`
-- New sobregiro detail query in `DashboardAdministracion` joining `ejecucion_financiera` with `actividades` to get per-activity overrun amounts
-
+## Archivos a Modificar
+Ningún archivo del proyecto se modifica. Solo se genera un artifact en `/mnt/documents/`.
