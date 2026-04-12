@@ -349,7 +349,7 @@ export default function DashboardCadenasValor() {
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                             <Activity className="h-3 w-3" />
-                            <span>Op: <strong className="text-foreground">{ent.avance_operativo_promedio != null && ent.avance_operativo_promedio > 0 ? `${ent.avance_operativo_promedio}%` : "Sin datos"}</strong></span>
+                            <span>Op: <strong className="text-foreground">{ent.avance_operativo_promedio != null && ent.avance_operativo_promedio > 0 ? `${ent.avance_operativo_promedio}%` : ent.avance_operativo_promedio === null ? "En planificación" : "Sin datos"}</strong></span>
                           </div>
                           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                             <DollarSign className="h-3 w-3" />

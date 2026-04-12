@@ -1,16 +1,21 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ClipboardList, Loader2, ChevronRight, ChevronDown, DollarSign, TrendingUp, Wallet, Trophy, AlertTriangle, CalendarClock, FileCheck, Receipt } from "lucide-react";
+import { ClipboardList, Loader2, ChevronRight, ChevronDown, DollarSign, TrendingUp, Wallet, Trophy, AlertTriangle, CalendarClock, FileCheck, Receipt, Lock } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActividadesByEntidad, type ActividadDB } from "@/lib/supabaseQueries";
 import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroAprobacion";
+import { fetchMetasMensuales, proponerMeta, type MetaMensual, type MetaEstado } from "@/lib/metasMensuales";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
+import { MetaStatusBadge } from "@/components/MetaStatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ResultadoDB {
   id: string;
@@ -36,43 +41,75 @@ export default function MisActividades() {
   const [voucherTotals, setVoucherTotals] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedActividad, setSelectedActividad] = useState<ActividadDB | null>(null);
+  const [metas, setMetas] = useState<MetaMensual[]>([]);
+  const [propuestaValues, setPropuestaValues] = useState<Record<string, string>>({});
+  const [proposing, setProposing] = useState<string | null>(null);
 
-  // Accordion state: only one open at each level
+  // Current period
+  const now = new Date();
+  const currentMes = now.getMonth() + 1;
+  const currentAnio = now.getFullYear();
+
+  // Accordion state
   const [openResultado, setOpenResultado] = useState<string | null>(null);
   const [openActividad, setOpenActividad] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!entidadId) {
       setActividades([]);
       setRegistros([]);
       setResultados([]);
+      setMetas([]);
       setLoading(false);
       return;
     }
     setLoading(true);
-    Promise.all([
+    const [acts, regs, resResult, vouchersResult, metasData] = await Promise.all([
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
       (supabase as any).from("resultados").select("id, codigo, nombre").eq("entidad_id", entidadId).order("codigo"),
       (supabase as any).from("vouchers_gasto").select("codigo_actividad, monto_usd").eq("entidad_id", entidadId),
-    ]).then(([acts, regs, resResult, vouchersResult]) => {
-      setActividades(acts);
-      setRegistros(regs);
-      setResultados((resResult.data || []).map((r: any) => ({
-        id: r.id,
-        codigo: r.codigo,
-        nombre: r.nombre,
-      })));
-      // Build voucher totals map: codigo_actividad -> sum(monto_usd)
-      const vtMap = new Map<string, number>();
-      for (const v of (vouchersResult.data || [])) {
-        const key = v.codigo_actividad;
-        if (key) vtMap.set(key, (vtMap.get(key) || 0) + (v.monto_usd || 0));
-      }
-      setVoucherTotals(vtMap);
-      setLoading(false);
-    });
-  }, [entidadId]);
+      fetchMetasMensuales(entidadId, currentAnio, currentMes),
+    ]);
+    setActividades(acts);
+    setRegistros(regs);
+    setResultados((resResult.data || []).map((r: any) => ({
+      id: r.id,
+      codigo: r.codigo,
+      nombre: r.nombre,
+    })));
+    const vtMap = new Map<string, number>();
+    for (const v of (vouchersResult.data || [])) {
+      const key = v.codigo_actividad;
+      if (key) vtMap.set(key, (vtMap.get(key) || 0) + (v.monto_usd || 0));
+    }
+    setVoucherTotals(vtMap);
+    setMetas(metasData);
+    setLoading(false);
+  }, [entidadId, currentAnio, currentMes]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Meta status map: actividad_id -> MetaMensual
+  const metaMap = useMemo(() => {
+    const m = new Map<string, MetaMensual>();
+    for (const meta of metas) {
+      m.set(meta.actividad_id, meta);
+    }
+    return m;
+  }, [metas]);
+
+  function getMetaEstado(actividadId: string): MetaEstado {
+    const meta = metaMap.get(actividadId);
+    if (!meta) return "sin_meta";
+    return meta.estado as MetaEstado;
+  }
+
+  function isRegistroEnabled(actividadId: string): boolean {
+    return getMetaEstado(actividadId) === "aprobada";
+  }
 
   // Group activities by resultado
   const actsByResultado = useMemo(() => {
@@ -85,7 +122,6 @@ export default function MisActividades() {
     return map;
   }, [actividades]);
 
-  // Registros map for detail
   const registroMap = useMemo(() => {
     const m = new Map<string, RegistroPendiente>();
     for (const r of registros) {
@@ -97,7 +133,6 @@ export default function MisActividades() {
     return m;
   }, [registros]);
 
-  // Compute avg avance per resultado
   function getResultadoFinance(resCodigo: string) {
     const acts = actsByResultado.get(resCodigo) || [];
     const presupuesto = acts.reduce((s, a) => s + (a.presupuesto_seco || 0), 0);
@@ -107,9 +142,38 @@ export default function MisActividades() {
 
   function getResultadoAvance(resCodigo: string): number {
     const acts = actsByResultado.get(resCodigo) || [];
-    if (acts.length === 0) return 0;
-    return Math.round(acts.reduce((s, a) => s + a.avance_operativo_pct, 0) / acts.length);
+    // Only count activities with approved metas
+    const withMeta = acts.filter(a => getMetaEstado(a.id) === "aprobada");
+    if (withMeta.length === 0) return -1; // -1 means "en planificación"
+    return Math.round(withMeta.reduce((s, a) => s + a.avance_operativo_pct, 0) / withMeta.length);
   }
+
+  const handleProponerMeta = async (act: ActividadDB) => {
+    const valor = parseFloat(propuestaValues[act.id] || "0");
+    if (!valor || valor <= 0) {
+      toast.error("Ingresa un valor de meta válido");
+      return;
+    }
+    if (!entidadId) return;
+    setProposing(act.id);
+    const result = await proponerMeta({
+      actividad_id: act.id,
+      entidad_id: entidadId,
+      anio: currentAnio,
+      mes: currentMes,
+      meta_valor: valor,
+      meta_unidad_medida: act.meta_unidad_medida || undefined,
+    });
+    setProposing(null);
+    if (result.success) {
+      toast.success("Propuesta de meta enviada");
+      // Refresh metas
+      const updated = await fetchMetasMensuales(entidadId, currentAnio, currentMes);
+      setMetas(updated);
+    } else {
+      toast.error("Error al enviar propuesta", { description: result.error });
+    }
+  };
 
   return (
     <div>
@@ -137,7 +201,11 @@ export default function MisActividades() {
           {resultados.map((res) => {
             const isOpen = openResultado === res.id;
             const avgAvance = getResultadoAvance(res.codigo);
-            const semaforo = getSemaforoAvance(avgAvance);
+            const isPlanning = avgAvance < 0;
+            const displayAvance = isPlanning ? 0 : avgAvance;
+            const semaforo = isPlanning
+              ? { color: "bg-muted", text: "text-muted-foreground", label: "Planificación" }
+              : getSemaforoAvance(displayAvance);
             const acts = actsByResultado.get(res.codigo) || [];
             const finance = getResultadoFinance(res.codigo);
             const financePct = finance.presupuesto > 0
@@ -146,7 +214,7 @@ export default function MisActividades() {
 
             return (
               <div key={res.id} className="rounded-xl border bg-card shadow-sm overflow-hidden">
-                {/* NIVEL 1 - BOSQUE: Resultado colapsado */}
+                {/* NIVEL 1 - BOSQUE */}
                 <button
                   onClick={() => {
                     setOpenResultado(isOpen ? null : res.id);
@@ -162,14 +230,23 @@ export default function MisActividades() {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right">
-                      <p className={cn("text-lg font-bold", semaforo.text)}>{avgAvance}%</p>
-                      <p className="text-[10px] text-muted-foreground">Avance prom.</p>
+                      {isPlanning ? (
+                        <>
+                          <p className="text-sm font-medium text-muted-foreground">En planificación</p>
+                          <p className="text-[10px] text-muted-foreground">Sin metas aprobadas</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className={cn("text-lg font-bold", semaforo.text)}>{displayAvance}%</p>
+                          <p className="text-[10px] text-muted-foreground">Avance prom.</p>
+                        </>
+                      )}
                     </div>
                     <Badge className="text-xs" variant="secondary">{acts.length} act.</Badge>
                   </div>
                 </button>
 
-                {/* NIVEL 2 - PARCELA: Actividades + Panel financiero */}
+                {/* NIVEL 2 - PARCELA */}
                 {isOpen && (
                   <div className="border-t">
                     {/* Panel financiero */}
@@ -213,7 +290,12 @@ export default function MisActividades() {
                     <div className="divide-y">
                       {acts.map((act) => {
                         const isActOpen = openActividad === act.id;
-                        const actSemaforo = getSemaforoAvance(act.avance_operativo_pct);
+                        const metaEstado = getMetaEstado(act.id);
+                        const meta = metaMap.get(act.id);
+                        const canRegister = isRegistroEnabled(act.id);
+                        const actSemaforo = metaEstado === "aprobada"
+                          ? getSemaforoAvance(act.avance_operativo_pct)
+                          : { color: "bg-muted", text: "text-muted-foreground", label: "Bloqueado" };
                         const reg = registroMap.get(act.id);
 
                         return (
@@ -225,34 +307,119 @@ export default function MisActividades() {
                               <ChevronRight className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isActOpen && "rotate-90")} />
                               <div className={cn("h-2.5 w-2.5 rounded-full shrink-0", actSemaforo.color)} />
                               <div className="flex-1 min-w-0">
-                                <span className="text-xs font-mono text-muted-foreground mr-2">{act.codigo}</span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-mono text-muted-foreground">{act.codigo}</span>
+                                  <MetaStatusBadge
+                                    estado={metaEstado}
+                                    metaValor={meta?.meta_valor}
+                                    comentario={meta?.comentario_coordinador}
+                                  />
+                                </div>
                                 <span className="text-sm text-card-foreground">{act.nombre}</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs text-muted-foreground">
-                                  Meta: {act.meta_valor} {act.meta_unidad_medida}
-                                </span>
-                                <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                                {metaEstado === "aprobada" ? (
+                                  <>
+                                    <span className="text-xs text-muted-foreground">
+                                      Meta: {meta?.meta_valor} {act.meta_unidad_medida}
+                                    </span>
+                                    <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Lock className="h-3 w-3" /> Registro bloqueado
+                                  </span>
+                                )}
                               </div>
                             </button>
 
-                            {/* NIVEL 3 - ÁRBOL: Detalle completo */}
+                            {/* NIVEL 3 - ÁRBOL */}
                             {isActOpen && (
                               <div className="px-6 pb-4 bg-muted/10 border-t">
                                 <div className="py-3 space-y-4">
-                                  {/* Avance operativo */}
-                                  <div>
-                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Avance Operativo</h5>
-                                    <div className="flex items-center gap-3">
-                                      <Progress value={act.avance_operativo_pct} className="h-2.5 flex-1" />
-                                      <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                                  {/* Lock status banner */}
+                                  {!canRegister && (
+                                    <div className={cn(
+                                      "rounded-lg border px-4 py-3",
+                                      metaEstado === "rechazada" ? "border-destructive/40 bg-destructive/5" : "border-muted bg-muted/30"
+                                    )}>
+                                      {metaEstado === "sin_meta" && (
+                                        <div className="space-y-2">
+                                          <p className="text-xs text-muted-foreground">
+                                            No hay meta definida para este periodo. Propón una meta para habilitar el registro de avance.
+                                          </p>
+                                          <div className="flex items-center gap-2">
+                                            <Input
+                                              type="number"
+                                              placeholder={`Meta (${act.meta_unidad_medida || 'unidades'})`}
+                                              className="h-8 text-xs w-40"
+                                              value={propuestaValues[act.id] || ""}
+                                              onChange={(e) => setPropuestaValues(prev => ({ ...prev, [act.id]: e.target.value }))}
+                                            />
+                                            <Button
+                                              size="sm"
+                                              className="h-8 text-xs"
+                                              onClick={() => handleProponerMeta(act)}
+                                              disabled={proposing === act.id}
+                                            >
+                                              {proposing === act.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Proponer meta"}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {metaEstado === "pendiente_aprobacion" && (
+                                        <div>
+                                          <p className="text-xs text-warning font-medium mb-1">⏳ Propuesta enviada — en revisión</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            Meta propuesta: <strong>{meta?.meta_valor} {act.meta_unidad_medida}</strong>. 
+                                            El coordinador regional debe aprobar la meta antes de poder registrar avance.
+                                          </p>
+                                        </div>
+                                      )}
+                                      {metaEstado === "rechazada" && (
+                                        <div className="space-y-2">
+                                          <p className="text-xs text-destructive font-medium">⚠️ Meta rechazada — revisar comentario</p>
+                                          {meta?.comentario_coordinador && (
+                                            <p className="text-xs text-destructive/80 italic">"{meta.comentario_coordinador}"</p>
+                                          )}
+                                          <div className="flex items-center gap-2">
+                                            <Input
+                                              type="number"
+                                              placeholder={`Nueva meta (${act.meta_unidad_medida || 'unidades'})`}
+                                              className="h-8 text-xs w-40"
+                                              value={propuestaValues[act.id] || ""}
+                                              onChange={(e) => setPropuestaValues(prev => ({ ...prev, [act.id]: e.target.value }))}
+                                            />
+                                            <Button
+                                              size="sm"
+                                              variant="destructive"
+                                              className="h-8 text-xs"
+                                              onClick={() => handleProponerMeta(act)}
+                                              disabled={proposing === act.id}
+                                            >
+                                              {proposing === act.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reenviar propuesta"}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Meta: {act.meta_valor} {act.meta_unidad_medida} · Estado: {act.estado_actual?.replace(/_/g, ' ')}
-                                    </p>
-                                  </div>
+                                  )}
 
-                                  {/* Secciones narrativas colapsables */}
+                                  {/* Avance operativo - only show progress if meta approved */}
+                                  {canRegister && (
+                                    <div>
+                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Avance Operativo</h5>
+                                      <div className="flex items-center gap-3">
+                                        <Progress value={act.avance_operativo_pct} className="h-2.5 flex-1" />
+                                        <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        Meta: {meta?.meta_valor} {act.meta_unidad_medida} · Estado: {act.estado_actual?.replace(/_/g, ' ')}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Secciones narrativas */}
                                   {reg?.descripcion_avance && (
                                     <CollapsibleNarrative
                                       icon={<Trophy className="h-4 w-4 text-success" />}
@@ -275,7 +442,7 @@ export default function MisActividades() {
                                     />
                                   )}
 
-                                  {/* Ejecución financiera de la actividad */}
+                                  {/* Ejecución financiera */}
                                   <div>
                                     <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Ejecución Financiera</h5>
                                     <div className="grid grid-cols-3 gap-2">
@@ -285,7 +452,7 @@ export default function MisActividades() {
                                     </div>
                                   </div>
 
-                                  {/* Pestañas Contratos y Gastos */}
+                                  {/* Contratos y Gastos */}
                                   <ActividadContratosGastos actCodigo={act.codigo} entidadId={act.entidad_id} />
 
                                   {/* Último registro */}
@@ -316,12 +483,23 @@ export default function MisActividades() {
                                   )}
 
                                   {/* Botón registrar */}
-                                  <button
-                                    onClick={() => setSelectedActividad(act)}
-                                    className="w-full py-2 text-xs font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
-                                  >
-                                    Registrar avance mensual
-                                  </button>
+                                  {canRegister ? (
+                                    <button
+                                      onClick={() => setSelectedActividad(act)}
+                                      className="w-full py-2 text-xs font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                                    >
+                                      Registrar avance mensual
+                                    </button>
+                                  ) : (
+                                    <div className="w-full py-2 text-xs font-medium text-muted-foreground bg-muted/30 rounded-lg text-center flex items-center justify-center gap-1.5">
+                                      <Lock className="h-3.5 w-3.5" />
+                                      {metaEstado === "sin_meta"
+                                        ? "Propón una meta para habilitar el registro"
+                                        : metaEstado === "pendiente_aprobacion"
+                                        ? "Esperando aprobación del coordinador"
+                                        : "Reenvía la propuesta para habilitar el registro"}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -394,7 +572,6 @@ function ActividadContratosGastos({ actCodigo, entidadId }: { actCodigo: string;
       (supabase as any).from("contratos").select("*").eq("entidad_id", entidadId).order("nombre_contratado"),
       (supabase as any).from("vouchers_gasto").select("*").eq("entidad_id", entidadId).eq("codigo_actividad", actCodigo).order("fecha"),
     ]).then(([cRes, vRes]) => {
-      // Filter contratos: match by actividad_id or by objeto keyword if no actividad_id
       setContratos(cRes.data || []);
       setVouchers(vRes.data || []);
       setLoading(false);

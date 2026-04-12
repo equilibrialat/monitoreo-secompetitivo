@@ -61,11 +61,11 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   if (entidadIds.length === 0) return [];
 
   // Parallel fetches
-  const [actResult, pendResult, regResult, noIniciadaResult, voucherResult] = await Promise.all([
+  const [actResult, pendResult, regResult, noIniciadaResult, voucherResult, metasResult] = await Promise.all([
     // Avg avance per entidad
     (supabase as any)
       .from("actividades")
-      .select("entidad_id, avance_operativo_pct")
+      .select("id, entidad_id, avance_operativo_pct")
       .in("entidad_id", entidadIds),
     // Pending registros
     (supabase as any)
@@ -88,10 +88,34 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
     (supabase as any)
       .from("vouchers_gasto")
       .select("entidad_id, monto_usd"),
+    // Metas mensuales for current period
+    (supabase as any)
+      .from("metas_mensuales")
+      .select("actividad_id, entidad_id, estado")
+      .in("entidad_id", entidadIds),
   ]);
+
+  // Build set of activity IDs with approved metas
+  const approvedMetaActivities = new Set<string>();
+  const metasByEntity = new Map<string, { total: number; approved: number }>();
+  for (const m of metasResult.data || []) {
+    const entry = metasByEntity.get(m.entidad_id) || { total: 0, approved: 0 };
+    entry.total++;
+    if (m.estado === "aprobada") {
+      entry.approved++;
+      approvedMetaActivities.add(m.actividad_id);
+    }
+    metasByEntity.set(m.entidad_id, entry);
+  }
 
   const avanceMap = new Map<string, { sum: number; count: number }>();
   for (const a of actResult.data || []) {
+    // Only count activities with approved metas in the average
+    if (!approvedMetaActivities.has(a.id) && approvedMetaActivities.size > 0) {
+      // If we have any metas data, skip unapproved activities
+      const entityMetas = metasByEntity.get(a.entidad_id);
+      if (entityMetas && entityMetas.total > 0) continue;
+    }
     const cur = avanceMap.get(a.entidad_id) || { sum: 0, count: 0 };
     cur.sum += Number(a.avance_operativo_pct || 0);
     cur.count += 1;
@@ -177,8 +201,11 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       sobregiros_seco: Number(d.sobregiros_seco || 0),
       desfases_tecnico_financiero: Number(d.desfases_tecnico_financiero || 0),
       avance_operativo_promedio: (() => {
-        const avgFromActs = av ? Math.round(av.sum / av.count) : 0;
-        if (avgFromActs > 0) return avgFromActs;
+        const av2 = avanceMap.get(d.entidad_id);
+        if (av2 && av2.count > 0) return Math.round(av2.sum / av2.count);
+        // If entity has metas but none approved, return null (en planificación)
+        const entityMetas = metasByEntity.get(d.entidad_id);
+        if (entityMetas && entityMetas.total > 0 && entityMetas.approved === 0) return null as any;
         // Fallback: compute from financial execution ratio
         const ejecutado = voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0);
         const presupuesto = Number(d.presupuesto_seco_total || 0);
