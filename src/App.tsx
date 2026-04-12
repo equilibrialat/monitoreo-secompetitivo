@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RoleProvider } from "@/contexts/RoleContext";
+import { TrimestreSeleccionadoProvider } from "@/hooks/useTrimestreActivo";
 import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import MisActividades from "./pages/MisActividades";
