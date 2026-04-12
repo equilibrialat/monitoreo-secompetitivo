@@ -35,7 +35,8 @@ const ROLE_LABELS: Record<string, string> = {
   monitoreo: "Monitoreo",
   administracion: "Administración",
   direccion: "Dirección",
-  entidad: "Entidad",
+  entidad_mec_a: "Entidad Mec. A",
+  entidad_mec_b: "Entidad Mec. B",
   gestor: "Gestor",
 };
 
