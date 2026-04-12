@@ -52,15 +52,14 @@ export default function MisActividades() {
     Promise.all([
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
-      (supabase as any).from("resultados").select("id, codigo, nombre, summary_presupuesto_usd, summary_ejecutado_usd, summary_saldo_usd").eq("entidad_id", entidadId).order("codigo"),
+      (supabase as any).from("resultados").select("id, codigo, nombre").eq("entidad_id", entidadId).order("codigo"),
     ]).then(([acts, regs, resResult]) => {
       setActividades(acts);
       setRegistros(regs);
       setResultados((resResult.data || []).map((r: any) => ({
-        ...r,
-        summary_presupuesto_usd: r.summary_presupuesto_usd ?? 0,
-        summary_ejecutado_usd: r.summary_ejecutado_usd ?? 0,
-        summary_saldo_usd: r.summary_saldo_usd ?? 0,
+        id: r.id,
+        codigo: r.codigo,
+        nombre: r.nombre,
       })));
       setLoading(false);
     });
