@@ -107,7 +107,7 @@ export default function DashboardCadenasValor() {
   const [aiLoading, setAiLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
-  const { setEntidadId, filters } = useRole();
+  const { setEntidadId, setRole, filters } = useRole();
 
   const entidades = (allEntidades || []).filter(e => {
     if (e.mecanismo !== "B") return false;
