@@ -3039,6 +3039,50 @@ export type Database = {
           },
         ]
       }
+      trimestres: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          anio: number
+          created_at: string
+          estado: Database["public"]["Enums"]["trimestre_status"]
+          id: string
+          mes_fin: number
+          mes_inicio: number
+          trimestre: number
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          anio: number
+          created_at?: string
+          estado?: Database["public"]["Enums"]["trimestre_status"]
+          id?: string
+          mes_fin: number
+          mes_inicio: number
+          trimestre: number
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          anio?: number
+          created_at?: string
+          estado?: Database["public"]["Enums"]["trimestre_status"]
+          id?: string
+          mes_fin?: number
+          mes_inicio?: number
+          trimestre?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trimestres_activated_by_fkey"
+            columns: ["activated_by"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       viaticos: {
         Row: {
           actividad_id: string | null
@@ -3293,6 +3337,7 @@ export type Database = {
         | "gestor"
       tipo_contrato: "persona_natural" | "persona_juridica"
       tipo_entidad: "mec_b_agro" | "mec_b_turismo" | "mec_b_mixto" | "mec_a"
+      trimestre_status: "cerrado" | "activo" | "planificacion" | "futuro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3470,6 +3515,7 @@ export const Constants = {
       ],
       tipo_contrato: ["persona_natural", "persona_juridica"],
       tipo_entidad: ["mec_b_agro", "mec_b_turismo", "mec_b_mixto", "mec_a"],
+      trimestre_status: ["cerrado", "activo", "planificacion", "futuro"],
     },
   },
 } as const

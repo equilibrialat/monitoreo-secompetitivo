@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchActividadesByEntidad, type ActividadDB } from "@/lib/supabaseQueries";
 import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroAprobacion";
 import { fetchPlanTrimestral, aceptarPlan, disputarPlan, solicitarAjuste, getTrimesterFromMonth, getTrimesterMonths, getTrimesterMonthNumbers, type PlanTrimestral, type PlanEstado } from "@/lib/planTrimestral";
+import { useTrimestreActivo, getTrimestreLabel } from "@/hooks/useTrimestreActivo";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,11 +80,14 @@ export default function MisActividades() {
   const [adjustJustification, setAdjustJustification] = useState("");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
 
-  // Current period
+  // Active trimester
+  const { activo: trimestreActivo } = useTrimestreActivo();
+
+  // Current period - use active trimester if available, else compute from date
   const now = new Date();
   const currentMes = now.getMonth() + 1;
-  const currentAnio = now.getFullYear();
-  const currentTrimestre = getTrimesterFromMonth(currentMes);
+  const currentAnio = trimestreActivo?.anio ?? now.getFullYear();
+  const currentTrimestre = trimestreActivo?.trimestre ?? getTrimesterFromMonth(currentMes);
   const monthNames = getTrimesterMonths(currentTrimestre);
   const monthNumbers = getTrimesterMonthNumbers(currentTrimestre);
 
@@ -228,6 +232,34 @@ export default function MisActividades() {
 
   return (
     <div>
+      {/* No plan info */}
+      {!loading && plans.length === 0 && (
+        <Card className="mb-4 border-muted bg-muted/20">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <Circle className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                El coordinador regional aún no ha enviado el plan para {monthNames.join(" / ")} {currentAnio}.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Approved plan compact bar */}
+      {isApproved && (
+        <Card className="mb-4 border-success/40 bg-success/5">
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              <p className="text-sm text-success font-medium">
+                ✓ Plan {monthNames.join("-")} {currentAnio} aprobado — puedes registrar tu avance mensual.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center gap-3 mb-6">
         <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
           <ClipboardList className="h-5 w-5 text-primary" />
@@ -246,11 +278,10 @@ export default function MisActividades() {
               <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-semibold text-primary mb-1">
-                  Plan trimestral T{currentTrimestre} {currentAnio} propuesto
+                  Plan {monthNames.join("-")} {currentAnio} propuesto por el coordinador regional
                 </p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  El coordinador regional ha propuesto la distribución mensual de metas ({monthNames.join(" / ")} {currentAnio}).
-                  Revisa los valores por actividad y acepta o comenta.
+                  Revisa las metas mensuales propuestas y acepta o comenta.
                 </p>
 
                 {/* Summary table */}

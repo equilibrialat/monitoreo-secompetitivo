@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GestionTrimestres } from "@/components/GestionTrimestres";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Clock, TrendingDown, Activity, DollarSign, FileCheck, AlertCircle, CheckCircle2, Eye } from "lucide-react";
@@ -189,6 +190,9 @@ export default function DashboardMonitoreo({
       <Header title={title} subtitle={subtitle || "Vista consolidada del programa SeCompetitivo"} />
 
       <DashboardFilters showMecanismo showEntidad showRegion showPeriodo />
+
+      {/* Trimester management (only for monitoreo role) */}
+      {title === "Dashboard de Monitoreo" && <GestionTrimestres />}
 
       {/* Review section */}
       <SeccionRevision
