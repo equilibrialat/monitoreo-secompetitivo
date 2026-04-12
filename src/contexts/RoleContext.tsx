@@ -133,6 +133,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     }
   }, [role, filteredEntidades.length]);
 
+  return (
     <RoleContext.Provider
       value={{
         role, setRole, entidadId, setEntidadId, entidades, loadingEntidades,
