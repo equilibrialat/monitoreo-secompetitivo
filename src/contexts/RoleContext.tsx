@@ -108,18 +108,21 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     filters.entidadFiltro !== null ||
     filters.region !== null;
 
+  // Normalize mecanismo values for comparison
+  const isMecA = (m: string | undefined) => m === "mec_a" || m === "A";
+  const isMecB = (m: string | undefined) => m === "mec_b" || m === "B";
+
   // Compute filtered entidades based on role restrictions + user filters
   const filteredEntidades = entidades.filter((e) => {
     // Role-based restrictions (hard filters)
-    if (role === "entidad_mec_a" && e.mecanismo !== "mec_a") return false;
-    if (role === "entidad_mec_b" && e.mecanismo !== "mec_b") return false;
-    if (role === "asesora_politicas" && e.mecanismo !== "mec_a") return false;
-    if (role === "coordinador_cadenas" && e.mecanismo !== "mec_b") return false;
-    // coordinador_regional would filter by region - handled by user's region
+    if (role === "entidad_mec_a" && !isMecA(e.mecanismo)) return false;
+    if (role === "entidad_mec_b" && !isMecB(e.mecanismo)) return false;
+    if (role === "asesora_politicas" && !isMecA(e.mecanismo)) return false;
+    if (role === "coordinador_cadenas" && !isMecB(e.mecanismo)) return false;
 
     // User-selected filters
-    if (filters.mecanismo === "mec_a" && e.mecanismo !== "mec_a") return false;
-    if (filters.mecanismo === "mec_b" && e.mecanismo !== "mec_b") return false;
+    if (filters.mecanismo === "mec_a" && !isMecA(e.mecanismo)) return false;
+    if (filters.mecanismo === "mec_b" && !isMecB(e.mecanismo)) return false;
     if (filters.entidadFiltro && e.id !== filters.entidadFiltro) return false;
     if (filters.region && e.region !== filters.region) return false;
 
