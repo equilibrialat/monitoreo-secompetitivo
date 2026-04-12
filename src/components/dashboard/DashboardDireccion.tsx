@@ -20,7 +20,7 @@ export default function DashboardDireccion() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
-  const { setEntidadId, filters } = useRole();
+  const { setEntidadId, setRole, filters } = useRole();
 
   // Apply filters
   const entidades = (allEntidades || []).filter(e => {
@@ -98,8 +98,10 @@ export default function DashboardDireccion() {
   const sorted = [...all].sort((a, b) => (b.avance_operativo_promedio || 0) - (a.avance_operativo_promedio || 0));
 
   const handleEntityClick = (entidadId: string) => {
+    const ent = all.find(e => e.entidad_id === entidadId);
+    if (ent) setRole(ent.mecanismo === "B" ? "entidad_mec_b" : "entidad_mec_a");
     setEntidadId(entidadId);
-    navigate("/mis-actividades");
+    navigate("/actividades");
   };
 
   return (

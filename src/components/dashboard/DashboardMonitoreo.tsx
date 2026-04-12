@@ -57,7 +57,7 @@ export default function DashboardMonitoreo({
   const [indicadoresStats, setIndicadoresStats] = useState({ total: 0, completed: 0 });
   const [contratos, setContratos] = useState<any[]>([]);
   const navigate = useNavigate();
-  const { setEntidadId, filters } = useRole();
+  const { setEntidadId, setRole, filters } = useRole();
 
   // Apply both prop-based and global filters
   const entidades = (allEntidades || []).filter(e => {
@@ -140,18 +140,23 @@ export default function DashboardMonitoreo({
   });
 
   const handleEntityClick = (entidadId: string) => {
+    const ent = entidades.find(e => e.entidad_id === entidadId);
+    if (ent) setRole(ent.mecanismo === "B" ? "entidad_mec_b" : "entidad_mec_a");
     setEntidadId(entidadId);
-    navigate("/mis-actividades");
+    navigate("/actividades");
   };
 
   const handleAlertClick = (alert: { entidadId: string; route?: string }) => {
+    const ent = entidades.find(e => e.entidad_id === alert.entidadId);
+    if (ent) setRole(ent.mecanismo === "B" ? "entidad_mec_b" : "entidad_mec_a");
     setEntidadId(alert.entidadId);
-    if (alert.route) navigate(alert.route);
-    else navigate("/mis-actividades");
+    navigate(alert.route || "/actividades");
   };
 
   const handleBadgeClick = (e: React.MouseEvent, entidadId: string, route: string) => {
     e.stopPropagation();
+    const ent = entidades.find(en => en.entidad_id === entidadId);
+    if (ent) setRole(ent.mecanismo === "B" ? "entidad_mec_b" : "entidad_mec_a");
     setEntidadId(entidadId);
     navigate(route);
   };
