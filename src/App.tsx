@@ -41,6 +41,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <RoleProvider>
+          <TrimestreSeleccionadoProvider>
           <AppLayout>
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
