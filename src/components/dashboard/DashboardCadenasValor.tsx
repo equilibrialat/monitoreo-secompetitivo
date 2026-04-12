@@ -107,7 +107,7 @@ export default function DashboardCadenasValor() {
   const [aiLoading, setAiLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
-  const { setEntidadId, filters } = useRole();
+  const { setEntidadId, setRole, filters } = useRole();
 
   const entidades = (allEntidades || []).filter(e => {
     if (e.mecanismo !== "B") return false;
@@ -125,12 +125,14 @@ export default function DashboardCadenasValor() {
   const sobregiros = entidades.filter((e) => e.sobregiros_seco > 0);
 
   const handleEntityClick = (entidadId: string) => {
+    setRole("entidad_mec_b");
     setEntidadId(entidadId);
-    navigate("/mis-actividades");
+    navigate("/actividades");
   };
 
   const handleBadgeClick = (e: React.MouseEvent, entidadId: string, route: string) => {
     e.stopPropagation();
+    setRole("entidad_mec_b");
     setEntidadId(entidadId);
     navigate(route);
   };
