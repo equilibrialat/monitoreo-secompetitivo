@@ -369,3 +369,118 @@ function FinanceCard({ label, executed, budget }: { label: string; executed: num
     </div>
   );
 }
+
+function ActividadContratosGastos({ actCodigo, entidadId }: { actCodigo: string; entidadId: string }) {
+  const [contratos, setContratos] = useState<any[]>([]);
+  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      (supabase as any).from("contratos").select("*").eq("entidad_id", entidadId).order("nombre_contratado"),
+      (supabase as any).from("vouchers_gasto").select("*").eq("entidad_id", entidadId).eq("codigo_actividad", actCodigo).order("fecha"),
+    ]).then(([cRes, vRes]) => {
+      // Filter contratos: match by actividad_id or by objeto keyword if no actividad_id
+      setContratos(cRes.data || []);
+      setVouchers(vRes.data || []);
+      setLoading(false);
+    });
+  }, [actCodigo, entidadId]);
+
+  if (loading) return <p className="text-xs text-muted-foreground py-2">Cargando...</p>;
+
+  const totalVouchersUSD = vouchers.reduce((s: number, v: any) => s + (v.monto_usd || 0), 0);
+  const totalVouchersPEN = vouchers.reduce((s: number, v: any) => s + (v.monto_pen || 0), 0);
+
+  return (
+    <Tabs defaultValue="contratos" className="w-full">
+      <TabsList className="grid w-full grid-cols-2 h-8">
+        <TabsTrigger value="contratos" className="text-xs gap-1">
+          <FileCheck className="h-3 w-3" /> Contratos
+        </TabsTrigger>
+        <TabsTrigger value="gastos" className="text-xs gap-1">
+          <Receipt className="h-3 w-3" /> Gastos
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="contratos" className="mt-2">
+        {contratos.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-3 text-center">Sin contratos vinculados</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Consultor</TableHead>
+                  <TableHead className="text-xs">Producto</TableHead>
+                  <TableHead className="text-xs text-right">Monto USD</TableHead>
+                  <TableHead className="text-xs">Vencimiento</TableHead>
+                  <TableHead className="text-xs">Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contratos.map((c: any) => {
+                  const vencido = c.estado === "en_proceso" && c.fecha_vencimiento_producto && new Date(c.fecha_vencimiento_producto) < new Date();
+                  return (
+                    <TableRow key={c.id} className={vencido ? "bg-destructive/5" : ""}>
+                      <TableCell className="text-xs font-medium max-w-[140px] truncate">{c.nombre_contratado}</TableCell>
+                      <TableCell className="text-xs max-w-[140px] truncate">{c.producto_entregable ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-right font-mono">{c.monto != null ? formatUSD(c.monto) : "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {c.fecha_vencimiento_producto ? (
+                          <span className={vencido ? "text-destructive font-medium" : ""}>
+                            {c.fecha_vencimiento_producto}
+                          </span>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className={cn("h-2.5 w-2.5 rounded-full", vencido ? "bg-destructive" : c.estado === "finalizado" ? "bg-success" : "bg-warning")} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="gastos" className="mt-2">
+        {vouchers.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-3 text-center">Sin gastos registrados para {actCodigo}</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Fecha</TableHead>
+                  <TableHead className="text-xs">Proveedor</TableHead>
+                  <TableHead className="text-xs">Concepto</TableHead>
+                  <TableHead className="text-xs text-right">USD</TableHead>
+                  <TableHead className="text-xs text-right">PEN</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vouchers.map((v: any) => (
+                  <TableRow key={v.id}>
+                    <TableCell className="text-xs font-mono">{v.fecha ?? "—"}</TableCell>
+                    <TableCell className="text-xs max-w-[120px] truncate">{v.proveedor ?? "—"}</TableCell>
+                    <TableCell className="text-xs max-w-[140px] truncate">{v.concepto ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-right font-mono">{v.monto_usd != null ? formatUSD(v.monto_usd) : "—"}</TableCell>
+                    <TableCell className="text-xs text-right font-mono">S/{(v.monto_pen ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-muted/30 font-semibold">
+                  <TableCell colSpan={3} className="text-xs">Total</TableCell>
+                  <TableCell className="text-xs text-right font-mono">{formatUSD(totalVouchersUSD)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono">S/{totalVouchersPEN.toLocaleString("en-US", { minimumFractionDigits: 2 })}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
+  );
+}
