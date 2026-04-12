@@ -16,9 +16,6 @@ interface ResultadoDB {
   id: string;
   codigo: string;
   nombre: string;
-  summary_presupuesto_usd: number;
-  summary_ejecutado_usd: number;
-  summary_saldo_usd: number;
 }
 
 function getSemaforoAvance(pct: number) {
