@@ -86,13 +86,12 @@ export function GestionTrimestres() {
 
         <ConfirmDialog
           open={!!confirmTrimestre}
-          onOpenChange={(v) => !v && setConfirmTrimestre(null)}
+          onCancel={() => setConfirmTrimestre(null)}
           title="Activar trimestre"
           description={confirmTrimestre
             ? `¿Activar ${getTrimestreLabel(confirmTrimestre)}?${activo ? ` Esto cerrará ${getTrimestreLabel(activo)} y habilitará la planificación para todas las entidades.` : " Esto habilitará la planificación para todas las entidades."}`
             : ""}
           onConfirm={handleActivar}
-          loading={activarMut.isPending}
           confirmLabel="Activar"
         />
       </CardContent>
