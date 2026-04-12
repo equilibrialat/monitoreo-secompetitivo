@@ -233,6 +233,9 @@ export default function MisActividades() {
 
   return (
     <div>
+      {/* Historical mode banner */}
+      <HistoricalBanner />
+
       {/* No plan info */}
       {!loading && plans.length === 0 && (
         <Card className="mb-4 border-muted bg-muted/20">
