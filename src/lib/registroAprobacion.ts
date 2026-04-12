@@ -147,7 +147,8 @@ export async function fetchRegistrosEntidad(entidadId: string): Promise<Registro
     .from("registros_mensuales")
     .select(`
       id, actividad_id, entidad_id, anio, mes, avance_valor, estado,
-      estado_registro, descripcion_avance, observaciones_revision,
+      estado_registro, descripcion_avance, limitaciones, prioridades_proximo_mes,
+      observaciones_revision,
       actividades!inner ( codigo, nombre )
     `)
     .eq("entidad_id", entidadId)
@@ -166,6 +167,8 @@ export async function fetchRegistrosEntidad(entidadId: string): Promise<Registro
     estado: r.estado,
     estado_registro: r.estado_registro,
     descripcion_avance: r.descripcion_avance,
+    limitaciones: r.limitaciones,
+    prioridades_proximo_mes: r.prioridades_proximo_mes,
     observaciones_revision: r.observaciones_revision,
     actividad_codigo: r.actividades?.codigo ?? "",
     actividad_nombre: r.actividades?.nombre ?? "",
