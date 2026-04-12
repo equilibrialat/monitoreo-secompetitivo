@@ -61,6 +61,7 @@ export default function DashboardMonitoreo({
 
   // Apply both prop-based and global filters
   const entidades = (allEntidades || []).filter(e => {
+    if (e.total_actividades === 0) return false;
     if (filterFn && !filterFn(e)) return false;
     if (filters.mecanismo === "mec_a" && e.mecanismo !== "A") return false;
     if (filters.mecanismo === "mec_b" && e.mecanismo !== "B") return false;
@@ -299,7 +300,11 @@ export default function DashboardMonitoreo({
                     );
                   }} />
                   <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" />
-                  <Scatter data={scatterData}>
+                  <Scatter data={scatterData} cursor="pointer"
+                    onClick={(_: any, index: number) => {
+                      const ent = entidades.find(e => e.nombre_corto === scatterData[index]?.name);
+                      if (ent) handleEntityClick(ent.entidad_id);
+                    }}>
                     {scatterData.map((d, i) => (
                       <Cell key={i} fill={d.mec === "A" ? "hsl(var(--primary))" : "hsl(var(--chart-3))"} />
                     ))}
