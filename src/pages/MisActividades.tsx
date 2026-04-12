@@ -259,12 +259,6 @@ export default function MisActividades() {
                                               <p className="text-card-foreground">{reg.descripcion_avance}</p>
                                             </div>
                                           )}
-                                          {reg.dificultades && (
-                                            <div>
-                                              <p className="text-xs font-medium text-muted-foreground">Dificultades:</p>
-                                              <p className="text-card-foreground">{reg.dificultades}</p>
-                                            </div>
-                                          )}
                                           {reg.observaciones_revision && (
                                             <div>
                                               <p className="text-xs font-medium text-destructive">Observaciones:</p>
