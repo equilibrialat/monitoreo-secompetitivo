@@ -33,6 +33,7 @@ export default function MisActividades() {
   const [actividades, setActividades] = useState<ActividadDB[]>([]);
   const [registros, setRegistros] = useState<RegistroPendiente[]>([]);
   const [resultados, setResultados] = useState<ResultadoDB[]>([]);
+  const [voucherTotals, setVoucherTotals] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedActividad, setSelectedActividad] = useState<ActividadDB | null>(null);
 
@@ -53,7 +54,8 @@ export default function MisActividades() {
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
       (supabase as any).from("resultados").select("id, codigo, nombre").eq("entidad_id", entidadId).order("codigo"),
-    ]).then(([acts, regs, resResult]) => {
+      (supabase as any).from("vouchers_gasto").select("codigo_actividad, monto_usd").eq("entidad_id", entidadId),
+    ]).then(([acts, regs, resResult, vouchersResult]) => {
       setActividades(acts);
       setRegistros(regs);
       setResultados((resResult.data || []).map((r: any) => ({
@@ -61,6 +63,13 @@ export default function MisActividades() {
         codigo: r.codigo,
         nombre: r.nombre,
       })));
+      // Build voucher totals map: codigo_actividad -> sum(monto_usd)
+      const vtMap = new Map<string, number>();
+      for (const v of (vouchersResult.data || [])) {
+        const key = v.codigo_actividad;
+        if (key) vtMap.set(key, (vtMap.get(key) || 0) + (v.monto_usd || 0));
+      }
+      setVoucherTotals(vtMap);
       setLoading(false);
     });
   }, [entidadId]);
@@ -92,7 +101,7 @@ export default function MisActividades() {
   function getResultadoFinance(resCodigo: string) {
     const acts = actsByResultado.get(resCodigo) || [];
     const presupuesto = acts.reduce((s, a) => s + (a.presupuesto_seco || 0), 0);
-    const ejecutado = acts.reduce((s, a) => s + (a.ejecutado_seco_acum || 0), 0);
+    const ejecutado = acts.reduce((s, a) => s + (voucherTotals.get(a.codigo) || 0), 0);
     return { presupuesto, ejecutado, saldo: presupuesto - ejecutado };
   }
 
@@ -270,7 +279,7 @@ export default function MisActividades() {
                                   <div>
                                     <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Ejecución Financiera</h5>
                                     <div className="grid grid-cols-3 gap-2">
-                                      <FinanceCard label="SECO" executed={act.ejecutado_seco_acum} budget={act.presupuesto_seco} />
+                                      <FinanceCard label="SECO" executed={voucherTotals.get(act.codigo) || 0} budget={act.presupuesto_seco} />
                                       <FinanceCard label="Contrap. Monet." executed={act.ejecutado_cm_acum} budget={act.presupuesto_contrapartida_monetaria} />
                                       <FinanceCard label="Contrap. No Monet." executed={act.ejecutado_cnm_acum} budget={act.presupuesto_contrapartida_no_monetaria} />
                                     </div>
