@@ -130,6 +130,10 @@ export default function DashboardCadenasValor() {
   // The pendientes_revision from dashboard data counts borrador/en_revision which aren't Iván's responsibility
   const [pendientesIvan, setPendientesIvan] = useState(0);
   useEffect(() => {
+    if (entidades.length === 0) {
+      setPendientesIvan(0);
+      return;
+    }
     (async () => {
       const { count } = await (supabase as any)
         .from("registros_mensuales")
