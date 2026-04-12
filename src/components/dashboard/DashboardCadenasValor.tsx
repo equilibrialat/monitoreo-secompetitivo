@@ -238,24 +238,32 @@ export default function DashboardCadenasValor() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-3 pb-3 flex flex-col items-center">
-            <GaugeCircle value={avgAvance} label="Avance Op." />
+          <CardContent className="pt-4 pb-3 text-center">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Avance Operativo Mec B (promedio)</p>
+            <p className="text-3xl font-bold text-foreground">{avgAvance}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-3 pb-3 flex flex-col items-center">
-            <GaugeCircle value={avgEjecucion} label="Ejec. SECO" color="hsl(var(--chart-2))" />
+          <CardContent className="pt-4 pb-3 text-center">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Ejecución Financiera SECO (promedio)</p>
+            <p className="text-3xl font-bold text-foreground">{avgEjecucion}%</p>
           </CardContent>
         </Card>
         <ClickableKpiCard
-          label="Pendientes Revisión" value={String(pendientesTotal)} sub="registros"
+          label="Pendientes Revisión" value={String(pendientesIvan)} sub={pendientesIvan === 0 ? "No hay registros pendientes" : "registros"}
           onClick={() => navigate("/revision-pendiente")}
-          className={pendientesTotal > 0 ? "border-warning/50" : ""}
+          className={pendientesIvan > 0 ? "border-warning/50" : ""}
         />
         <ClickableKpiCard
-          label="Sobregiros" value={String(sobregiros.length)} sub="entidades"
-          onClick={() => navigate("/desembolsos")}
-          className={sobregiros.length > 0 ? "border-destructive/50" : ""}
+          label="Alertas financieras"
+          value={String(totalAlertasFinancieras)}
+          sub={totalAlertasFinancieras === 0 ? "sin alertas" : totalAlertasFinancieras === 1 ? "alerta" : "alertas"}
+          onClick={() => {
+            if (firstAlertEntity) {
+              handleEntityClick(firstAlertEntity.entidad_id);
+            }
+          }}
+          className={totalAlertasFinancieras > 0 ? "border-yellow-400/60" : ""}
         />
       </div>
 
