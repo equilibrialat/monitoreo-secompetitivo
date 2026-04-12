@@ -245,7 +245,11 @@ export default function DashboardMonitoreo({
                   <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v: number) => `${v}%`} />
                   <ReferenceLine x={100} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                  <Bar dataKey="avance" radius={[0, 4, 4, 0]}>
+                  <Bar dataKey="avance" radius={[0, 4, 4, 0]} cursor="pointer"
+                    onClick={(_: any, index: number) => {
+                      const ent = entidades.find(e => e.nombre_corto === avanceBarData[index]?.name);
+                      if (ent) handleEntityClick(ent.entidad_id);
+                    }}>
                     {avanceBarData.map((d, i) => (
                       <Cell key={i} fill={d.avance >= 80 ? "hsl(142, 76%, 36%)" : d.avance >= 50 ? "hsl(48, 96%, 53%)" : "hsl(0, 72%, 51%)"} />
                     ))}
