@@ -172,7 +172,7 @@ export default function MisActividades() {
                           </div>
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Presupuesto</p>
-                            <p className="text-sm font-bold text-foreground">{formatUSD(res.summary_presupuesto_usd)}</p>
+                            <p className="text-sm font-bold text-foreground">{formatUSD(finance.presupuesto)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
