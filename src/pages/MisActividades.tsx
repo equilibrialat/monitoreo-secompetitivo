@@ -232,6 +232,34 @@ export default function MisActividades() {
 
   return (
     <div>
+      {/* No plan info */}
+      {!loading && plans.length === 0 && (
+        <Card className="mb-4 border-muted bg-muted/20">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <Circle className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                El coordinador regional aún no ha enviado el plan para {monthNames.join(" / ")} {currentAnio}.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Approved plan compact bar */}
+      {isApproved && (
+        <Card className="mb-4 border-success/40 bg-success/5">
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              <p className="text-sm text-success font-medium">
+                ✓ Plan {monthNames.join("-")} {currentAnio} aprobado — puedes registrar tu avance mensual.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center gap-3 mb-6">
         <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
           <ClipboardList className="h-5 w-5 text-primary" />
