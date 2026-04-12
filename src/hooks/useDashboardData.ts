@@ -95,8 +95,27 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       .in("entidad_id", entidadIds),
   ]);
 
+  // Build set of activity IDs with approved metas
+  const approvedMetaActivities = new Set<string>();
+  const metasByEntity = new Map<string, { total: number; approved: number }>();
+  for (const m of metasResult.data || []) {
+    const entry = metasByEntity.get(m.entidad_id) || { total: 0, approved: 0 };
+    entry.total++;
+    if (m.estado === "aprobada") {
+      entry.approved++;
+      approvedMetaActivities.add(m.actividad_id);
+    }
+    metasByEntity.set(m.entidad_id, entry);
+  }
+
   const avanceMap = new Map<string, { sum: number; count: number }>();
   for (const a of actResult.data || []) {
+    // Only count activities with approved metas in the average
+    if (!approvedMetaActivities.has(a.id) && approvedMetaActivities.size > 0) {
+      // If we have any metas data, skip unapproved activities
+      const entityMetas = metasByEntity.get(a.entidad_id);
+      if (entityMetas && entityMetas.total > 0) continue;
+    }
     const cur = avanceMap.get(a.entidad_id) || { sum: 0, count: 0 };
     cur.sum += Number(a.avance_operativo_pct || 0);
     cur.count += 1;
