@@ -1,49 +1,55 @@
 import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import type { MetaEstado } from "@/lib/metasMensuales";
+import type { PlanEstado } from "@/lib/planTrimestral";
+
+type StatusKey = PlanEstado | "sin_plan";
 
 interface MetaStatusBadgeProps {
-  estado: MetaEstado;
-  metaValor?: number | null;
-  comentario?: string | null;
+  estado: StatusKey;
   compact?: boolean;
 }
 
-const CONFIG: Record<MetaEstado, {
+const CONFIG: Record<StatusKey, {
   label: string;
   icon: typeof Lock;
   className: string;
   tooltip: string;
 }> = {
-  sin_meta: {
-    label: "Sin meta definida",
+  sin_plan: {
+    label: "Sin plan",
     icon: Unlock,
     className: "bg-muted text-muted-foreground",
-    tooltip: "No se ha definido una meta para este periodo. Propón una meta para habilitar el registro.",
+    tooltip: "No se ha definido un plan trimestral. El coordinador regional debe proponer uno.",
   },
-  pendiente_aprobacion: {
-    label: "En revisión",
+  borrador: {
+    label: "Borrador",
+    icon: Clock,
+    className: "bg-muted text-muted-foreground",
+    tooltip: "El coordinador está elaborando el plan trimestral.",
+  },
+  propuesta_coordinador: {
+    label: "Plan propuesto",
     icon: Clock,
     className: "bg-warning/15 text-warning",
-    tooltip: "Propuesta enviada — el coordinador regional debe aprobar la meta antes de poder registrar avance.",
+    tooltip: "El coordinador ha propuesto un plan trimestral. Pendiente de aceptación por la entidad.",
   },
   aprobada: {
-    label: "Meta aprobada",
+    label: "Plan aprobado",
     icon: CheckCircle2,
     className: "bg-success/15 text-success",
-    tooltip: "Meta aprobada por el coordinador regional. Puedes registrar avance.",
+    tooltip: "Plan trimestral aprobado. La entidad puede registrar avances.",
   },
-  rechazada: {
-    label: "Meta rechazada",
+  en_disputa: {
+    label: "En disputa",
     icon: AlertTriangle,
     className: "bg-destructive/15 text-destructive",
-    tooltip: "Meta rechazada por el coordinador. Revisa el comentario y reenvía la propuesta.",
+    tooltip: "La entidad ha comentado sobre el plan. Pendiente de resolución del coordinador.",
   },
 };
 
-export function MetaStatusBadge({ estado, metaValor, comentario, compact }: MetaStatusBadgeProps) {
-  const config = CONFIG[estado];
+export function MetaStatusBadge({ estado, compact }: MetaStatusBadgeProps) {
+  const config = CONFIG[estado] || CONFIG.sin_plan;
   const Icon = config.icon;
 
   return (
@@ -53,16 +59,10 @@ export function MetaStatusBadge({ estado, metaValor, comentario, compact }: Meta
           <Badge className={`${config.className} text-[10px] px-1.5 py-0.5 cursor-help gap-1`}>
             <Icon className="h-3 w-3" />
             {!compact && config.label}
-            {!compact && metaValor != null && estado !== "sin_meta" && (
-              <span className="font-mono ml-0.5">({metaValor})</span>
-            )}
           </Badge>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[280px]">
           <p className="text-xs">{config.tooltip}</p>
-          {comentario && estado === "rechazada" && (
-            <p className="text-xs text-destructive mt-1 italic">"{comentario}"</p>
-          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -70,31 +70,31 @@ export function MetaStatusBadge({ estado, metaValor, comentario, compact }: Meta
 }
 
 /** Dashboard chip variant for Iván's view */
-export function MetaStatusChip({ estado }: { estado: MetaEstado }) {
+export function MetaStatusChip({ estado }: { estado: StatusKey }) {
   if (estado === "aprobada") {
     return (
       <span className="inline-flex items-center gap-0.5 text-[9px] text-success font-medium">
-        <CheckCircle2 className="h-2.5 w-2.5" /> Meta aprobada
+        <CheckCircle2 className="h-2.5 w-2.5" /> Plan aprobado
       </span>
     );
   }
-  if (estado === "pendiente_aprobacion") {
+  if (estado === "propuesta_coordinador" || estado === "borrador") {
     return (
       <span className="inline-flex items-center gap-0.5 text-[9px] text-muted-foreground font-medium">
         <Clock className="h-2.5 w-2.5" /> En planificación
       </span>
     );
   }
-  if (estado === "rechazada") {
+  if (estado === "en_disputa") {
     return (
       <span className="inline-flex items-center gap-0.5 text-[9px] text-destructive font-medium">
-        <AlertTriangle className="h-2.5 w-2.5" /> Rechazada
+        <AlertTriangle className="h-2.5 w-2.5" /> En disputa
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-0.5 text-[9px] text-destructive font-medium">
-      <Unlock className="h-2.5 w-2.5" /> Sin meta
+      <Unlock className="h-2.5 w-2.5" /> Sin plan
     </span>
   );
 }
