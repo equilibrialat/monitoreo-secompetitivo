@@ -53,6 +53,7 @@ const App = () => (
 
               {/* Gestor routes */}
               <Route path="/mis-iniciativas" element={<MisIniciativasPage />} />
+              <Route path="/planificacion-trimestral" element={<PlanificacionTrimestralPage />} />
 
               {/* Shared routes */}
               <Route path="/reportes" element={<ReportesPage />} />
