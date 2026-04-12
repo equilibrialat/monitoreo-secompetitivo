@@ -111,6 +111,7 @@ export default function DashboardCadenasValor() {
 
   const entidades = (allEntidades || []).filter(e => {
     if (e.mecanismo !== "B") return false;
+    if (e.total_actividades === 0) return false;
     if (filters.entidadFiltro && e.entidad_id !== filters.entidadFiltro) return false;
     if (filters.region && e.region !== filters.region) return false;
     return true;
