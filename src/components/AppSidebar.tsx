@@ -24,7 +24,15 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
-  const { role, setRole, entidadId, setEntidadId, entidades, loadingEntidades } = useRole();
+  const {
+    role,
+    setRole,
+    entidadId,
+    setEntidadId,
+    entidades,
+    loadingEntidades,
+    filteredEntidades,
+  } = useRole();
   const location = useLocation();
   const navigate = useNavigate();
   const navItems = getNavForRole(role);
@@ -79,7 +87,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
       </div>
 
       {/* Entidad selector */}
-      {showEntidadSelector && entidades.length > 0 && (
+      {showEntidadSelector && filteredEntidades.length > 0 && (
         <div className="px-3 pb-4">
           <Select value={entidadId ?? ""} onValueChange={setEntidadId} disabled={loadingEntidades}>
             <SelectTrigger className="h-10 text-xs bg-sidebar-accent border-none text-sidebar-active min-h-[44px]">
@@ -87,7 +95,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
               <SelectValue placeholder="Seleccionar entidad" />
             </SelectTrigger>
             <SelectContent>
-              {entidades.map((e) => (
+              {filteredEntidades.map((e) => (
                 <SelectItem key={e.id} value={e.id} className="text-xs min-h-[44px]">
                   <span className="flex items-center gap-1.5">
                     {e.nombre_corto}
