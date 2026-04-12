@@ -30,7 +30,7 @@ import AdministracionPage from "./pages/AdministracionPage";
 import MisIniciativasPage from "./pages/MisIniciativasPage";
 import RegistroRapidoPage from "./pages/RegistroRapidoPage";
 import GestionFinancieraPage from "./pages/GestionFinancieraPage";
-
+import PlanificacionTrimestralPage from "./pages/PlanificacionTrimestralPage";
 const queryClient = new QueryClient();
 
 const App = () => (
