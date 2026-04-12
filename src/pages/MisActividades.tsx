@@ -1,37 +1,51 @@
 import { useState, useEffect, useMemo } from "react";
-import { ClipboardList, Loader2 } from "lucide-react";
+import { ClipboardList, Loader2, ChevronRight, DollarSign, TrendingUp, Wallet } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchActividadesByEntidad, buildActivityTree, type ActividadDB } from "@/lib/supabaseQueries";
+import { fetchActividadesByEntidad, type ActividadDB } from "@/lib/supabaseQueries";
 import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroAprobacion";
-import { TreeBranch } from "@/components/TreeBranch";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
-import MapaMarcoLogico from "@/components/reportes/MapaMarcoLogico";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-interface IndicadorMin {
+interface ResultadoDB {
+  id: string;
   codigo: string;
   nombre: string;
-  meta: number | null;
-  linea_base: number | null;
-  nivel: string;
-  unidad_medida: string | null;
+  summary_presupuesto_usd: number;
+  summary_ejecutado_usd: number;
+  summary_saldo_usd: number;
+}
+
+function getSemaforoAvance(pct: number) {
+  if (pct >= 66) return { color: "bg-success", text: "text-success", label: "En curso" };
+  if (pct >= 35) return { color: "bg-warning", text: "text-warning", label: "Atención" };
+  return { color: "bg-destructive", text: "text-destructive", label: "Crítico" };
+}
+
+function formatUSD(val: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 }
 
 export default function MisActividades() {
   const { entidadId } = useRole();
   const [actividades, setActividades] = useState<ActividadDB[]>([]);
   const [registros, setRegistros] = useState<RegistroPendiente[]>([]);
-  const [indicadores, setIndicadores] = useState<IndicadorMin[]>([]);
+  const [resultados, setResultados] = useState<ResultadoDB[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedActividad, setSelectedActividad] = useState<ActividadDB | null>(null);
+
+  // Accordion state: only one open at each level
+  const [openResultado, setOpenResultado] = useState<string | null>(null);
+  const [openActividad, setOpenActividad] = useState<string | null>(null);
 
   useEffect(() => {
     if (!entidadId) {
       setActividades([]);
       setRegistros([]);
-      setIndicadores([]);
+      setResultados([]);
       setLoading(false);
       return;
     }
@@ -39,52 +53,49 @@ export default function MisActividades() {
     Promise.all([
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
-      (supabase as any).from("indicadores_proyecto").select("codigo, nombre, meta, linea_base, nivel, unidad_medida").eq("entidad_id", entidadId),
-    ]).then(([acts, regs, indResult]) => {
+      (supabase as any).from("resultados").select("id, codigo, nombre, summary_presupuesto_usd, summary_ejecutado_usd, summary_saldo_usd").eq("entidad_id", entidadId).order("codigo"),
+    ]).then(([acts, regs, resResult]) => {
       setActividades(acts);
       setRegistros(regs);
-      setIndicadores(indResult.data || []);
+      setResultados((resResult.data || []).map((r: any) => ({
+        ...r,
+        summary_presupuesto_usd: r.summary_presupuesto_usd ?? 0,
+        summary_ejecutado_usd: r.summary_ejecutado_usd ?? 0,
+        summary_saldo_usd: r.summary_saldo_usd ?? 0,
+      })));
       setLoading(false);
     });
   }, [entidadId]);
 
-  const tree = buildActivityTree(actividades);
-
-  // Build grouped data for MapaMarcoLogico
-  const grouped = useMemo(() => {
-    const map = new Map<string, Map<string, any[]>>();
+  // Group activities by resultado
+  const actsByResultado = useMemo(() => {
+    const map = new Map<string, ActividadDB[]>();
     actividades.forEach(a => {
-      const res = `${a.resultado_codigo} — ${a.resultado_nombre}`;
-      const prod = `${a.producto_codigo} — ${a.producto_nombre}`;
-      if (!map.has(res)) map.set(res, new Map());
-      if (!map.get(res)!.has(prod)) map.get(res)!.set(prod, []);
-      map.get(res)!.get(prod)!.push(a);
+      const key = a.resultado_codigo;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(a);
     });
     return map;
   }, [actividades]);
 
-  // Build a map: actividad_id -> latest registro
-  const registroMap = new Map<string, RegistroPendiente>();
-  for (const r of registros) {
-    const existing = registroMap.get(r.actividad_id);
-    if (!existing || r.anio > existing.anio || (r.anio === existing.anio && r.mes > existing.mes)) {
-      registroMap.set(r.actividad_id, r);
+  // Registros map for detail
+  const registroMap = useMemo(() => {
+    const m = new Map<string, RegistroPendiente>();
+    for (const r of registros) {
+      const existing = m.get(r.actividad_id);
+      if (!existing || r.anio > existing.anio || (r.anio === existing.anio && r.mes > existing.mes)) {
+        m.set(r.actividad_id, r);
+      }
     }
-  }
+    return m;
+  }, [registros]);
 
-  // Current month status map
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
-  const currentMonthStatusMap = new Map<string, string | null>();
-  for (const act of actividades) {
-    const reg = registros.find(
-      (r) => r.actividad_id === act.id && r.anio === currentYear && r.mes === currentMonth
-    );
-    currentMonthStatusMap.set(act.id, reg?.estado_registro ?? null);
+  // Compute avg avance per resultado
+  function getResultadoAvance(resCodigo: string): number {
+    const acts = actsByResultado.get(resCodigo) || [];
+    if (acts.length === 0) return 0;
+    return Math.round(acts.reduce((s, a) => s + a.avance_operativo_pct, 0) / acts.length);
   }
-
-  // Observados
-  const observados = registros.filter((r) => r.estado_registro === "observado");
 
   return (
     <div>
@@ -94,33 +105,9 @@ export default function MisActividades() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-foreground">Mis Actividades</h1>
-          <p className="text-sm text-muted-foreground">Árbol de resultados</p>
+          <p className="text-sm text-muted-foreground">Vista jerárquica: Resultado → Actividades → Detalle</p>
         </div>
       </div>
-
-      {/* Observados alerts */}
-      {observados.length > 0 && (
-        <div className="mb-6 space-y-2">
-          <h2 className="text-sm font-semibold text-destructive flex items-center gap-1.5">
-            <AlertTriangle className="h-4 w-4" /> Registros Observados
-          </h2>
-          {observados.map((r) => (
-            <div key={r.id} className="rounded-md border-2 border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-xs text-muted-foreground">{r.actividad_codigo}</span>
-                <span className="font-medium">{r.actividad_nombre}</span>
-                <Badge variant="destructive" className="text-[10px]">Observado</Badge>
-              </div>
-              {r.observaciones_revision && (
-                <p className="text-xs text-destructive/80 italic">"{r.observaciones_revision}"</p>
-              )}
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Puedes corregir y volver a enviar desde "Registrar avance".
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -130,38 +117,179 @@ export default function MisActividades() {
       ) : actividades.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-muted-foreground">No se encontraron actividades para esta entidad.</p>
-          <p className="text-xs text-muted-foreground mt-1">Selecciona una entidad en el menú lateral.</p>
         </div>
       ) : (
-        <>
-          {/* Mapa del Marco Lógico */}
-          {indicadores.length > 0 && (
-            <div className="mb-6 border rounded-lg p-4 bg-card">
-              <h2 className="text-sm font-semibold text-foreground mb-3">📊 Mapa del Marco Lógico</h2>
-              <MapaMarcoLogico
-                indicadores={indicadores}
-                actividades={actividades}
-                grouped={grouped}
-                compact
-              />
-            </div>
-          )}
+        <div className="space-y-3">
+          {resultados.map((res) => {
+            const isOpen = openResultado === res.id;
+            const avgAvance = getResultadoAvance(res.codigo);
+            const semaforo = getSemaforoAvance(avgAvance);
+            const acts = actsByResultado.get(res.codigo) || [];
+            const financePct = res.summary_presupuesto_usd > 0
+              ? Math.round((res.summary_ejecutado_usd / res.summary_presupuesto_usd) * 100)
+              : 0;
 
-          <div className="space-y-2">
-            {tree.map((node, i) => (
-              <TreeBranch
-                key={i}
-                node={node}
-                depth={0}
-                defaultOpen
-                onRegistrar={(act) => setSelectedActividad(act)}
-                registroMap={registroMap}
-                currentMonthStatusMap={currentMonthStatusMap}
-                indicadores={indicadores}
-              />
-            ))}
-          </div>
-        </>
+            return (
+              <div key={res.id} className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                {/* NIVEL 1 - BOSQUE: Resultado colapsado */}
+                <button
+                  onClick={() => {
+                    setOpenResultado(isOpen ? null : res.id);
+                    setOpenActividad(null);
+                  }}
+                  className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+                >
+                  <ChevronRight className={cn("h-5 w-5 text-muted-foreground shrink-0 transition-transform", isOpen && "rotate-90")} />
+                  <div className={cn("h-3 w-3 rounded-full shrink-0", semaforo.color)} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-mono text-muted-foreground">{res.codigo}</p>
+                    <p className="text-sm font-semibold text-card-foreground leading-snug truncate">{res.nombre}</p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <p className={cn("text-lg font-bold", semaforo.text)}>{avgAvance}%</p>
+                      <p className="text-[10px] text-muted-foreground">Avance prom.</p>
+                    </div>
+                    <Badge className="text-xs" variant="secondary">{acts.length} act.</Badge>
+                  </div>
+                </button>
+
+                {/* NIVEL 2 - PARCELA: Actividades + Panel financiero */}
+                {isOpen && (
+                  <div className="border-t">
+                    {/* Panel financiero */}
+                    <div className="bg-muted/20 px-4 py-3 border-b">
+                      <div className="grid grid-cols-3 gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Wallet className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Presupuesto</p>
+                            <p className="text-sm font-bold text-foreground">{formatUSD(res.summary_presupuesto_usd)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
+                            <TrendingUp className="h-4 w-4 text-success" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Ejecutado</p>
+                            <p className="text-sm font-bold text-success">{formatUSD(res.summary_ejecutado_usd)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                            <DollarSign className="h-4 w-4 text-warning" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Saldo</p>
+                            <p className="text-sm font-bold text-warning">{formatUSD(res.summary_saldo_usd)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Progress value={financePct} className="h-2 flex-1" />
+                        <span className="text-xs font-medium text-muted-foreground">{financePct}%</span>
+                      </div>
+                    </div>
+
+                    {/* Lista de actividades */}
+                    <div className="divide-y">
+                      {acts.map((act) => {
+                        const isActOpen = openActividad === act.id;
+                        const actSemaforo = getSemaforoAvance(act.avance_operativo_pct);
+                        const reg = registroMap.get(act.id);
+
+                        return (
+                          <div key={act.id}>
+                            <button
+                              onClick={() => setOpenActividad(isActOpen ? null : act.id)}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/20 transition-colors"
+                            >
+                              <ChevronRight className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isActOpen && "rotate-90")} />
+                              <div className={cn("h-2.5 w-2.5 rounded-full shrink-0", actSemaforo.color)} />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-xs font-mono text-muted-foreground mr-2">{act.codigo}</span>
+                                <span className="text-sm text-card-foreground">{act.nombre}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs text-muted-foreground">
+                                  Meta: {act.meta_valor} {act.meta_unidad_medida}
+                                </span>
+                                <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                              </div>
+                            </button>
+
+                            {/* NIVEL 3 - ÁRBOL: Detalle completo */}
+                            {isActOpen && (
+                              <div className="px-6 pb-4 bg-muted/10 border-t">
+                                <div className="py-3 space-y-4">
+                                  {/* Avance operativo */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Avance Operativo</h5>
+                                    <div className="flex items-center gap-3">
+                                      <Progress value={act.avance_operativo_pct} className="h-2.5 flex-1" />
+                                      <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Meta: {act.meta_valor} {act.meta_unidad_medida} · Estado: {act.estado_actual?.replace(/_/g, ' ')}
+                                    </p>
+                                  </div>
+
+                                  {/* Ejecución financiera de la actividad */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Ejecución Financiera</h5>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <FinanceCard label="SECO" executed={act.ejecutado_seco_acum} budget={act.presupuesto_seco} />
+                                      <FinanceCard label="Contrap. Monet." executed={act.ejecutado_cm_acum} budget={act.presupuesto_contrapartida_monetaria} />
+                                      <FinanceCard label="Contrap. No Monet." executed={act.ejecutado_cnm_acum} budget={act.presupuesto_contrapartida_no_monetaria} />
+                                    </div>
+                                  </div>
+
+                                  {/* Último registro */}
+                                  {reg && (
+                                    <div>
+                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Último Registro ({reg.mes}/{reg.anio})</h5>
+                                      <Card>
+                                        <CardContent className="p-3 space-y-2 text-sm">
+                                          {reg.descripcion_avance && (
+                                            <div>
+                                              <p className="text-xs font-medium text-muted-foreground">Logros:</p>
+                                              <p className="text-card-foreground">{reg.descripcion_avance}</p>
+                                            </div>
+                                          )}
+                                          {reg.observaciones_revision && (
+                                            <div>
+                                              <p className="text-xs font-medium text-destructive">Observaciones:</p>
+                                              <p className="text-destructive/80">{reg.observaciones_revision}</p>
+                                            </div>
+                                          )}
+                                        </CardContent>
+                                      </Card>
+                                    </div>
+                                  )}
+
+                                  {/* Botón registrar */}
+                                  <button
+                                    onClick={() => setSelectedActividad(act)}
+                                    className="w-full py-2 text-xs font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                                  >
+                                    Registrar avance mensual
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <RegistroMensualDialog
@@ -174,6 +302,17 @@ export default function MisActividades() {
           }
         }}
       />
+    </div>
+  );
+}
+
+function FinanceCard({ label, executed, budget }: { label: string; executed: number; budget: number }) {
+  const pct = budget > 0 ? Math.round((executed / budget) * 100) : 0;
+  return (
+    <div className="rounded-lg border bg-card p-2">
+      <p className="text-[10px] font-medium text-muted-foreground mb-1">{label}</p>
+      <p className="text-xs font-bold text-foreground">{formatUSD(executed)} <span className="font-normal text-muted-foreground">/ {formatUSD(budget)}</span></p>
+      <Progress value={pct} className="h-1.5 mt-1" />
     </div>
   );
 }

@@ -2581,6 +2581,9 @@ export type Database = {
           nivel: string
           nombre: string
           orden: number | null
+          summary_ejecutado_usd: number | null
+          summary_presupuesto_usd: number | null
+          summary_saldo_usd: number | null
         }
         Insert: {
           codigo: string
@@ -2590,6 +2593,9 @@ export type Database = {
           nivel: string
           nombre: string
           orden?: number | null
+          summary_ejecutado_usd?: number | null
+          summary_presupuesto_usd?: number | null
+          summary_saldo_usd?: number | null
         }
         Update: {
           codigo?: string
@@ -2599,6 +2605,9 @@ export type Database = {
           nivel?: string
           nombre?: string
           orden?: number | null
+          summary_ejecutado_usd?: number | null
+          summary_presupuesto_usd?: number | null
+          summary_saldo_usd?: number | null
         }
         Relationships: [
           {
