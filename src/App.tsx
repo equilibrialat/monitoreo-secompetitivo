@@ -29,6 +29,7 @@ import ReportesRegionalesPage from "./pages/ReportesRegionalesPage";
 import AdministracionPage from "./pages/AdministracionPage";
 import MisIniciativasPage from "./pages/MisIniciativasPage";
 import RegistroRapidoPage from "./pages/RegistroRapidoPage";
+import GestionFinancieraPage from "./pages/GestionFinancieraPage";
 
 const queryClient = new QueryClient();
 
