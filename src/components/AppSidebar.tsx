@@ -47,7 +47,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
   };
 
   // Show entity selector for roles that need it
-  const showEntidadSelector = role === "entidad_mec_a" || role === "entidad_mec_b" || role === "gestor";
+  const showEntidadSelector = ["entidad_mec_a", "entidad_mec_b", "gestor", "administracion", "coordinador_regional", "coordinador_cadenas", "asesora_politicas"].includes(role);
 
   const sidebarContent = (
     <aside className="flex flex-col w-[220px] min-h-screen bg-sidebar text-sidebar-foreground shrink-0">
