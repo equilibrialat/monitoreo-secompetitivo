@@ -479,7 +479,8 @@ export default function DashboardMonitoreo({
                       <span className="flex items-center gap-1 text-warning"><Clock className="h-3 w-3" />{ent.pendientes_revision} pend.</span>
                     )}
                     {ent.sobregiros_seco > 0 && (
-                      <Badge variant="destructive" className="text-[9px]">{ent.sobregiros_seco} sobregiro(s)</Badge>
+                      <Badge variant="destructive" className="text-[9px] cursor-pointer hover:bg-destructive/90"
+                        onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/gestion-financiera")}>{ent.sobregiros_seco} sobregiro(s)</Badge>
                     )}
                   </div>
                 </CardContent>
