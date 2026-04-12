@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchActividadesByEntidad, type ActividadDB } from "@/lib/supabaseQueries";
 import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroAprobacion";
 import { fetchPlanTrimestral, aceptarPlan, disputarPlan, solicitarAjuste, getTrimesterFromMonth, getTrimesterMonths, getTrimesterMonthNumbers, type PlanTrimestral, type PlanEstado } from "@/lib/planTrimestral";
+import { useTrimestreActivo, getTrimestreLabel } from "@/hooks/useTrimestreActivo";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,11 +80,14 @@ export default function MisActividades() {
   const [adjustJustification, setAdjustJustification] = useState("");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
 
-  // Current period
+  // Active trimester
+  const { activo: trimestreActivo } = useTrimestreActivo();
+
+  // Current period - use active trimester if available, else compute from date
   const now = new Date();
   const currentMes = now.getMonth() + 1;
-  const currentAnio = now.getFullYear();
-  const currentTrimestre = getTrimesterFromMonth(currentMes);
+  const currentAnio = trimestreActivo?.anio ?? now.getFullYear();
+  const currentTrimestre = trimestreActivo?.trimestre ?? getTrimesterFromMonth(currentMes);
   const monthNames = getTrimesterMonths(currentTrimestre);
   const monthNumbers = getTrimesterMonthNumbers(currentTrimestre);
 
