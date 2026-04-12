@@ -283,11 +283,6 @@ export default function MisActividades() {
                 <p className="text-xs text-muted-foreground mb-3">
                   Revisa las metas mensuales propuestas y acepta o comenta.
                 </p>
-                </p>
-                <p className="text-xs text-muted-foreground mb-3">
-                  El coordinador regional ha propuesto la distribución mensual de metas ({monthNames.join(" / ")} {currentAnio}).
-                  Revisa los valores por actividad y acepta o comenta.
-                </p>
 
                 {/* Summary table */}
                 <div className="overflow-x-auto rounded-lg border mb-3 bg-card">
