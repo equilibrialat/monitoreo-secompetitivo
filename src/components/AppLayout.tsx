@@ -57,6 +57,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
           {children}
         </main>
+        <StatusLegendFab />
       </div>
     </div>
   );
