@@ -81,14 +81,14 @@ export default function MisActividades() {
   const [adjustJustification, setAdjustJustification] = useState("");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
 
-  // Active trimester
-  const { activo: trimestreActivo } = useTrimestreActivo();
+  // Active/selected trimester
+  const { seleccionado, activo: trimestreActivo, isHistorical } = useTrimestreSeleccionado();
 
-  // Current period - use active trimester if available, else compute from date
+  // Current period - use selected trimester
   const now = new Date();
   const currentMes = now.getMonth() + 1;
-  const currentAnio = trimestreActivo?.anio ?? now.getFullYear();
-  const currentTrimestre = trimestreActivo?.trimestre ?? getTrimesterFromMonth(currentMes);
+  const currentAnio = seleccionado?.anio ?? now.getFullYear();
+  const currentTrimestre = seleccionado?.trimestre ?? getTrimesterFromMonth(currentMes);
   const monthNames = getTrimesterMonths(currentTrimestre);
   const monthNumbers = getTrimesterMonthNumbers(currentTrimestre);
 
