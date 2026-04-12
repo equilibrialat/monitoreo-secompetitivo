@@ -101,7 +101,7 @@ export default function MisActividades() {
   function getResultadoFinance(resCodigo: string) {
     const acts = actsByResultado.get(resCodigo) || [];
     const presupuesto = acts.reduce((s, a) => s + (a.presupuesto_seco || 0), 0);
-    const ejecutado = acts.reduce((s, a) => s + (a.ejecutado_seco_acum || 0), 0);
+    const ejecutado = acts.reduce((s, a) => s + (voucherTotals.get(a.codigo) || 0), 0);
     return { presupuesto, ejecutado, saldo: presupuesto - ejecutado };
   }
 
@@ -279,7 +279,7 @@ export default function MisActividades() {
                                   <div>
                                     <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Ejecución Financiera</h5>
                                     <div className="grid grid-cols-3 gap-2">
-                                      <FinanceCard label="SECO" executed={act.ejecutado_seco_acum} budget={act.presupuesto_seco} />
+                                      <FinanceCard label="SECO" executed={voucherTotals.get(act.codigo) || 0} budget={act.presupuesto_seco} />
                                       <FinanceCard label="Contrap. Monet." executed={act.ejecutado_cm_acum} budget={act.presupuesto_contrapartida_monetaria} />
                                       <FinanceCard label="Contrap. No Monet." executed={act.ejecutado_cnm_acum} budget={act.presupuesto_contrapartida_no_monetaria} />
                                     </div>
