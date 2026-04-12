@@ -111,6 +111,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   // Compute filtered entidades based on role restrictions + user filters
   const filteredEntidades = entidades.filter((e) => {
     // Role-based restrictions (hard filters)
+    if (role === "entidad_mec_a" && e.mecanismo !== "mec_a") return false;
+    if (role === "entidad_mec_b" && e.mecanismo !== "mec_b") return false;
     if (role === "asesora_politicas" && e.mecanismo !== "mec_a") return false;
     if (role === "coordinador_cadenas" && e.mecanismo !== "mec_b") return false;
     // coordinador_regional would filter by region - handled by user's region

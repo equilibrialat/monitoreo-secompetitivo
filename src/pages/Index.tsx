@@ -53,7 +53,8 @@ export default function Index() {
       // Gestor sees entity dashboard for their assigned entities
       return <DashboardEntidad />;
 
-    case "entidad":
+    case "entidad_mec_a":
+    case "entidad_mec_b":
     default:
       return <DashboardEntidad />;
   }
