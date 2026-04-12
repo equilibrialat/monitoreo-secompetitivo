@@ -61,11 +61,11 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   if (entidadIds.length === 0) return [];
 
   // Parallel fetches
-  const [actResult, pendResult, regResult, noIniciadaResult, voucherResult] = await Promise.all([
+  const [actResult, pendResult, regResult, noIniciadaResult, voucherResult, metasResult] = await Promise.all([
     // Avg avance per entidad
     (supabase as any)
       .from("actividades")
-      .select("entidad_id, avance_operativo_pct")
+      .select("id, entidad_id, avance_operativo_pct")
       .in("entidad_id", entidadIds),
     // Pending registros
     (supabase as any)
@@ -88,6 +88,11 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
     (supabase as any)
       .from("vouchers_gasto")
       .select("entidad_id, monto_usd"),
+    // Metas mensuales for current period
+    (supabase as any)
+      .from("metas_mensuales")
+      .select("actividad_id, entidad_id, estado")
+      .in("entidad_id", entidadIds),
   ]);
 
   const avanceMap = new Map<string, { sum: number; count: number }>();
