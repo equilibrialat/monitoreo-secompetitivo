@@ -146,6 +146,13 @@ export default function DashboardMonitoreo({
   const handleAlertClick = (alert: { entidadId: string; route?: string }) => {
     setEntidadId(alert.entidadId);
     if (alert.route) navigate(alert.route);
+    else navigate("/mis-actividades");
+  };
+
+  const handleBadgeClick = (e: React.MouseEvent, entidadId: string, route: string) => {
+    e.stopPropagation();
+    setEntidadId(entidadId);
+    navigate(route);
   };
 
   // Chart data
@@ -408,22 +415,28 @@ export default function DashboardMonitoreo({
                     {ent.cadena_valor && <Badge variant="outline" className="text-[9px] px-1">{ent.cadena_valor}</Badge>}
                     {ent.region && <Badge variant="outline" className="text-[9px] px-1">{ent.region}</Badge>}
                     {ent.sobregiros_seco > 0 && (
-                      <Badge variant="destructive" className="text-[9px] px-1">🔴 Sobregiro</Badge>
+                      <Badge variant="destructive" className="text-[9px] px-1 cursor-pointer hover:bg-destructive/90"
+                        onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/gestion-financiera")}>🔴 Sobregiro</Badge>
                     )}
                     {ent.tiene_observado && (
-                      <Badge className="text-[9px] px-1 bg-orange-500/15 text-orange-600">⚠ Observado</Badge>
+                      <Badge className="text-[9px] px-1 bg-orange-500/15 text-orange-600 cursor-pointer hover:bg-orange-500/25"
+                        onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/revision-pendiente")}>⚠ Observado</Badge>
                     )}
                     {ent.actividades_sin_iniciar > 0 && (
-                      <Badge className="text-[9px] px-1 bg-warning/15 text-warning">{ent.actividades_sin_iniciar} sin iniciar</Badge>
+                      <Badge className="text-[9px] px-1 bg-warning/15 text-warning cursor-pointer hover:bg-warning/25"
+                        onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/mis-actividades")}>{ent.actividades_sin_iniciar} sin iniciar</Badge>
                     )}
                     {ent.meses_sin_reporte.length > 0 && (
-                      <Badge className="text-[9px] px-1 bg-destructive/10 text-destructive">{ent.meses_sin_reporte.join(", ")} sin reportar</Badge>
+                      <Badge className="text-[9px] px-1 bg-destructive/10 text-destructive cursor-pointer hover:bg-destructive/20"
+                        onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/registro-mensual")}>{ent.meses_sin_reporte.join(", ")} sin reportar</Badge>
                     )}
                     {ent.registros_borrador > 0 && (
-                      <Badge className="text-[9px] px-1 bg-muted text-muted-foreground">{ent.registros_borrador} borrador(es)</Badge>
+                      <Badge className="text-[9px] px-1 bg-muted text-muted-foreground cursor-pointer hover:bg-muted/80"
+                        onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/registro-mensual")}>{ent.registros_borrador} borrador(es)</Badge>
                     )}
                     {ent.registros_en_revision > 0 && (
-                      <Badge className="text-[9px] px-1 bg-primary/10 text-primary">{ent.registros_en_revision} en revisión</Badge>
+                      <Badge className="text-[9px] px-1 bg-primary/10 text-primary cursor-pointer hover:bg-primary/20"
+                        onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/revision-pendiente")}>{ent.registros_en_revision} en revisión</Badge>
                     )}
                   </div>
                 </CardHeader>
