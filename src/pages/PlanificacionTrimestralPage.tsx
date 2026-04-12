@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchPlanTrimestral, guardarBorradorPlan, enviarPropuestaPlan, resolverDisputa, getTrimesterMonths, getTrimesterFromMonth, getTrimesterMonthNumbers, type PlanTrimestral, type PlanEstado } from "@/lib/planTrimestral";
+import { useTrimestreActivo } from "@/hooks/useTrimestreActivo";
 import type { ActividadDB } from "@/lib/supabaseQueries";
 import { fetchActividadesByEntidad } from "@/lib/supabaseQueries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,10 +26,11 @@ interface PlanRow {
 
 export default function PlanificacionTrimestralPage() {
   const { entidadId, filteredEntidades } = useRole();
+  const { activo: trimestreActivo } = useTrimestreActivo();
   const now = new Date();
   const [selectedEntidad, setSelectedEntidad] = useState<string | null>(null);
-  const [trimestre, setTrimestre] = useState(getTrimesterFromMonth(now.getMonth() + 1));
-  const [anio, setAnio] = useState(now.getFullYear());
+  const [trimestre, setTrimestre] = useState(trimestreActivo?.trimestre ?? getTrimesterFromMonth(now.getMonth() + 1));
+  const [anio, setAnio] = useState(trimestreActivo?.anio ?? now.getFullYear());
   const [actividades, setActividades] = useState<ActividadDB[]>([]);
   const [plans, setPlans] = useState<PlanTrimestral[]>([]);
   const [rows, setRows] = useState<PlanRow[]>([]);
