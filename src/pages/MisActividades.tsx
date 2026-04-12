@@ -278,7 +278,11 @@ export default function MisActividades() {
               <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-semibold text-primary mb-1">
-                  Plan trimestral T{currentTrimestre} {currentAnio} propuesto
+                  Plan {monthNames.join("-")} {currentAnio} propuesto por el coordinador regional
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Revisa las metas mensuales propuestas y acepta o comenta.
+                </p>
                 </p>
                 <p className="text-xs text-muted-foreground mb-3">
                   El coordinador regional ha propuesto la distribución mensual de metas ({monthNames.join(" / ")} {currentAnio}).
