@@ -89,7 +89,16 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
             <SelectContent>
               {entidades.map((e) => (
                 <SelectItem key={e.id} value={e.id} className="text-xs min-h-[44px]">
-                  {e.nombre_corto}
+                  <span className="flex items-center gap-1.5">
+                    {e.nombre_corto}
+                    <span className={`inline-flex rounded-full px-1 py-0 text-[9px] font-semibold ${
+                      e.mecanismo === "mec_a" || e.mecanismo === "A"
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    }`}>
+                      {e.mecanismo === "mec_a" || e.mecanismo === "A" ? "A" : "B"}
+                    </span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

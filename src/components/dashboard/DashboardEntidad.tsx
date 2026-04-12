@@ -211,10 +211,15 @@ export function Semaforo({ desfase }: { desfase: number }) {
 }
 
 export function MecanismoBadge({ mec }: { mec: string }) {
+  const isA = mec === "A" || mec === "mec_a";
   return (
-    <Badge variant={mec === "A" ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
-      MEC-{mec}
-    </Badge>
+    <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-semibold border ${
+      isA
+        ? "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+        : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800"
+    }`}>
+      Mec. {isA ? "A" : "B"}
+    </span>
   );
 }
 
