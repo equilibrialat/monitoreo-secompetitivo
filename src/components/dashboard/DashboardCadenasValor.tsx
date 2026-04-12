@@ -125,8 +125,36 @@ export default function DashboardCadenasValor() {
 
   const avgAvance = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + (e.avance_operativo_promedio || 0), 0) / entidades.length) : 0;
   const avgEjecucion = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + e.pct_ejecucion_seco, 0) / entidades.length) : 0;
-  const pendientesTotal = entidades.reduce((s, e) => s + (e.pendientes_revision || 0), 0);
+
+  // Pendientes: only records in "enviado" state for Mec B (Iván's queue)
+  // The pendientes_revision from dashboard data counts borrador/en_revision which aren't Iván's responsibility
+  const [pendientesIvan, setPendientesIvan] = useState(0);
+  useEffect(() => {
+    (async () => {
+      const { count } = await (supabase as any)
+        .from("registros_mensuales")
+        .select("id", { count: "exact", head: true })
+        .eq("estado_registro", "enviado")
+        .in("entidad_id", entidades.map(e => e.entidad_id));
+      setPendientesIvan(count || 0);
+    })();
+  }, [entidades]);
+
+  // Financial alerts: sobregiros + entities >15pp below expected execution
+  const EXPECTED_EXEC: Record<string, number> = {
+    "CANATUR": 38,
+    "MARKAHUAMACHUCO": 43,
+    "APPCACAO": 56,
+  };
   const sobregiros = entidades.filter((e) => hasSobregigoEntidad(e));
+  const financialWarnings = entidades.filter((e) => {
+    if (hasSobregigoEntidad(e)) return false; // already counted as sobregiro
+    const expected = EXPECTED_EXEC[e.codigo] ?? EXPECTED_EXEC[e.nombre_corto?.toUpperCase().replace(/\s+/g, "")] ?? null;
+    if (expected === null) return false;
+    return (expected - e.pct_ejecucion_seco) > 15;
+  });
+  const totalAlertasFinancieras = sobregiros.length + financialWarnings.length;
+  const firstAlertEntity = sobregiros[0] || financialWarnings[0];
 
   const handleEntityClick = (entidadId: string) => {
     setRole("entidad_mec_b");
