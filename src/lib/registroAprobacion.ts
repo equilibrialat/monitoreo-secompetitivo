@@ -10,6 +10,8 @@ export interface RegistroPendiente {
   estado: string | null;
   estado_registro: string | null;
   descripcion_avance: string | null;
+  limitaciones: string | null;
+  prioridades_proximo_mes: string | null;
   observaciones_revision: string | null;
   entidad_nombre?: string;
   actividad_codigo?: string;
