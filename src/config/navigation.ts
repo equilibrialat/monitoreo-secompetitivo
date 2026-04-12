@@ -51,6 +51,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   ],
   coordinador_regional: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+    { label: "Planificación Trimestral", path: "/planificacion-trimestral", icon: ClipboardList },
     { label: "Revisión Pendiente", path: "/revision-pendiente", icon: ClipboardCheck },
     { label: "Reportes Regionales", path: "/reportes-regionales", icon: BarChart3 },
     { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },

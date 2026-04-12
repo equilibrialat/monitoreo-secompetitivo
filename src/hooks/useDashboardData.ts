@@ -88,9 +88,9 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
     (supabase as any)
       .from("vouchers_gasto")
       .select("entidad_id, monto_usd"),
-    // Metas mensuales for current period
+    // Plan trimestral for current period
     (supabase as any)
-      .from("metas_mensuales")
+      .from("plan_trimestral")
       .select("actividad_id, entidad_id, estado")
       .in("entidad_id", entidadIds),
   ]);

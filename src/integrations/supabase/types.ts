@@ -1053,6 +1053,104 @@ export type Database = {
           },
         ]
       }
+      plan_trimestral: {
+        Row: {
+          actividad_id: string
+          anio: number
+          aprobado_at: string | null
+          comentario_coordinador: string | null
+          comentario_entidad: string | null
+          created_at: string | null
+          ejecutado_mes_1: number | null
+          ejecutado_mes_2: number | null
+          ejecutado_mes_3: number | null
+          entidad_id: string
+          estado: string
+          id: string
+          meta_mes_1: number | null
+          meta_mes_2: number | null
+          meta_mes_3: number | null
+          meta_trimestral: number | null
+          propuesto_por: string | null
+          solicitudes_ajuste: Json | null
+          trimestre: number
+          updated_at: string | null
+        }
+        Insert: {
+          actividad_id: string
+          anio: number
+          aprobado_at?: string | null
+          comentario_coordinador?: string | null
+          comentario_entidad?: string | null
+          created_at?: string | null
+          ejecutado_mes_1?: number | null
+          ejecutado_mes_2?: number | null
+          ejecutado_mes_3?: number | null
+          entidad_id: string
+          estado?: string
+          id?: string
+          meta_mes_1?: number | null
+          meta_mes_2?: number | null
+          meta_mes_3?: number | null
+          meta_trimestral?: number | null
+          propuesto_por?: string | null
+          solicitudes_ajuste?: Json | null
+          trimestre: number
+          updated_at?: string | null
+        }
+        Update: {
+          actividad_id?: string
+          anio?: number
+          aprobado_at?: string | null
+          comentario_coordinador?: string | null
+          comentario_entidad?: string | null
+          created_at?: string | null
+          ejecutado_mes_1?: number | null
+          ejecutado_mes_2?: number | null
+          ejecutado_mes_3?: number | null
+          entidad_id?: string
+          estado?: string
+          id?: string
+          meta_mes_1?: number | null
+          meta_mes_2?: number | null
+          meta_mes_3?: number | null
+          meta_trimestral?: number | null
+          propuesto_por?: string | null
+          solicitudes_ajuste?: Json | null
+          trimestre?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_trimestral_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_trimestral_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_trimestral_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
+            foreignKeyName: "plan_trimestral_propuesto_por_fkey"
+            columns: ["propuesto_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       productos: {
         Row: {
           codigo: string

@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ClipboardList, Loader2, ChevronRight, ChevronDown, DollarSign, TrendingUp, Wallet, Trophy, AlertTriangle, CalendarClock, FileCheck, Receipt, Lock } from "lucide-react";
+import { ClipboardList, Loader2, ChevronRight, ChevronDown, DollarSign, TrendingUp, Wallet, Trophy, AlertTriangle, CalendarClock, FileCheck, Receipt, Lock, CheckCircle2, Clock, Circle } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActividadesByEntidad, type ActividadDB } from "@/lib/supabaseQueries";
 import { fetchRegistrosEntidad, type RegistroPendiente } from "@/lib/registroAprobacion";
-import { fetchMetasMensuales, proponerMeta, type MetaMensual, type MetaEstado } from "@/lib/metasMensuales";
+import { fetchPlanTrimestral, aceptarPlan, disputarPlan, solicitarAjuste, getTrimesterFromMonth, getTrimesterMonths, getTrimesterMonthNumbers, type PlanTrimestral, type PlanEstado } from "@/lib/planTrimestral";
 import { RegistroMensualDialog } from "@/components/RegistroMensualDialog";
-import { MetaStatusBadge } from "@/components/MetaStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -33,83 +33,115 @@ function formatUSD(val: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 }
 
+/** Status dot for a month */
+function MonthDot({ ejecutado, meta, monthNum }: { ejecutado: number; meta: number; monthNum: number }) {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+
+  if (meta === 0 && ejecutado === 0) {
+    return <span className="h-2.5 w-2.5 rounded-full bg-muted inline-block" title="Sin meta" />;
+  }
+  if (ejecutado >= meta && meta > 0) {
+    return <span className="h-2.5 w-2.5 rounded-full bg-success inline-block" title="Completo" />;
+  }
+  if (ejecutado > 0 && ejecutado < meta) {
+    if (monthNum <= currentMonth) {
+      return <span className="h-2.5 w-2.5 rounded-full bg-warning inline-block" title="En progreso" />;
+    }
+    return <span className="h-2.5 w-2.5 rounded-full bg-muted inline-block" title="Futuro" />;
+  }
+  if (monthNum < currentMonth) {
+    return <span className="h-2.5 w-2.5 rounded-full bg-destructive inline-block" title="Sin avance" />;
+  }
+  if (monthNum === currentMonth) {
+    return <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30 inline-block" title="Mes actual" />;
+  }
+  return <span className="h-2.5 w-2.5 rounded-full bg-muted inline-block" title="Futuro" />;
+}
+
 export default function MisActividades() {
-  const { entidadId } = useRole();
+  const { entidadId, filteredEntidades } = useRole();
   const [actividades, setActividades] = useState<ActividadDB[]>([]);
   const [registros, setRegistros] = useState<RegistroPendiente[]>([]);
   const [resultados, setResultados] = useState<ResultadoDB[]>([]);
   const [voucherTotals, setVoucherTotals] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedActividad, setSelectedActividad] = useState<ActividadDB | null>(null);
-  const [metas, setMetas] = useState<MetaMensual[]>([]);
-  const [propuestaValues, setPropuestaValues] = useState<Record<string, string>>({});
-  const [proposing, setProposing] = useState<string | null>(null);
+  const [plans, setPlans] = useState<PlanTrimestral[]>([]);
+  const [disputeText, setDisputeText] = useState("");
+  const [disputing, setDisputing] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+
+  // Adjustment state
+  const [adjustingPlanId, setAdjustingPlanId] = useState<string | null>(null);
+  const [adjustMonth, setAdjustMonth] = useState(1);
+  const [adjustValue, setAdjustValue] = useState("");
+  const [adjustJustification, setAdjustJustification] = useState("");
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
 
   // Current period
   const now = new Date();
   const currentMes = now.getMonth() + 1;
   const currentAnio = now.getFullYear();
+  const currentTrimestre = getTrimesterFromMonth(currentMes);
+  const monthNames = getTrimesterMonths(currentTrimestre);
+  const monthNumbers = getTrimesterMonthNumbers(currentTrimestre);
 
   // Accordion state
   const [openResultado, setOpenResultado] = useState<string | null>(null);
   const [openActividad, setOpenActividad] = useState<string | null>(null);
 
+  const selectedEntidadData = filteredEntidades.find(e => e.id === entidadId);
+
   const loadData = useCallback(async () => {
     if (!entidadId) {
-      setActividades([]);
-      setRegistros([]);
-      setResultados([]);
-      setMetas([]);
-      setLoading(false);
+      setActividades([]); setRegistros([]); setResultados([]); setPlans([]); setLoading(false);
       return;
     }
     setLoading(true);
-    const [acts, regs, resResult, vouchersResult, metasData] = await Promise.all([
+    const [acts, regs, resResult, vouchersResult, planData] = await Promise.all([
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
       (supabase as any).from("resultados").select("id, codigo, nombre").eq("entidad_id", entidadId).order("codigo"),
       (supabase as any).from("vouchers_gasto").select("codigo_actividad, monto_usd").eq("entidad_id", entidadId),
-      fetchMetasMensuales(entidadId, currentAnio, currentMes),
+      fetchPlanTrimestral(entidadId, currentTrimestre, currentAnio),
     ]);
     setActividades(acts);
     setRegistros(regs);
-    setResultados((resResult.data || []).map((r: any) => ({
-      id: r.id,
-      codigo: r.codigo,
-      nombre: r.nombre,
-    })));
+    setResultados((resResult.data || []).map((r: any) => ({ id: r.id, codigo: r.codigo, nombre: r.nombre })));
     const vtMap = new Map<string, number>();
     for (const v of (vouchersResult.data || [])) {
       const key = v.codigo_actividad;
       if (key) vtMap.set(key, (vtMap.get(key) || 0) + (v.monto_usd || 0));
     }
     setVoucherTotals(vtMap);
-    setMetas(metasData);
+    setPlans(planData);
     setLoading(false);
-  }, [entidadId, currentAnio, currentMes]);
+  }, [entidadId, currentAnio, currentTrimestre]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Meta status map: actividad_id -> MetaMensual
-  const metaMap = useMemo(() => {
-    const m = new Map<string, MetaMensual>();
-    for (const meta of metas) {
-      m.set(meta.actividad_id, meta);
-    }
+  // Plan map: actividad_id -> PlanTrimestral
+  const planMap = useMemo(() => {
+    const m = new Map<string, PlanTrimestral>();
+    for (const p of plans) m.set(p.actividad_id, p);
     return m;
-  }, [metas]);
+  }, [plans]);
 
-  function getMetaEstado(actividadId: string): MetaEstado {
-    const meta = metaMap.get(actividadId);
-    if (!meta) return "sin_meta";
-    return meta.estado as MetaEstado;
+  function getPlanEstado(actividadId: string): PlanEstado | "sin_plan" {
+    const plan = planMap.get(actividadId);
+    if (!plan) return "sin_plan";
+    return plan.estado;
   }
 
   function isRegistroEnabled(actividadId: string): boolean {
-    return getMetaEstado(actividadId) === "aprobada";
+    return getPlanEstado(actividadId) === "aprobada";
   }
+
+  // Is there a pending proposal from coordinator?
+  const hasPendingProposal = plans.length > 0 && plans[0].estado === "propuesta_coordinador";
+  const hasDispute = plans.length > 0 && plans[0].estado === "en_disputa";
+  const isApproved = plans.length > 0 && plans[0].estado === "aprobada";
 
   // Group activities by resultado
   const actsByResultado = useMemo(() => {
@@ -142,36 +174,55 @@ export default function MisActividades() {
 
   function getResultadoAvance(resCodigo: string): number {
     const acts = actsByResultado.get(resCodigo) || [];
-    // Only count activities with approved metas
-    const withMeta = acts.filter(a => getMetaEstado(a.id) === "aprobada");
-    if (withMeta.length === 0) return -1; // -1 means "en planificación"
-    return Math.round(withMeta.reduce((s, a) => s + a.avance_operativo_pct, 0) / withMeta.length);
+    const withPlan = acts.filter(a => getPlanEstado(a.id) === "aprobada");
+    if (withPlan.length === 0) return -1;
+    return Math.round(withPlan.reduce((s, a) => s + a.avance_operativo_pct, 0) / withPlan.length);
   }
 
-  const handleProponerMeta = async (act: ActividadDB) => {
-    const valor = parseFloat(propuestaValues[act.id] || "0");
-    if (!valor || valor <= 0) {
-      toast.error("Ingresa un valor de meta válido");
-      return;
-    }
+  const handleAcceptPlan = async () => {
     if (!entidadId) return;
-    setProposing(act.id);
-    const result = await proponerMeta({
-      actividad_id: act.id,
-      entidad_id: entidadId,
-      anio: currentAnio,
-      mes: currentMes,
-      meta_valor: valor,
-      meta_unidad_medida: act.meta_unidad_medida || undefined,
-    });
-    setProposing(null);
+    setAccepting(true);
+    const result = await aceptarPlan(entidadId, currentTrimestre, currentAnio);
+    setAccepting(false);
     if (result.success) {
-      toast.success("Propuesta de meta enviada");
-      // Refresh metas
-      const updated = await fetchMetasMensuales(entidadId, currentAnio, currentMes);
-      setMetas(updated);
+      toast.success("Plan trimestral aceptado — ya puedes registrar avances");
+      loadData();
     } else {
-      toast.error("Error al enviar propuesta", { description: result.error });
+      toast.error("Error", { description: result.error });
+    }
+  };
+
+  const handleDispute = async () => {
+    if (!entidadId || !disputeText.trim() || !selectedEntidadData) return;
+    setDisputing(true);
+    const result = await disputarPlan(entidadId, currentTrimestre, currentAnio, disputeText, selectedEntidadData.nombre_corto);
+    setDisputing(false);
+    if (result.success) {
+      toast.success("Comentario enviado al coordinador regional");
+      setDisputeText("");
+      loadData();
+    } else {
+      toast.error("Error", { description: result.error });
+    }
+  };
+
+  const handleAjuste = async () => {
+    if (!adjustingPlanId || !adjustJustification.trim()) return;
+    setAdjustSubmitting(true);
+    const result = await solicitarAjuste(adjustingPlanId, {
+      month: adjustMonth,
+      new_value: Number(adjustValue) || 0,
+      justification: adjustJustification,
+    });
+    setAdjustSubmitting(false);
+    if (result.success) {
+      toast.success("Solicitud de ajuste enviada");
+      setAdjustingPlanId(null);
+      setAdjustValue("");
+      setAdjustJustification("");
+      loadData();
+    } else {
+      toast.error("Error", { description: result.error });
     }
   };
 
@@ -186,6 +237,95 @@ export default function MisActividades() {
           <p className="text-sm text-muted-foreground">Vista jerárquica: Resultado → Actividades → Detalle</p>
         </div>
       </div>
+
+      {/* Plan trimestral banner */}
+      {hasPendingProposal && (
+        <Card className="mb-4 border-primary/40 bg-primary/5">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-start gap-3">
+              <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-primary mb-1">
+                  Plan trimestral T{currentTrimestre} {currentAnio} propuesto
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  El coordinador regional ha propuesto la distribución mensual de metas ({monthNames.join(" / ")} {currentAnio}).
+                  Revisa los valores por actividad y acepta o comenta.
+                </p>
+
+                {/* Summary table */}
+                <div className="overflow-x-auto rounded-lg border mb-3 bg-card">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Actividad</TableHead>
+                        <TableHead className="text-xs text-center">{monthNames[0]}</TableHead>
+                        <TableHead className="text-xs text-center">{monthNames[1]}</TableHead>
+                        <TableHead className="text-xs text-center">{monthNames[2]}</TableHead>
+                        <TableHead className="text-xs text-center">Total</TableHead>
+                        <TableHead className="text-xs text-center">Meta Trim.</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {plans.map(p => {
+                        const act = actividades.find(a => a.id === p.actividad_id);
+                        const total = p.meta_mes_1 + p.meta_mes_2 + p.meta_mes_3;
+                        return (
+                          <TableRow key={p.id}>
+                            <TableCell className="text-xs">
+                              <span className="font-mono text-muted-foreground mr-1">{act?.codigo}</span>
+                              {act?.nombre}
+                            </TableCell>
+                            <TableCell className="text-xs text-center font-mono">{p.meta_mes_1}</TableCell>
+                            <TableCell className="text-xs text-center font-mono">{p.meta_mes_2}</TableCell>
+                            <TableCell className="text-xs text-center font-mono">{p.meta_mes_3}</TableCell>
+                            <TableCell className="text-xs text-center font-mono font-semibold">{total}</TableCell>
+                            <TableCell className="text-xs text-center font-mono">{p.meta_trimestral}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={handleAcceptPlan} disabled={accepting}>
+                    {accepting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                    Aceptar plan
+                  </Button>
+                  <div className="flex-1 min-w-[200px] flex gap-2">
+                    <Textarea
+                      placeholder="Comentar / disputar (describe las diferencias)..."
+                      className="text-xs h-9 min-h-[36px] resize-none"
+                      value={disputeText}
+                      onChange={(e) => setDisputeText(e.target.value)}
+                    />
+                    <Button size="sm" variant="outline" onClick={handleDispute} disabled={disputeText.trim().length === 0 || disputing}>
+                      {disputing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasDispute && (
+        <Card className="mb-4 border-warning/40 bg-warning/5">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <p className="text-sm text-warning font-medium">
+                Plan en disputa — esperando respuesta del coordinador regional.
+              </p>
+            </div>
+            {plans[0]?.comentario_entidad && (
+              <p className="text-xs text-muted-foreground mt-1 italic">Tu comentario: "{plans[0].comentario_entidad}"</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -233,7 +373,7 @@ export default function MisActividades() {
                       {isPlanning ? (
                         <>
                           <p className="text-sm font-medium text-muted-foreground">En planificación</p>
-                          <p className="text-[10px] text-muted-foreground">Sin metas aprobadas</p>
+                          <p className="text-[10px] text-muted-foreground">Sin plan aprobado</p>
                         </>
                       ) : (
                         <>
@@ -290,10 +430,10 @@ export default function MisActividades() {
                     <div className="divide-y">
                       {acts.map((act) => {
                         const isActOpen = openActividad === act.id;
-                        const metaEstado = getMetaEstado(act.id);
-                        const meta = metaMap.get(act.id);
+                        const planEstado = getPlanEstado(act.id);
+                        const plan = planMap.get(act.id);
                         const canRegister = isRegistroEnabled(act.id);
-                        const actSemaforo = metaEstado === "aprobada"
+                        const actSemaforo = canRegister
                           ? getSemaforoAvance(act.avance_operativo_pct)
                           : { color: "bg-muted", text: "text-muted-foreground", label: "Bloqueado" };
                         const reg = registroMap.get(act.id);
@@ -309,22 +449,24 @@ export default function MisActividades() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-xs font-mono text-muted-foreground">{act.codigo}</span>
-                                  <MetaStatusBadge
-                                    estado={metaEstado}
-                                    metaValor={meta?.meta_valor}
-                                    comentario={meta?.comentario_coordinador}
-                                  />
+                                  <PlanStatusBadge estado={planEstado} />
                                 </div>
                                 <span className="text-sm text-card-foreground">{act.nombre}</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                {metaEstado === "aprobada" ? (
-                                  <>
-                                    <span className="text-xs text-muted-foreground">
-                                      Meta: {meta?.meta_valor} {act.meta_unidad_medida}
-                                    </span>
-                                    <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
-                                  </>
+                                {canRegister && plan ? (
+                                  <div className="flex items-center gap-1.5">
+                                    {[0, 1, 2].map(mi => {
+                                      const meta = mi === 0 ? plan.meta_mes_1 : mi === 1 ? plan.meta_mes_2 : plan.meta_mes_3;
+                                      const ejec = mi === 0 ? plan.ejecutado_mes_1 : mi === 1 ? plan.ejecutado_mes_2 : plan.ejecutado_mes_3;
+                                      return (
+                                        <div key={mi} className="flex items-center gap-0.5">
+                                          <MonthDot ejecutado={ejec} meta={meta} monthNum={monthNumbers[mi]} />
+                                        </div>
+                                      );
+                                    })}
+                                    <span className={cn("text-sm font-bold ml-1", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                                  </div>
                                 ) : (
                                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Lock className="h-3 w-3" /> Registro bloqueado
@@ -337,75 +479,130 @@ export default function MisActividades() {
                             {isActOpen && (
                               <div className="px-6 pb-4 bg-muted/10 border-t">
                                 <div className="py-3 space-y-4">
-                                  {/* Lock status banner */}
-                                  {!canRegister && (
-                                    <div className={cn(
-                                      "rounded-lg border px-4 py-3",
-                                      metaEstado === "rechazada" ? "border-destructive/40 bg-destructive/5" : "border-muted bg-muted/30"
-                                    )}>
-                                      {metaEstado === "sin_meta" && (
-                                        <div className="space-y-2">
-                                          <p className="text-xs text-muted-foreground">
-                                            No hay meta definida para este periodo. Propón una meta para habilitar el registro de avance.
-                                          </p>
-                                          <div className="flex items-center gap-2">
-                                            <Input
-                                              type="number"
-                                              placeholder={`Meta (${act.meta_unidad_medida || 'unidades'})`}
-                                              className="h-8 text-xs w-40"
-                                              value={propuestaValues[act.id] || ""}
-                                              onChange={(e) => setPropuestaValues(prev => ({ ...prev, [act.id]: e.target.value }))}
+                                  {/* Trimestral progress display */}
+                                  {plan && canRegister && (
+                                    <div>
+                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                        Avance Trimestral T{currentTrimestre} {currentAnio}
+                                      </h5>
+                                      <div className="grid grid-cols-3 gap-2 mb-2">
+                                        {[0, 1, 2].map(mi => {
+                                          const meta = mi === 0 ? plan.meta_mes_1 : mi === 1 ? plan.meta_mes_2 : plan.meta_mes_3;
+                                          const ejec = mi === 0 ? plan.ejecutado_mes_1 : mi === 1 ? plan.ejecutado_mes_2 : plan.ejecutado_mes_3;
+                                          const pct = meta > 0 ? Math.round((ejec / meta) * 100) : 0;
+                                          return (
+                                            <div key={mi} className="rounded-lg border bg-card p-2">
+                                              <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[10px] font-medium text-muted-foreground">{monthNames[mi]}</span>
+                                                <MonthDot ejecutado={ejec} meta={meta} monthNum={monthNumbers[mi]} />
+                                              </div>
+                                              <p className="text-xs font-mono font-bold">
+                                                {ejec}<span className="text-muted-foreground font-normal">/{meta}</span>
+                                              </p>
+                                              <Progress value={pct} className="h-1 mt-1" />
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <span>Trimestre: <strong className="text-foreground">
+                                          {plan.ejecutado_mes_1 + plan.ejecutado_mes_2 + plan.ejecutado_mes_3}
+                                          /{plan.meta_mes_1 + plan.meta_mes_2 + plan.meta_mes_3}
+                                        </strong></span>
+                                        <span>({plan.meta_trimestral > 0 ? Math.round(((plan.ejecutado_mes_1 + plan.ejecutado_mes_2 + plan.ejecutado_mes_3) / plan.meta_trimestral) * 100) : 0}% meta trim.)</span>
+                                      </div>
+
+                                      {/* Adjustment request button */}
+                                      <div className="mt-2">
+                                        {adjustingPlanId === plan.id ? (
+                                          <div className="rounded-lg border bg-card p-3 space-y-2">
+                                            <p className="text-xs font-medium">Solicitar ajuste de meta</p>
+                                            <div className="flex gap-2">
+                                              <select
+                                                className="text-xs border rounded px-2 py-1"
+                                                value={adjustMonth}
+                                                onChange={(e) => setAdjustMonth(Number(e.target.value))}
+                                              >
+                                                {monthNames.map((m, i) => (
+                                                  <option key={i} value={i + 1}>{m}</option>
+                                                ))}
+                                              </select>
+                                              <Input
+                                                type="number"
+                                                placeholder="Nuevo valor"
+                                                className="h-7 text-xs w-24"
+                                                value={adjustValue}
+                                                onChange={(e) => setAdjustValue(e.target.value)}
+                                              />
+                                            </div>
+                                            <Textarea
+                                              placeholder="Justificación (requerida)"
+                                              className="text-xs min-h-[50px]"
+                                              value={adjustJustification}
+                                              onChange={(e) => setAdjustJustification(e.target.value)}
                                             />
-                                            <Button
-                                              size="sm"
-                                              className="h-8 text-xs"
-                                              onClick={() => handleProponerMeta(act)}
-                                              disabled={proposing === act.id}
-                                            >
-                                              {proposing === act.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Proponer meta"}
-                                            </Button>
+                                            <div className="flex gap-2">
+                                              <Button size="sm" className="text-xs h-7" onClick={handleAjuste} disabled={adjustSubmitting || !adjustJustification.trim()}>
+                                                {adjustSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Enviar solicitud"}
+                                              </Button>
+                                              <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setAdjustingPlanId(null)}>
+                                                Cancelar
+                                              </Button>
+                                            </div>
                                           </div>
-                                        </div>
-                                      )}
-                                      {metaEstado === "pendiente_aprobacion" && (
-                                        <div>
-                                          <p className="text-xs text-warning font-medium mb-1">⏳ Propuesta enviada — en revisión</p>
-                                          <p className="text-xs text-muted-foreground">
-                                            Meta propuesta: <strong>{meta?.meta_valor} {act.meta_unidad_medida}</strong>. 
-                                            El coordinador regional debe aprobar la meta antes de poder registrar avance.
-                                          </p>
-                                        </div>
-                                      )}
-                                      {metaEstado === "rechazada" && (
-                                        <div className="space-y-2">
-                                          <p className="text-xs text-destructive font-medium">⚠️ Meta rechazada — revisar comentario</p>
-                                          {meta?.comentario_coordinador && (
-                                            <p className="text-xs text-destructive/80 italic">"{meta.comentario_coordinador}"</p>
-                                          )}
-                                          <div className="flex items-center gap-2">
-                                            <Input
-                                              type="number"
-                                              placeholder={`Nueva meta (${act.meta_unidad_medida || 'unidades'})`}
-                                              className="h-8 text-xs w-40"
-                                              value={propuestaValues[act.id] || ""}
-                                              onChange={(e) => setPropuestaValues(prev => ({ ...prev, [act.id]: e.target.value }))}
-                                            />
-                                            <Button
-                                              size="sm"
-                                              variant="destructive"
-                                              className="h-8 text-xs"
-                                              onClick={() => handleProponerMeta(act)}
-                                              disabled={proposing === act.id}
-                                            >
-                                              {proposing === act.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reenviar propuesta"}
-                                            </Button>
-                                          </div>
+                                        ) : (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-xs h-7 text-muted-foreground"
+                                            onClick={() => setAdjustingPlanId(plan.id)}
+                                          >
+                                            Solicitar ajuste
+                                          </Button>
+                                        )}
+                                      </div>
+
+                                      {/* Pending adjustments */}
+                                      {plan.solicitudes_ajuste.filter(a => a.status === "pendiente").length > 0 && (
+                                        <div className="mt-2 rounded-lg border border-warning/30 bg-warning/5 p-2">
+                                          <p className="text-[10px] text-warning font-medium mb-1">Ajustes pendientes:</p>
+                                          {plan.solicitudes_ajuste.filter(a => a.status === "pendiente").map((a, i) => (
+                                            <p key={i} className="text-[10px] text-muted-foreground">
+                                              {monthNames[a.month - 1]}: {a.new_value} — "{a.justification}"
+                                            </p>
+                                          ))}
                                         </div>
                                       )}
                                     </div>
                                   )}
 
-                                  {/* Avance operativo - only show progress if meta approved */}
+                                  {/* Lock status banner */}
+                                  {!canRegister && (
+                                    <div className="rounded-lg border border-muted bg-muted/30 px-4 py-3">
+                                      {planEstado === "sin_plan" && (
+                                        <p className="text-xs text-muted-foreground">
+                                          El coordinador regional aún no ha propuesto un plan trimestral para esta actividad. El registro estará disponible una vez aprobado el plan.
+                                        </p>
+                                      )}
+                                      {planEstado === "propuesta_coordinador" && (
+                                        <p className="text-xs text-warning">
+                                          ⏳ Plan propuesto — revisa la propuesta del coordinador arriba y acepta o comenta.
+                                        </p>
+                                      )}
+                                      {planEstado === "en_disputa" && (
+                                        <p className="text-xs text-warning">
+                                          ⚠️ Plan en disputa — esperando respuesta del coordinador.
+                                        </p>
+                                      )}
+                                      {planEstado === "borrador" && (
+                                        <p className="text-xs text-muted-foreground">
+                                          📝 El coordinador está elaborando el plan trimestral.
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Avance operativo - only show progress if plan approved */}
                                   {canRegister && (
                                     <div>
                                       <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Avance Operativo</h5>
@@ -414,7 +611,7 @@ export default function MisActividades() {
                                         <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
                                       </div>
                                       <p className="text-xs text-muted-foreground mt-1">
-                                        Meta: {meta?.meta_valor} {act.meta_unidad_medida} · Estado: {act.estado_actual?.replace(/_/g, ' ')}
+                                        Meta trim: {plan?.meta_trimestral} {act.meta_unidad_medida} · Estado: {act.estado_actual?.replace(/_/g, ' ')}
                                       </p>
                                     </div>
                                   )}
@@ -493,11 +690,13 @@ export default function MisActividades() {
                                   ) : (
                                     <div className="w-full py-2 text-xs font-medium text-muted-foreground bg-muted/30 rounded-lg text-center flex items-center justify-center gap-1.5">
                                       <Lock className="h-3.5 w-3.5" />
-                                      {metaEstado === "sin_meta"
-                                        ? "Propón una meta para habilitar el registro"
-                                        : metaEstado === "pendiente_aprobacion"
-                                        ? "Esperando aprobación del coordinador"
-                                        : "Reenvía la propuesta para habilitar el registro"}
+                                      {planEstado === "sin_plan"
+                                        ? "Esperando plan del coordinador"
+                                        : planEstado === "propuesta_coordinador"
+                                        ? "Acepta el plan para habilitar el registro"
+                                        : planEstado === "en_disputa"
+                                        ? "Esperando resolución del coordinador"
+                                        : "Esperando plan del coordinador"}
                                     </div>
                                   )}
                                 </div>
@@ -526,6 +725,25 @@ export default function MisActividades() {
         }}
       />
     </div>
+  );
+}
+
+/** Plan status badge */
+function PlanStatusBadge({ estado }: { estado: PlanEstado | "sin_plan" }) {
+  const configs: Record<string, { label: string; className: string; icon: typeof Lock }> = {
+    sin_plan: { label: "Sin plan", className: "bg-muted text-muted-foreground", icon: Lock },
+    borrador: { label: "Borrador", className: "bg-muted text-muted-foreground", icon: Clock },
+    propuesta_coordinador: { label: "Plan propuesto", className: "bg-warning/15 text-warning", icon: Clock },
+    en_disputa: { label: "En disputa", className: "bg-destructive/15 text-destructive", icon: AlertTriangle },
+    aprobada: { label: "Plan aprobado", className: "bg-success/15 text-success", icon: CheckCircle2 },
+  };
+  const cfg = configs[estado] || configs.sin_plan;
+  const Icon = cfg.icon;
+  return (
+    <Badge className={`${cfg.className} text-[10px] px-1.5 py-0.5 gap-1`}>
+      <Icon className="h-3 w-3" />
+      {cfg.label}
+    </Badge>
   );
 }
 
