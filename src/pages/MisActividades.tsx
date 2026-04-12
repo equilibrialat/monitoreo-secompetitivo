@@ -16,9 +16,6 @@ interface ResultadoDB {
   id: string;
   codigo: string;
   nombre: string;
-  summary_presupuesto_usd: number;
-  summary_ejecutado_usd: number;
-  summary_saldo_usd: number;
 }
 
 function getSemaforoAvance(pct: number) {
@@ -55,15 +52,14 @@ export default function MisActividades() {
     Promise.all([
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
-      (supabase as any).from("resultados").select("id, codigo, nombre, summary_presupuesto_usd, summary_ejecutado_usd, summary_saldo_usd").eq("entidad_id", entidadId).order("codigo"),
+      (supabase as any).from("resultados").select("id, codigo, nombre").eq("entidad_id", entidadId).order("codigo"),
     ]).then(([acts, regs, resResult]) => {
       setActividades(acts);
       setRegistros(regs);
       setResultados((resResult.data || []).map((r: any) => ({
-        ...r,
-        summary_presupuesto_usd: r.summary_presupuesto_usd ?? 0,
-        summary_ejecutado_usd: r.summary_ejecutado_usd ?? 0,
-        summary_saldo_usd: r.summary_saldo_usd ?? 0,
+        id: r.id,
+        codigo: r.codigo,
+        nombre: r.nombre,
       })));
       setLoading(false);
     });
@@ -93,6 +89,13 @@ export default function MisActividades() {
   }, [registros]);
 
   // Compute avg avance per resultado
+  function getResultadoFinance(resCodigo: string) {
+    const acts = actsByResultado.get(resCodigo) || [];
+    const presupuesto = acts.reduce((s, a) => s + (a.presupuesto_seco || 0), 0);
+    const ejecutado = acts.reduce((s, a) => s + (a.ejecutado_seco_acum || 0), 0);
+    return { presupuesto, ejecutado, saldo: presupuesto - ejecutado };
+  }
+
   function getResultadoAvance(resCodigo: string): number {
     const acts = actsByResultado.get(resCodigo) || [];
     if (acts.length === 0) return 0;
@@ -127,8 +130,9 @@ export default function MisActividades() {
             const avgAvance = getResultadoAvance(res.codigo);
             const semaforo = getSemaforoAvance(avgAvance);
             const acts = actsByResultado.get(res.codigo) || [];
-            const financePct = res.summary_presupuesto_usd > 0
-              ? Math.round((res.summary_ejecutado_usd / res.summary_presupuesto_usd) * 100)
+            const finance = getResultadoFinance(res.codigo);
+            const financePct = finance.presupuesto > 0
+              ? Math.round((finance.ejecutado / finance.presupuesto) * 100)
               : 0;
 
             return (
@@ -168,7 +172,7 @@ export default function MisActividades() {
                           </div>
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Presupuesto</p>
-                            <p className="text-sm font-bold text-foreground">{formatUSD(res.summary_presupuesto_usd)}</p>
+                            <p className="text-sm font-bold text-foreground">{formatUSD(finance.presupuesto)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -177,7 +181,7 @@ export default function MisActividades() {
                           </div>
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Ejecutado</p>
-                            <p className="text-sm font-bold text-success">{formatUSD(res.summary_ejecutado_usd)}</p>
+                            <p className="text-sm font-bold text-success">{formatUSD(finance.ejecutado)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -186,7 +190,7 @@ export default function MisActividades() {
                           </div>
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Saldo</p>
-                            <p className="text-sm font-bold text-warning">{formatUSD(res.summary_saldo_usd)}</p>
+                            <p className="text-sm font-bold text-warning">{formatUSD(finance.saldo)}</p>
                           </div>
                         </div>
                       </div>
