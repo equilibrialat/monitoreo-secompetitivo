@@ -1,7 +1,7 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { ChevronDown, Building2, X } from "lucide-react";
 import { useRole, ROLE_LABELS, type AppRole } from "@/contexts/RoleContext";
-import { getNavForRole } from "@/config/navigation";
+import { getNavSectionsForRole } from "@/config/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,13 +29,12 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
     setRole,
     entidadId,
     setEntidadId,
-    entidades,
     loadingEntidades,
     filteredEntidades,
   } = useRole();
   const location = useLocation();
   const navigate = useNavigate();
-  const navItems = getNavForRole(role);
+  const navSections = getNavSectionsForRole(role);
 
   const handleRoleChange = (r: AppRole) => {
     setRole(r);
@@ -46,12 +45,11 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
     onMobileClose?.();
   };
 
-  // Show entity selector for roles that need it
   const showEntidadSelector = ["entidad_mec_a", "entidad_mec_b"].includes(role);
 
   const sidebarContent = (
     <aside className="flex flex-col w-[220px] min-h-screen bg-sidebar text-sidebar-foreground shrink-0">
-      {/* Logo + close button on mobile */}
+      {/* Logo */}
       <div className="px-5 pt-6 pb-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-sidebar-active tracking-tight">
           Se<span className="text-primary">Competitivo</span>
@@ -114,26 +112,57 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
         </div>
       )}
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const active = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={handleNavClick}
-              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors min-h-[44px] ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-active font-medium"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-active"
-              }`}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+      {/* Grouped Nav */}
+      <nav className="flex-1 px-3 overflow-y-auto">
+        {navSections.map((section, sIdx) => (
+          <div key={sIdx}>
+            {/* Divider between sections (not before the first) */}
+            {sIdx > 0 && (
+              <div className="my-2 mx-1 border-t border-sidebar-accent/60" />
+            )}
+
+            {/* Section label */}
+            {section.label && (
+              <div className="px-3 pt-2 pb-1 text-[10px] font-semibold tracking-wider text-sidebar-foreground/40 uppercase select-none">
+                {section.label}
+              </div>
+            )}
+
+            {/* Items */}
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                if (item.disabled) {
+                  return (
+                    <div
+                      key={item.path + item.label}
+                      className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-sidebar-foreground/30 cursor-default min-h-[44px]"
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </div>
+                  );
+                }
+
+                const active = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={handleNavClick}
+                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors min-h-[44px] ${
+                      active
+                        ? "bg-sidebar-accent text-sidebar-active font-medium"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-active"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
