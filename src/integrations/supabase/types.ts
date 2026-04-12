@@ -214,18 +214,25 @@ export type Database = {
         Row: {
           actividad_id: string | null
           created_at: string | null
+          dni: string | null
           entidad_id: string
           estado: Database["public"]["Enums"]["estado_contrato"] | null
+          estado_situacional: string | null
           fecha_adjudicacion: string | null
           fecha_fin: string | null
           fecha_inicio: string | null
+          fecha_inicio_contrato: string | null
+          fecha_vencimiento_producto: string | null
           fuente: Database["public"]["Enums"]["fuente_financiamiento"] | null
           id: string
           moneda: string | null
           monto: number | null
+          monto_pagado_pen: number | null
           nombre_contratado: string
           numero_contrato: string | null
+          objetivo: string | null
           objeto: string | null
+          producto_entregable: string | null
           registrado_por: string | null
           ruc_dni: string | null
           tipo: Database["public"]["Enums"]["tipo_contrato"]
@@ -235,18 +242,25 @@ export type Database = {
         Insert: {
           actividad_id?: string | null
           created_at?: string | null
+          dni?: string | null
           entidad_id: string
           estado?: Database["public"]["Enums"]["estado_contrato"] | null
+          estado_situacional?: string | null
           fecha_adjudicacion?: string | null
           fecha_fin?: string | null
           fecha_inicio?: string | null
+          fecha_inicio_contrato?: string | null
+          fecha_vencimiento_producto?: string | null
           fuente?: Database["public"]["Enums"]["fuente_financiamiento"] | null
           id?: string
           moneda?: string | null
           monto?: number | null
+          monto_pagado_pen?: number | null
           nombre_contratado: string
           numero_contrato?: string | null
+          objetivo?: string | null
           objeto?: string | null
+          producto_entregable?: string | null
           registrado_por?: string | null
           ruc_dni?: string | null
           tipo: Database["public"]["Enums"]["tipo_contrato"]
@@ -256,18 +270,25 @@ export type Database = {
         Update: {
           actividad_id?: string | null
           created_at?: string | null
+          dni?: string | null
           entidad_id?: string
           estado?: Database["public"]["Enums"]["estado_contrato"] | null
+          estado_situacional?: string | null
           fecha_adjudicacion?: string | null
           fecha_fin?: string | null
           fecha_inicio?: string | null
+          fecha_inicio_contrato?: string | null
+          fecha_vencimiento_producto?: string | null
           fuente?: Database["public"]["Enums"]["fuente_financiamiento"] | null
           id?: string
           moneda?: string | null
           monto?: number | null
+          monto_pagado_pen?: number | null
           nombre_contratado?: string
           numero_contrato?: string | null
+          objetivo?: string | null
           objeto?: string | null
+          producto_entregable?: string | null
           registrado_por?: string | null
           ruc_dni?: string | null
           tipo?: Database["public"]["Enums"]["tipo_contrato"]
@@ -639,6 +660,54 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "perfiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      igv_control: {
+        Row: {
+          created_at: string | null
+          entidad_id: string
+          id: string
+          igv_desembolsado_pen: number | null
+          igv_pendiente_pen: number | null
+          igv_recuperado_pen: number | null
+          numero: string | null
+          trimestre: string
+        }
+        Insert: {
+          created_at?: string | null
+          entidad_id: string
+          id?: string
+          igv_desembolsado_pen?: number | null
+          igv_pendiente_pen?: number | null
+          igv_recuperado_pen?: number | null
+          numero?: string | null
+          trimestre: string
+        }
+        Update: {
+          created_at?: string | null
+          entidad_id?: string
+          id?: string
+          igv_desembolsado_pen?: number | null
+          igv_pendiente_pen?: number | null
+          igv_recuperado_pen?: number | null
+          numero?: string | null
+          trimestre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "igv_control_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "igv_control_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
           },
         ]
       }
@@ -1739,6 +1808,69 @@ export type Database = {
           },
         ]
       }
+      remesas_proyecto: {
+        Row: {
+          created_at: string | null
+          entidad_id: string
+          fecha_desembolso: string | null
+          id: string
+          liquidado_pen: number | null
+          liquidado_usd: number | null
+          monto_pen: number | null
+          monto_usd: number | null
+          numero: string
+          periodo_liquidacion: string | null
+          saldo_pendiente_pen: number | null
+          saldo_pendiente_usd: number | null
+          tipo_cambio: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          entidad_id: string
+          fecha_desembolso?: string | null
+          id?: string
+          liquidado_pen?: number | null
+          liquidado_usd?: number | null
+          monto_pen?: number | null
+          monto_usd?: number | null
+          numero: string
+          periodo_liquidacion?: string | null
+          saldo_pendiente_pen?: number | null
+          saldo_pendiente_usd?: number | null
+          tipo_cambio?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          entidad_id?: string
+          fecha_desembolso?: string | null
+          id?: string
+          liquidado_pen?: number | null
+          liquidado_usd?: number | null
+          monto_pen?: number | null
+          monto_usd?: number | null
+          numero?: string
+          periodo_liquidacion?: string | null
+          saldo_pendiente_pen?: number | null
+          saldo_pendiente_usd?: number | null
+          tipo_cambio?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remesas_proyecto_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remesas_proyecto_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+        ]
+      }
       reporte_comercial: {
         Row: {
           anio: number
@@ -2797,6 +2929,72 @@ export type Database = {
           },
           {
             foreignKeyName: "viaticos_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+        ]
+      }
+      vouchers_gasto: {
+        Row: {
+          clase_documento: string | null
+          codigo_actividad: string | null
+          concepto: string | null
+          created_at: string | null
+          entidad_id: string
+          fecha: string | null
+          id: string
+          item: string | null
+          monto_pen: number | null
+          monto_usd: number | null
+          numero_documento: string | null
+          proveedor: string | null
+          ruc_proveedor: string | null
+          tipo_cambio: number | null
+        }
+        Insert: {
+          clase_documento?: string | null
+          codigo_actividad?: string | null
+          concepto?: string | null
+          created_at?: string | null
+          entidad_id: string
+          fecha?: string | null
+          id?: string
+          item?: string | null
+          monto_pen?: number | null
+          monto_usd?: number | null
+          numero_documento?: string | null
+          proveedor?: string | null
+          ruc_proveedor?: string | null
+          tipo_cambio?: number | null
+        }
+        Update: {
+          clase_documento?: string | null
+          codigo_actividad?: string | null
+          concepto?: string | null
+          created_at?: string | null
+          entidad_id?: string
+          fecha?: string | null
+          id?: string
+          item?: string | null
+          monto_pen?: number | null
+          monto_usd?: number | null
+          numero_documento?: string | null
+          proveedor?: string | null
+          ruc_proveedor?: string | null
+          tipo_cambio?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vouchers_gasto_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vouchers_gasto_entidad_id_fkey"
             columns: ["entidad_id"]
             isOneToOne: false
             referencedRelation: "v_dashboard_entidad"
