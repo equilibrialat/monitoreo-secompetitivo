@@ -117,6 +117,14 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
     noIniciadaMap.set(a.entidad_id, (noIniciadaMap.get(a.entidad_id) || 0) + 1);
   }
 
+  // Voucher totals per entity (SECO ejecutado from real vouchers)
+  const voucherMap = new Map<string, number>();
+  for (const v of voucherResult.data || []) {
+    if (v.entidad_id) {
+      voucherMap.set(v.entidad_id, (voucherMap.get(v.entidad_id) || 0) + Number(v.monto_usd || 0));
+    }
+  }
+
   return rows.map((d: any) => {
     const av = avanceMap.get(d.entidad_id);
     const regs = regByEntity.get(d.entidad_id) || [];
