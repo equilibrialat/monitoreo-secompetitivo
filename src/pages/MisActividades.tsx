@@ -89,6 +89,13 @@ export default function MisActividades() {
   }, [registros]);
 
   // Compute avg avance per resultado
+  function getResultadoFinance(resCodigo: string) {
+    const acts = actsByResultado.get(resCodigo) || [];
+    const presupuesto = acts.reduce((s, a) => s + (a.presupuesto_seco || 0), 0);
+    const ejecutado = acts.reduce((s, a) => s + (a.ejecutado_seco_acum || 0), 0);
+    return { presupuesto, ejecutado, saldo: presupuesto - ejecutado };
+  }
+
   function getResultadoAvance(resCodigo: string): number {
     const acts = actsByResultado.get(resCodigo) || [];
     if (acts.length === 0) return 0;
