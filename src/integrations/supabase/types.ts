@@ -778,6 +778,90 @@ export type Database = {
           },
         ]
       }
+      metas_mensuales: {
+        Row: {
+          actividad_id: string
+          anio: number
+          comentario_coordinador: string | null
+          created_at: string | null
+          entidad_id: string
+          estado: string
+          id: string
+          mes: number
+          meta_unidad_medida: string | null
+          meta_valor: number | null
+          propuesta_por: string | null
+          revisado_por: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          actividad_id: string
+          anio: number
+          comentario_coordinador?: string | null
+          created_at?: string | null
+          entidad_id: string
+          estado?: string
+          id?: string
+          mes: number
+          meta_unidad_medida?: string | null
+          meta_valor?: number | null
+          propuesta_por?: string | null
+          revisado_por?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          actividad_id?: string
+          anio?: number
+          comentario_coordinador?: string | null
+          created_at?: string | null
+          entidad_id?: string
+          estado?: string
+          id?: string
+          mes?: number
+          meta_unidad_medida?: string | null
+          meta_valor?: number | null
+          propuesta_por?: string | null
+          revisado_por?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metas_mensuales_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "metas_mensuales_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "entidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "metas_mensuales_entidad_id_fkey"
+            columns: ["entidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_entidad"
+            referencedColumns: ["entidad_id"]
+          },
+          {
+            foreignKeyName: "metas_mensuales_propuesta_por_fkey"
+            columns: ["propuesta_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "metas_mensuales_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notificaciones: {
         Row: {
           asunto: string
