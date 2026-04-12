@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { TabRemesas } from "@/components/finanzas/TabRemesas";
@@ -12,6 +13,8 @@ export interface EntidadOption {
 }
 
 export default function GestionFinancieraPage() {
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "remesas";
   const [entidades, setEntidades] = useState<EntidadOption[]>([]);
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function GestionFinancieraPage() {
         <h1 className="text-2xl font-bold text-foreground">Gestión Financiera</h1>
       </div>
 
-      <Tabs defaultValue="remesas" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="remesas">Remesas</TabsTrigger>
           <TabsTrigger value="contratos">Contratos</TabsTrigger>
