@@ -125,8 +125,36 @@ export default function DashboardCadenasValor() {
 
   const avgAvance = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + (e.avance_operativo_promedio || 0), 0) / entidades.length) : 0;
   const avgEjecucion = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + e.pct_ejecucion_seco, 0) / entidades.length) : 0;
-  const pendientesTotal = entidades.reduce((s, e) => s + (e.pendientes_revision || 0), 0);
+
+  // Pendientes: only records in "enviado" state for Mec B (Iván's queue)
+  // The pendientes_revision from dashboard data counts borrador/en_revision which aren't Iván's responsibility
+  const [pendientesIvan, setPendientesIvan] = useState(0);
+  useEffect(() => {
+    (async () => {
+      const { count } = await (supabase as any)
+        .from("registros_mensuales")
+        .select("id", { count: "exact", head: true })
+        .eq("estado_registro", "enviado")
+        .in("entidad_id", entidades.map(e => e.entidad_id));
+      setPendientesIvan(count || 0);
+    })();
+  }, [entidades]);
+
+  // Financial alerts: sobregiros + entities >15pp below expected execution
+  const EXPECTED_EXEC: Record<string, number> = {
+    "CANATUR": 38,
+    "MARKAHUAMACHUCO": 43,
+    "APPCACAO": 56,
+  };
   const sobregiros = entidades.filter((e) => hasSobregigoEntidad(e));
+  const financialWarnings = entidades.filter((e) => {
+    if (hasSobregigoEntidad(e)) return false; // already counted as sobregiro
+    const expected = EXPECTED_EXEC[e.codigo] ?? EXPECTED_EXEC[e.nombre_corto?.toUpperCase().replace(/\s+/g, "")] ?? null;
+    if (expected === null) return false;
+    return (expected - e.pct_ejecucion_seco) > 15;
+  });
+  const totalAlertasFinancieras = sobregiros.length + financialWarnings.length;
+  const firstAlertEntity = sobregiros[0] || financialWarnings[0];
 
   const handleEntityClick = (entidadId: string) => {
     setRole("entidad_mec_b");
@@ -210,24 +238,32 @@ export default function DashboardCadenasValor() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-3 pb-3 flex flex-col items-center">
-            <GaugeCircle value={avgAvance} label="Avance Op." />
+          <CardContent className="pt-4 pb-3 text-center">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Avance Operativo Mec B (promedio)</p>
+            <p className="text-3xl font-bold text-foreground">{avgAvance}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-3 pb-3 flex flex-col items-center">
-            <GaugeCircle value={avgEjecucion} label="Ejec. SECO" color="hsl(var(--chart-2))" />
+          <CardContent className="pt-4 pb-3 text-center">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Ejecución Financiera SECO (promedio)</p>
+            <p className="text-3xl font-bold text-foreground">{avgEjecucion}%</p>
           </CardContent>
         </Card>
         <ClickableKpiCard
-          label="Pendientes Revisión" value={String(pendientesTotal)} sub="registros"
+          label="Pendientes Revisión" value={String(pendientesIvan)} sub={pendientesIvan === 0 ? "No hay registros pendientes" : "registros"}
           onClick={() => navigate("/revision-pendiente")}
-          className={pendientesTotal > 0 ? "border-warning/50" : ""}
+          className={pendientesIvan > 0 ? "border-warning/50" : ""}
         />
         <ClickableKpiCard
-          label="Sobregiros" value={String(sobregiros.length)} sub="entidades"
-          onClick={() => navigate("/desembolsos")}
-          className={sobregiros.length > 0 ? "border-destructive/50" : ""}
+          label="Alertas financieras"
+          value={String(totalAlertasFinancieras)}
+          sub={totalAlertasFinancieras === 0 ? "sin alertas" : totalAlertasFinancieras === 1 ? "alerta" : "alertas"}
+          onClick={() => {
+            if (firstAlertEntity) {
+              handleEntityClick(firstAlertEntity.entidad_id);
+            }
+          }}
+          className={totalAlertasFinancieras > 0 ? "border-yellow-400/60" : ""}
         />
       </div>
 
