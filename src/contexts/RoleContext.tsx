@@ -71,14 +71,27 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function fetchEntidades() {
       setLoadingEntidades(true);
-      const { data, error } = await (supabase as any)
-        .from("entidades")
-        .select("id, nombre_corto, tipo_entidad, cadena_valor, mecanismo, region")
-        .order("nombre_corto");
 
-      if (!error && data && data.length > 0) {
-        setEntidades(data as EntidadOption[]);
-        if (!entidadId) setEntidadId((data as EntidadOption[])[0].id);
+      // Fetch entities and active entity IDs in parallel
+      const [entRes, actRes] = await Promise.all([
+        (supabase as any)
+          .from("entidades")
+          .select("id, nombre_corto, tipo_entidad, cadena_valor, mecanismo, region")
+          .order("nombre_corto"),
+        (supabase as any)
+          .from("actividades")
+          .select("entidad_id"),
+      ]);
+
+      if (!entRes.error && entRes.data) {
+        const activeIds = new Set(
+          (actRes.data || []).map((a: any) => a.entidad_id)
+        );
+        const filtered = (entRes.data as EntidadOption[]).filter((e) =>
+          activeIds.has(e.id)
+        );
+        setEntidades(filtered);
+        if (!entidadId && filtered.length > 0) setEntidadId(filtered[0].id);
       }
       setLoadingEntidades(false);
     }
