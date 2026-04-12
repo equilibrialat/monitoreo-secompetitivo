@@ -1,26 +1,27 @@
 import { useRole } from "@/contexts/RoleContext";
 import DashboardEntidad from "@/components/dashboard/DashboardEntidad";
-import DashboardMonitoreo from "@/components/dashboard/DashboardMonitoreo";
+import DashboardMonitoreoOld from "@/components/dashboard/DashboardMonitoreo";
 import DashboardAdministracion from "@/components/dashboard/DashboardAdministracion";
-import DashboardDireccion from "@/components/dashboard/DashboardDireccion";
 import DashboardCadenasValor from "@/components/dashboard/DashboardCadenasValor";
+import DashboardMonitoreoNew from "@/components/dashboard/DashboardMonitoreoNew";
+import DashboardDireccionNew from "@/components/dashboard/DashboardDireccionNew";
 
 export default function Index() {
   const { role } = useRole();
 
   switch (role) {
     case "monitoreo":
-      return <DashboardMonitoreo />;
+      return <DashboardMonitoreoNew />;
 
     case "administracion":
       return <DashboardAdministracion />;
 
     case "direccion":
-      return <DashboardDireccion />;
+      return <DashboardDireccionNew />;
 
     case "coordinador_regional":
       return (
-        <DashboardMonitoreo
+        <DashboardMonitoreoOld
           title="Dashboard Regional"
           subtitle="Coordinador Regional"
           filterFn={(e) => e.region !== "Nacional"}
@@ -37,7 +38,7 @@ export default function Index() {
 
     case "asesora_politicas":
       return (
-        <DashboardMonitoreo
+        <DashboardMonitoreoOld
           title="Dashboard Políticas Públicas (Mec A)"
           subtitle="Asesora Políticas Públicas"
           filterFn={(e) => e.mecanismo === "A"}
@@ -50,7 +51,6 @@ export default function Index() {
       );
 
     case "gestor":
-      // Gestor sees entity dashboard for their assigned entities
       return <DashboardEntidad />;
 
     case "entidad_mec_a":

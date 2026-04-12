@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ClipboardList, Loader2, ChevronRight, ChevronDown, DollarSign, TrendingUp, Wallet, Trophy, AlertTriangle, CalendarClock, FileCheck, Receipt, Lock, CheckCircle2, Clock, Circle } from "lucide-react";
+import { ClipboardList, Loader2, ChevronRight, ChevronDown, DollarSign, TrendingUp, Wallet, Trophy, AlertTriangle, CalendarClock, FileCheck, Receipt, Lock, CheckCircle2, Clock, Circle, ArrowLeft, EyeOff } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActividadesByEntidad, type ActividadDB } from "@/lib/supabaseQueries";
@@ -231,8 +231,29 @@ export default function MisActividades() {
     }
   };
 
+  // Read-only mode detection
+  const searchParams = new URLSearchParams(window.location.search);
+  const readonlyRole = searchParams.get("readonly");
+  const isReadOnly = !!readonlyRole;
+  const readOnlyLabel = readonlyRole === "monitoreo" ? "Monitoreo" : readonlyRole === "direccion" ? "Dirección" : readonlyRole || "";
+
   return (
     <div>
+      {/* Read-only banner */}
+      {isReadOnly && (
+        <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center gap-3">
+          <EyeOff className="h-4 w-4 text-primary shrink-0" />
+          <p className="text-sm text-primary font-medium flex-1">
+            Vista de solo lectura — {readOnlyLabel}. No puedes modificar datos.
+          </p>
+          <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" onClick={() => {
+            window.history.back();
+          }}>
+            <ArrowLeft className="h-3 w-3 mr-1" /> Volver al dashboard
+          </Button>
+        </div>
+      )}
+
       {/* Historical mode banner */}
       <HistoricalBanner />
 
