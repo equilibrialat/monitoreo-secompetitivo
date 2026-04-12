@@ -194,11 +194,12 @@ export function KpiCard({ label, value, sub }: { label: string; value: string; s
 
 export function ClickableKpiCard({ label, value, sub, onClick, className }: { label: string; value: string; sub?: string; onClick: () => void; className?: string }) {
   return (
-    <Card className={`cursor-pointer hover:shadow-md hover:border-primary/30 transition-all ${className || ""}`} onClick={onClick}>
+    <Card className={`cursor-pointer hover:shadow-md hover:border-primary/30 transition-all group ${className || ""}`} onClick={onClick}>
       <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
         <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
         <p className="text-xl md:text-2xl font-bold text-foreground">{value}</p>
         {sub && <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
+        <p className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-1">Ver detalle →</p>
       </CardContent>
     </Card>
   );
