@@ -24,6 +24,7 @@ export default function DashboardDireccion() {
 
   // Apply filters
   const entidades = (allEntidades || []).filter(e => {
+    if (e.total_actividades === 0) return false;
     if (filters.mecanismo === "mec_a" && e.mecanismo !== "A") return false;
     if (filters.mecanismo === "mec_b" && e.mecanismo !== "B") return false;
     if (filters.entidadFiltro && e.entidad_id !== filters.entidadFiltro) return false;
