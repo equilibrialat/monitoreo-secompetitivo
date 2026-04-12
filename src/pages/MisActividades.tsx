@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { ClipboardList, Loader2, ChevronRight, DollarSign, TrendingUp, Wallet } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { ClipboardList, Loader2, ChevronRight, ChevronDown, DollarSign, TrendingUp, Wallet, Trophy, AlertTriangle, CalendarClock } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActividadesByEntidad, type ActividadDB } from "@/lib/supabaseQueries";
@@ -237,6 +237,29 @@ export default function MisActividades() {
                                     </p>
                                   </div>
 
+                                  {/* Secciones narrativas colapsables */}
+                                  {reg?.descripcion_avance && (
+                                    <CollapsibleNarrative
+                                      icon={<Trophy className="h-4 w-4 text-success" />}
+                                      title="Logros del trimestre"
+                                      content={reg.descripcion_avance}
+                                    />
+                                  )}
+                                  {reg?.limitaciones && (
+                                    <CollapsibleNarrative
+                                      icon={<AlertTriangle className="h-4 w-4 text-warning" />}
+                                      title="Dificultades y limitaciones"
+                                      content={reg.limitaciones}
+                                    />
+                                  )}
+                                  {reg?.prioridades_proximo_mes && (
+                                    <CollapsibleNarrative
+                                      icon={<CalendarClock className="h-4 w-4 text-primary" />}
+                                      title="Programado para el siguiente trimestre"
+                                      content={reg.prioridades_proximo_mes}
+                                    />
+                                  )}
+
                                   {/* Ejecución financiera de la actividad */}
                                   <div>
                                     <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Ejecución Financiera</h5>
@@ -302,6 +325,27 @@ export default function MisActividades() {
           }
         }}
       />
+    </div>
+  );
+}
+
+function CollapsibleNarrative({ icon, title, content }: { icon: React.ReactNode; title: string; content: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border bg-card overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/20 transition-colors"
+      >
+        {icon}
+        <span className="text-xs font-semibold text-card-foreground flex-1">{title}</span>
+        <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-90")} />
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1">
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{content}</p>
+        </div>
+      )}
     </div>
   );
 }
