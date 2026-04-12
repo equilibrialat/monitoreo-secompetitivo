@@ -130,8 +130,9 @@ export default function MisActividades() {
             const avgAvance = getResultadoAvance(res.codigo);
             const semaforo = getSemaforoAvance(avgAvance);
             const acts = actsByResultado.get(res.codigo) || [];
-            const financePct = res.summary_presupuesto_usd > 0
-              ? Math.round((res.summary_ejecutado_usd / res.summary_presupuesto_usd) * 100)
+            const finance = getResultadoFinance(res.codigo);
+            const financePct = finance.presupuesto > 0
+              ? Math.round((finance.ejecutado / finance.presupuesto) * 100)
               : 0;
 
             return (
