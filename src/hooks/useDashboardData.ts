@@ -61,7 +61,7 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   if (entidadIds.length === 0) return [];
 
   // Parallel fetches
-  const [actResult, pendResult, regResult, noIniciadaResult] = await Promise.all([
+  const [actResult, pendResult, regResult, noIniciadaResult, voucherResult] = await Promise.all([
     // Avg avance per entidad
     (supabase as any)
       .from("actividades")
@@ -84,6 +84,10 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       .select("entidad_id, estado_actual")
       .in("entidad_id", entidadIds)
       .eq("estado_actual", "no_iniciada"),
+    // Vouchers for SECO execution
+    (supabase as any)
+      .from("vouchers_gasto")
+      .select("entidad_id, monto_usd"),
   ]);
 
   const avanceMap = new Map<string, { sum: number; count: number }>();
@@ -111,6 +115,14 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   const noIniciadaMap = new Map<string, number>();
   for (const a of noIniciadaResult.data || []) {
     noIniciadaMap.set(a.entidad_id, (noIniciadaMap.get(a.entidad_id) || 0) + 1);
+  }
+
+  // Voucher totals per entity (SECO ejecutado from real vouchers)
+  const voucherMap = new Map<string, number>();
+  for (const v of voucherResult.data || []) {
+    if (v.entidad_id) {
+      voucherMap.set(v.entidad_id, (voucherMap.get(v.entidad_id) || 0) + Number(v.monto_usd || 0));
+    }
   }
 
   return rows.map((d: any) => {
@@ -152,15 +164,26 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       total_actividades: Number(d.total_actividades || 0),
       actividades_completadas: Number(d.actividades_completadas || 0),
       presupuesto_seco_total: Number(d.presupuesto_seco_total || 0),
-      ejecutado_seco_total: Number(d.ejecutado_seco_total || 0),
-      pct_ejecucion_seco: Number(d.pct_ejecucion_seco || 0),
+      ejecutado_seco_total: voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0),
+      pct_ejecucion_seco: (() => {
+        const ejecutado = voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0);
+        const presupuesto = Number(d.presupuesto_seco_total || 0);
+        return presupuesto > 0 ? Math.round((ejecutado / presupuesto) * 100) : 0;
+      })(),
       presupuesto_cm_total: Number(d.presupuesto_cm_total || 0),
       ejecutado_cm_total: Number(d.ejecutado_cm_total || 0),
       presupuesto_cnm_total: Number(d.presupuesto_cnm_total || 0),
       ejecutado_cnm_total: Number(d.ejecutado_cnm_total || 0),
       sobregiros_seco: Number(d.sobregiros_seco || 0),
       desfases_tecnico_financiero: Number(d.desfases_tecnico_financiero || 0),
-      avance_operativo_promedio: av ? Math.round(av.sum / av.count) : 0,
+      avance_operativo_promedio: (() => {
+        const avgFromActs = av ? Math.round(av.sum / av.count) : 0;
+        if (avgFromActs > 0) return avgFromActs;
+        // Fallback: compute from financial execution ratio
+        const ejecutado = voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0);
+        const presupuesto = Number(d.presupuesto_seco_total || 0);
+        return presupuesto > 0 ? Math.round((ejecutado / presupuesto) * 100) : 0;
+      })(),
       pendientes_revision: pendMap.get(d.entidad_id) || 0,
       // New fields
       actividades_sin_iniciar: noIniciadaMap.get(d.entidad_id) || 0,
