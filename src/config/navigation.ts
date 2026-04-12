@@ -26,19 +26,22 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
+const ENTIDAD_NAV: NavItem[] = [
+  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { label: "Mis Actividades", path: "/actividades", icon: ClipboardList },
+  { label: "Registro Mensual", path: "/registro-mensual", icon: FileText },
+  { label: "Registro Rápido", path: "/registro-rapido", icon: Zap },
+  { label: "Indicadores de Impacto", path: "/indicadores-impacto", icon: TrendingUp },
+  { label: "Contratos", path: "/contratos", icon: FileCheck },
+  { label: "Viáticos", path: "/viaticos", icon: Plane },
+  { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
+  { label: "Reportes", path: "/reportes", icon: BarChart3 },
+  { label: "Generar Reportes", path: "/generar-reportes", icon: FileDown },
+];
+
 const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
-  entidad: [
-    { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { label: "Mis Actividades", path: "/actividades", icon: ClipboardList },
-    { label: "Registro Mensual", path: "/registro-mensual", icon: FileText },
-    { label: "Registro Rápido", path: "/registro-rapido", icon: Zap },
-    { label: "Indicadores de Impacto", path: "/indicadores-impacto", icon: TrendingUp },
-    { label: "Contratos", path: "/contratos", icon: FileCheck },
-    { label: "Viáticos", path: "/viaticos", icon: Plane },
-    { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
-    { label: "Reportes", path: "/reportes", icon: BarChart3 },
-    { label: "Generar Reportes", path: "/generar-reportes", icon: FileDown },
-  ],
+  entidad_mec_a: ENTIDAD_NAV,
+  entidad_mec_b: ENTIDAD_NAV,
   gestor: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Mis Iniciativas", path: "/mis-iniciativas", icon: Briefcase },

@@ -19,7 +19,7 @@ function fmt(n: number | null) { return n == null ? "—" : n.toLocaleString("es
 
 export default function ReasignacionesPage() {
   const { role, entidadId, entidades } = useRole();
-  const isEntidad = role === "entidad";
+  const isEntidad = role === "entidad_mec_a" || role === "entidad_mec_b";
   const canApprove = ["administracion", "coordinador_regional", "direccion"].includes(role);
   const [data, setData] = useState<any[]>([]);
   const [actividades, setActividades] = useState<any[]>([]);

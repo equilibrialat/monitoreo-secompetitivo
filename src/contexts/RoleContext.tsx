@@ -2,7 +2,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole =
-  | "entidad"
+  | "entidad_mec_a"
+  | "entidad_mec_b"
   | "gestor"
   | "coordinador_regional"
   | "asesora_politicas"
@@ -12,7 +13,8 @@ export type AppRole =
   | "direccion";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  entidad: "Entidad",
+  entidad_mec_a: "Entidad Mecanismo A",
+  entidad_mec_b: "Entidad Mecanismo B",
   gestor: "Gestor",
   coordinador_regional: "Coordinador Regional",
   asesora_politicas: "Asesora Políticas Públicas",
@@ -62,7 +64,7 @@ const DEFAULT_FILTERS: GlobalFilters = {
 const RoleContext = createContext<RoleContextValue | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<AppRole>("entidad");
+  const [role, setRole] = useState<AppRole>("entidad_mec_a");
   const [entidadId, setEntidadId] = useState<string | null>(null);
   const [entidades, setEntidades] = useState<EntidadOption[]>([]);
   const [loadingEntidades, setLoadingEntidades] = useState(true);
@@ -109,6 +111,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   // Compute filtered entidades based on role restrictions + user filters
   const filteredEntidades = entidades.filter((e) => {
     // Role-based restrictions (hard filters)
+    if (role === "entidad_mec_a" && e.mecanismo !== "mec_a") return false;
+    if (role === "entidad_mec_b" && e.mecanismo !== "mec_b") return false;
     if (role === "asesora_politicas" && e.mecanismo !== "mec_a") return false;
     if (role === "coordinador_cadenas" && e.mecanismo !== "mec_b") return false;
     // coordinador_regional would filter by region - handled by user's region
@@ -121,6 +125,13 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
     return true;
   });
+
+  // Auto-select first entity when role changes and current selection is not in filtered list
+  useEffect(() => {
+    if (filteredEntidades.length > 0 && (!entidadId || !filteredEntidades.find(e => e.id === entidadId))) {
+      setEntidadId(filteredEntidades[0].id);
+    }
+  }, [role, filteredEntidades.length]);
 
   return (
     <RoleContext.Provider

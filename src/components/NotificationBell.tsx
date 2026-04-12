@@ -26,7 +26,7 @@ export function NotificationBell() {
   const [selected, setSelected] = useState<Notificacion | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  const isEntidad = role === "entidad" && !!entidadId;
+  const isEntidad = (role === "entidad_mec_a" || role === "entidad_mec_b") && !!entidadId;
 
   useEffect(() => {
     if (!isEntidad || !entidadId) return;

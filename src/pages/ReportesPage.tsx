@@ -9,7 +9,7 @@ import MisReportes from "@/components/reportes/MisReportes";
 export default function ReportesPage() {
   const { role } = useRole();
 
-  if (role === "entidad") {
+  if (role === "entidad_mec_a" || role === "entidad_mec_b") {
     return <MisReportes />;
   }
 
