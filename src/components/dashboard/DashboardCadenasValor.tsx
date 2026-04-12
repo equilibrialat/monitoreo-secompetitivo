@@ -39,9 +39,13 @@ function GaugeCircle({ value, label, color = "hsl(var(--primary))" }: { value: n
   );
 }
 
+function hasSobregigoEntidad(e: DashboardEntidad): boolean {
+  return e.ejecutado_seco_total > e.presupuesto_seco_total && e.presupuesto_seco_total > 0;
+}
+
 function entityAlertCount(e: DashboardEntidad): number {
   let count = 0;
-  if (e.sobregiros_seco > 0) count++;
+  if (hasSobregigoEntidad(e)) count++;
   if (e.tiene_observado) count++;
   if (e.actividades_sin_iniciar > 0) count++;
   if (e.meses_sin_reporte.length > 0) count++;
@@ -122,7 +126,7 @@ export default function DashboardCadenasValor() {
   const avgAvance = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + (e.avance_operativo_promedio || 0), 0) / entidades.length) : 0;
   const avgEjecucion = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + e.pct_ejecucion_seco, 0) / entidades.length) : 0;
   const pendientesTotal = entidades.reduce((s, e) => s + (e.pendientes_revision || 0), 0);
-  const sobregiros = entidades.filter((e) => e.sobregiros_seco > 0);
+  const sobregiros = entidades.filter((e) => hasSobregigoEntidad(e));
 
   const handleEntityClick = (entidadId: string) => {
     setRole("entidad_mec_b");
@@ -283,7 +287,7 @@ export default function DashboardCadenasValor() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold truncate">{ent.nombre_corto}</span>
                           {ent.region && <Badge variant="outline" className="text-[9px] px-1">{ent.region}</Badge>}
-                          {ent.sobregiros_seco > 0 && (
+                          {hasSobregigoEntidad(ent) && (
                             <Badge variant="destructive" className="text-[9px] px-1 cursor-pointer hover:bg-destructive/90"
                               onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/gestion-financiera")}>
                               Sobregiro
@@ -305,7 +309,7 @@ export default function DashboardCadenasValor() {
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                             <Activity className="h-3 w-3" />
-                            <span>Op: <strong className="text-foreground">{ent.avance_operativo_promedio ?? 0}%</strong></span>
+                            <span>Op: <strong className="text-foreground">{ent.avance_operativo_promedio != null && ent.avance_operativo_promedio > 0 ? `${ent.avance_operativo_promedio}%` : "Sin datos"}</strong></span>
                           </div>
                           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                             <DollarSign className="h-3 w-3" />
@@ -314,7 +318,7 @@ export default function DashboardCadenasValor() {
                           {entityAlertCount(ent) > 0 && (
                             <span
                               className={`text-[11px] font-medium ${status.className} cursor-pointer hover:underline`}
-                              onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/mis-actividades")}
+                              onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/actividades")}
                             >
                               {status.label}
                             </span>
