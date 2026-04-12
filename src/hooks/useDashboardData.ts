@@ -164,15 +164,26 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       total_actividades: Number(d.total_actividades || 0),
       actividades_completadas: Number(d.actividades_completadas || 0),
       presupuesto_seco_total: Number(d.presupuesto_seco_total || 0),
-      ejecutado_seco_total: Number(d.ejecutado_seco_total || 0),
-      pct_ejecucion_seco: Number(d.pct_ejecucion_seco || 0),
+      ejecutado_seco_total: voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0),
+      pct_ejecucion_seco: (() => {
+        const ejecutado = voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0);
+        const presupuesto = Number(d.presupuesto_seco_total || 0);
+        return presupuesto > 0 ? Math.round((ejecutado / presupuesto) * 100) : 0;
+      })(),
       presupuesto_cm_total: Number(d.presupuesto_cm_total || 0),
       ejecutado_cm_total: Number(d.ejecutado_cm_total || 0),
       presupuesto_cnm_total: Number(d.presupuesto_cnm_total || 0),
       ejecutado_cnm_total: Number(d.ejecutado_cnm_total || 0),
       sobregiros_seco: Number(d.sobregiros_seco || 0),
       desfases_tecnico_financiero: Number(d.desfases_tecnico_financiero || 0),
-      avance_operativo_promedio: av ? Math.round(av.sum / av.count) : 0,
+      avance_operativo_promedio: (() => {
+        const avgFromActs = av ? Math.round(av.sum / av.count) : 0;
+        if (avgFromActs > 0) return avgFromActs;
+        // Fallback: compute from financial execution ratio
+        const ejecutado = voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0);
+        const presupuesto = Number(d.presupuesto_seco_total || 0);
+        return presupuesto > 0 ? Math.round((ejecutado / presupuesto) * 100) : 0;
+      })(),
       pendientes_revision: pendMap.get(d.entidad_id) || 0,
       // New fields
       actividades_sin_iniciar: noIniciadaMap.get(d.entidad_id) || 0,
