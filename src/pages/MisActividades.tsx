@@ -272,6 +272,9 @@ export default function MisActividades() {
                                     </div>
                                   </div>
 
+                                  {/* Pestañas Contratos y Gastos */}
+                                  <ActividadContratosGastos actCodigo={act.codigo} entidadId={act.entidad_id} />
+
                                   {/* Último registro */}
                                   {reg && (
                                     <div>
