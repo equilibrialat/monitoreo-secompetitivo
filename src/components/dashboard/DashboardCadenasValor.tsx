@@ -129,6 +129,12 @@ export default function DashboardCadenasValor() {
     navigate("/mis-actividades");
   };
 
+  const handleBadgeClick = (e: React.MouseEvent, entidadId: string, route: string) => {
+    e.stopPropagation();
+    setEntidadId(entidadId);
+    navigate(route);
+  };
+
   const handleAIAnalysis = async () => {
     setAiLoading(true);
     setAiResult(null);
@@ -275,8 +281,24 @@ export default function DashboardCadenasValor() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold truncate">{ent.nombre_corto}</span>
                           {ent.region && <Badge variant="outline" className="text-[9px] px-1">{ent.region}</Badge>}
-                          {ent.sobregiros_seco > 0 && <Badge variant="destructive" className="text-[9px] px-1">Sobregiro</Badge>}
-                          {ent.tiene_observado && <Badge className="text-[9px] px-1 bg-orange-500/15 text-orange-600">Observado</Badge>}
+                          {ent.sobregiros_seco > 0 && (
+                            <Badge variant="destructive" className="text-[9px] px-1 cursor-pointer hover:bg-destructive/90"
+                              onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/gestion-financiera")}>
+                              Sobregiro
+                            </Badge>
+                          )}
+                          {ent.tiene_observado && (
+                            <Badge className="text-[9px] px-1 bg-orange-500/15 text-orange-600 cursor-pointer hover:bg-orange-500/25"
+                              onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/revision-pendiente")}>
+                              Observado
+                            </Badge>
+                          )}
+                          {ent.meses_sin_reporte.length > 0 && (
+                            <Badge className="text-[9px] px-1 bg-destructive/10 text-destructive cursor-pointer hover:bg-destructive/20"
+                              onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/registro-mensual")}>
+                              Sin reporte: {ent.meses_sin_reporte.join(", ")}
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -287,7 +309,17 @@ export default function DashboardCadenasValor() {
                             <DollarSign className="h-3 w-3" />
                             <span>Fin: <strong className="text-foreground">{ent.pct_ejecucion_seco}%</strong></span>
                           </div>
-                          <span className={`text-[11px] font-medium ${status.className}`}>{status.label}</span>
+                          {entityAlertCount(ent) > 0 && (
+                            <span
+                              className={`text-[11px] font-medium ${status.className} cursor-pointer hover:underline`}
+                              onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/mis-actividades")}
+                            >
+                              {status.label}
+                            </span>
+                          )}
+                          {entityAlertCount(ent) === 0 && (
+                            <span className={`text-[11px] font-medium ${status.className}`}>{status.label}</span>
+                          )}
                         </div>
                       </div>
                       <div className="hidden sm:flex items-center gap-3 shrink-0">
