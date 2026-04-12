@@ -274,22 +274,26 @@ export default function MisActividades() {
                                   {reg && (
                                     <div>
                                       <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Último Registro ({reg.mes}/{reg.anio})</h5>
-                                      <Card>
-                                        <CardContent className="p-3 space-y-2 text-sm">
-                                          {reg.descripcion_avance && (
-                                            <div>
-                                              <p className="text-xs font-medium text-muted-foreground">Logros:</p>
-                                              <p className="text-card-foreground">{reg.descripcion_avance}</p>
-                                            </div>
-                                          )}
-                                          {reg.observaciones_revision && (
-                                            <div>
-                                              <p className="text-xs font-medium text-destructive">Observaciones:</p>
-                                              <p className="text-destructive/80">{reg.observaciones_revision}</p>
-                                            </div>
-                                          )}
-                                        </CardContent>
-                                      </Card>
+                                      {reg.observaciones_revision?.startsWith("Sin reporte") ? (
+                                        <Badge className="bg-destructive text-destructive-foreground text-xs">Sin reporte</Badge>
+                                      ) : (
+                                        <Card>
+                                          <CardContent className="p-3 space-y-2 text-sm">
+                                            {reg.descripcion_avance && (
+                                              <div>
+                                                <p className="text-xs font-medium text-muted-foreground">Logros:</p>
+                                                <p className="text-card-foreground">{reg.descripcion_avance}</p>
+                                              </div>
+                                            )}
+                                            {reg.observaciones_revision && (
+                                              <div>
+                                                <p className="text-xs font-medium text-destructive">Observaciones:</p>
+                                                <p className="text-destructive/80">{reg.observaciones_revision}</p>
+                                              </div>
+                                            )}
+                                          </CardContent>
+                                        </Card>
+                                      )}
                                     </div>
                                   )}
 
