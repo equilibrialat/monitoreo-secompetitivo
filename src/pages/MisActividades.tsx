@@ -33,6 +33,7 @@ export default function MisActividades() {
   const [actividades, setActividades] = useState<ActividadDB[]>([]);
   const [registros, setRegistros] = useState<RegistroPendiente[]>([]);
   const [resultados, setResultados] = useState<ResultadoDB[]>([]);
+  const [voucherTotals, setVoucherTotals] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedActividad, setSelectedActividad] = useState<ActividadDB | null>(null);
 
