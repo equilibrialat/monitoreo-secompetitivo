@@ -181,7 +181,7 @@ export default function MisActividades() {
                           </div>
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Ejecutado</p>
-                            <p className="text-sm font-bold text-success">{formatUSD(res.summary_ejecutado_usd)}</p>
+                            <p className="text-sm font-bold text-success">{formatUSD(finance.ejecutado)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -190,7 +190,7 @@ export default function MisActividades() {
                           </div>
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Saldo</p>
-                            <p className="text-sm font-bold text-warning">{formatUSD(res.summary_saldo_usd)}</p>
+                            <p className="text-sm font-bold text-warning">{formatUSD(finance.saldo)}</p>
                           </div>
                         </div>
                       </div>
