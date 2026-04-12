@@ -2,7 +2,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole =
-  | "entidad"
+  | "entidad_mec_a"
+  | "entidad_mec_b"
   | "gestor"
   | "coordinador_regional"
   | "asesora_politicas"
@@ -12,7 +13,8 @@ export type AppRole =
   | "direccion";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  entidad: "Entidad",
+  entidad_mec_a: "Entidad Mecanismo A",
+  entidad_mec_b: "Entidad Mecanismo B",
   gestor: "Gestor",
   coordinador_regional: "Coordinador Regional",
   asesora_politicas: "Asesora Políticas Públicas",
@@ -62,7 +64,7 @@ const DEFAULT_FILTERS: GlobalFilters = {
 const RoleContext = createContext<RoleContextValue | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<AppRole>("entidad");
+  const [role, setRole] = useState<AppRole>("entidad_mec_a");
   const [entidadId, setEntidadId] = useState<string | null>(null);
   const [entidades, setEntidades] = useState<EntidadOption[]>([]);
   const [loadingEntidades, setLoadingEntidades] = useState(true);
