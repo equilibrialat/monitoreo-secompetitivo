@@ -126,7 +126,13 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     return true;
   });
 
-  return (
+  // Auto-select first entity when role changes and current selection is not in filtered list
+  useEffect(() => {
+    if (filteredEntidades.length > 0 && (!entidadId || !filteredEntidades.find(e => e.id === entidadId))) {
+      setEntidadId(filteredEntidades[0].id);
+    }
+  }, [role, filteredEntidades.length]);
+
     <RoleContext.Provider
       value={{
         role, setRole, entidadId, setEntidadId, entidades, loadingEntidades,
