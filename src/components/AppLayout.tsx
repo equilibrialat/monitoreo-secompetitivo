@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { AppSidebar } from "./AppSidebar";
 import { NotificationBell } from "./NotificationBell";
+import { StatusLegendFab } from "./StatusLegend";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function AppLayout({ children }: { children: ReactNode }) {
