@@ -80,6 +80,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   administracion: [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Gestión Financiera", path: "/gestion-financiera", icon: Banknote },
+    { label: "IGV", path: "/gestion-financiera?tab=igv", icon: FileCheck },
     { label: "Contratos", path: "/contratos", icon: FileCheck },
     { label: "Desembolsos", path: "/desembolsos", icon: Banknote },
     { label: "Viáticos", path: "/viaticos", icon: Plane },

@@ -53,14 +53,20 @@ export default function ContratosPage() {
     fecha_inicio: "", fecha_fin: "", fuente: "cofinanciamiento_seco", tipo_seleccion: "", estado: "en_proceso",
   });
 
+  const [allEntidades, setAllEntidades] = useState<{id: string; nombre_corto: string}[]>([]);
+
   async function loadData() {
     setLoading(true);
     const query = (supabase as any).from("contratos").select("*").order("created_at", { ascending: false });
     if (!isAdmin && entidadId) query.eq("entidad_id", entidadId);
-    const { data } = await query;
+    const [{ data }, { data: acts }, { data: ents }] = await Promise.all([
+      query,
+      (supabase as any).from("actividades").select("id, codigo, nombre, entidad_id"),
+      (supabase as any).from("entidades").select("id, nombre_corto").order("nombre_corto"),
+    ]);
     setContratos(data ?? []);
-    const { data: acts } = await (supabase as any).from("actividades").select("id, codigo, nombre, entidad_id");
     setActividades(acts ?? []);
+    setAllEntidades(ents ?? []);
     setLoading(false);
   }
 
@@ -74,7 +80,7 @@ export default function ContratosPage() {
     return f;
   }, [contratos, filterEntidad, filterEstado, filterTipo]);
 
-  const entName = (id: string) => entidades.find(e => e.id === id)?.nombre_corto ?? id.slice(0, 8);
+  const entName = (id: string) => allEntidades.find(e => e.id === id)?.nombre_corto ?? entidades.find(e => e.id === id)?.nombre_corto ?? id.slice(0, 8);
   const actsFiltradas = actividades.filter(a => a.entidad_id === (form.entidad_id || entidadId));
 
   async function handleSave() {
