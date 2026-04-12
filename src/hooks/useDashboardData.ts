@@ -201,8 +201,11 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       sobregiros_seco: Number(d.sobregiros_seco || 0),
       desfases_tecnico_financiero: Number(d.desfases_tecnico_financiero || 0),
       avance_operativo_promedio: (() => {
-        const avgFromActs = av ? Math.round(av.sum / av.count) : 0;
-        if (avgFromActs > 0) return avgFromActs;
+        const av2 = avanceMap.get(d.entidad_id);
+        if (av2 && av2.count > 0) return Math.round(av2.sum / av2.count);
+        // If entity has metas but none approved, return null (en planificación)
+        const entityMetas = metasByEntity.get(d.entidad_id);
+        if (entityMetas && entityMetas.total > 0 && entityMetas.approved === 0) return null as any;
         // Fallback: compute from financial execution ratio
         const ejecutado = voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0);
         const presupuesto = Number(d.presupuesto_seco_total || 0);
