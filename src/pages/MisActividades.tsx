@@ -54,7 +54,8 @@ export default function MisActividades() {
       fetchActividadesByEntidad(entidadId),
       fetchRegistrosEntidad(entidadId),
       (supabase as any).from("resultados").select("id, codigo, nombre").eq("entidad_id", entidadId).order("codigo"),
-    ]).then(([acts, regs, resResult]) => {
+      (supabase as any).from("vouchers_gasto").select("codigo_actividad, monto_usd").eq("entidad_id", entidadId),
+    ]).then(([acts, regs, resResult, vouchersResult]) => {
       setActividades(acts);
       setRegistros(regs);
       setResultados((resResult.data || []).map((r: any) => ({
@@ -62,6 +63,13 @@ export default function MisActividades() {
         codigo: r.codigo,
         nombre: r.nombre,
       })));
+      // Build voucher totals map: codigo_actividad -> sum(monto_usd)
+      const vtMap = new Map<string, number>();
+      for (const v of (vouchersResult.data || [])) {
+        const key = v.codigo_actividad;
+        if (key) vtMap.set(key, (vtMap.get(key) || 0) + (v.monto_usd || 0));
+      }
+      setVoucherTotals(vtMap);
       setLoading(false);
     });
   }, [entidadId]);
