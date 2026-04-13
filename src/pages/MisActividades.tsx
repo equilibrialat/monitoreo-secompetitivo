@@ -83,6 +83,7 @@ export default function MisActividades() {
 
   // Active/selected trimester
   const { seleccionado, activo: trimestreActivo, isHistorical } = useTrimestreSeleccionado();
+  const isClosed = seleccionado?.estado === "cerrado";
 
   // Current period - use selected trimester
   const now = new Date();
@@ -134,12 +135,14 @@ export default function MisActividades() {
   }, [plans]);
 
   function getPlanEstado(actividadId: string): PlanEstado | "sin_plan" {
+    if (isClosed) return "aprobada"; // Closed trimesters: treat all as historical, no plan warnings
     const plan = planMap.get(actividadId);
     if (!plan) return "sin_plan";
     return plan.estado;
   }
 
   function isRegistroEnabled(actividadId: string): boolean {
+    if (isClosed) return false; // Closed = read-only, no registration
     return getPlanEstado(actividadId) === "aprobada";
   }
 
@@ -179,6 +182,11 @@ export default function MisActividades() {
 
   function getResultadoAvance(resCodigo: string): number {
     const acts = actsByResultado.get(resCodigo) || [];
+    if (isClosed) {
+      // For closed trimesters, use all activities with any data
+      if (acts.length === 0) return -1;
+      return Math.round(acts.reduce((s, a) => s + a.avance_operativo_pct, 0) / acts.length);
+    }
     const withPlan = acts.filter(a => getPlanEstado(a.id) === "aprobada");
     if (withPlan.length === 0) return -1;
     return Math.round(withPlan.reduce((s, a) => s + a.avance_operativo_pct, 0) / withPlan.length);
@@ -257,8 +265,8 @@ export default function MisActividades() {
       {/* Historical mode banner */}
       <HistoricalBanner />
 
-      {/* No plan info */}
-      {!loading && plans.length === 0 && (
+      {/* No plan info — only for active trimesters */}
+      {!loading && !isClosed && plans.length === 0 && (
         <Card className="mb-4 border-muted bg-muted/20">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
@@ -271,8 +279,8 @@ export default function MisActividades() {
         </Card>
       )}
 
-      {/* Approved plan compact bar */}
-      {isApproved && (
+      {/* Approved plan compact bar — only for active trimesters */}
+      {!isClosed && isApproved && (
         <Card className="mb-4 border-success/40 bg-success/5">
           <CardContent className="pt-3 pb-3">
             <div className="flex items-center gap-2">
@@ -296,7 +304,7 @@ export default function MisActividades() {
       </div>
 
       {/* Plan trimestral banner */}
-      {hasPendingProposal && (
+      {!isClosed && hasPendingProposal && (
         <Card className="mb-4 border-primary/40 bg-primary/5">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-start gap-3">
@@ -367,7 +375,7 @@ export default function MisActividades() {
         </Card>
       )}
 
-      {hasDispute && (
+      {!isClosed && hasDispute && (
         <Card className="mb-4 border-warning/40 bg-warning/5">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
@@ -489,7 +497,7 @@ export default function MisActividades() {
                         const planEstado = getPlanEstado(act.id);
                         const plan = planMap.get(act.id);
                         const canRegister = isRegistroEnabled(act.id);
-                        const actSemaforo = canRegister
+                        const actSemaforo = (isClosed || canRegister)
                           ? getSemaforoAvance(act.avance_operativo_pct)
                           : { color: "bg-muted", text: "text-muted-foreground", label: "Bloqueado" };
                         const reg = registroMap.get(act.id);
@@ -505,12 +513,18 @@ export default function MisActividades() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-xs font-mono text-muted-foreground">{act.codigo}</span>
-                                  <PlanStatusBadge estado={planEstado} />
+                                  {isClosed ? (
+                                    <Badge className="bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5">Cerrado</Badge>
+                                  ) : (
+                                    <PlanStatusBadge estado={planEstado} />
+                                  )}
                                 </div>
                                 <span className="text-sm text-card-foreground">{act.nombre}</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                {canRegister && plan ? (
+                                {isClosed ? (
+                                  <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                                ) : canRegister && plan ? (
                                   <div className="flex items-center gap-1.5">
                                     {[0, 1, 2].map(mi => {
                                       const meta = mi === 0 ? plan.meta_mes_1 : mi === 1 ? plan.meta_mes_2 : plan.meta_mes_3;
