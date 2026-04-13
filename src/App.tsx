@@ -32,6 +32,7 @@ import MisIniciativasPage from "./pages/MisIniciativasPage";
 import RegistroRapidoPage from "./pages/RegistroRapidoPage";
 import GestionFinancieraPage from "./pages/GestionFinancieraPage";
 import PlanificacionTrimestralPage from "./pages/PlanificacionTrimestralPage";
+import MiPlanificacionPage from "./pages/MiPlanificacionPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -49,6 +50,7 @@ const App = () => (
 
               {/* Entidad routes */}
               <Route path="/actividades" element={<MisActividades />} />
+              <Route path="/mi-planificacion" element={<MiPlanificacionPage />} />
               <Route path="/registro-mensual" element={<RegistroMensualPage />} />
               <Route path="/registro-rapido" element={<RegistroRapidoPage />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
