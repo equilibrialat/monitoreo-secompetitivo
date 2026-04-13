@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface PlanificacionActividad {
   id: string;
   entidad_codigo: string;
+  proyecto_nombre: string;
   resultado_intermedio: string;
   producto: string;
   actividad_codigo: string;
