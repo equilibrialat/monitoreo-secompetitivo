@@ -54,6 +54,7 @@ export default function DashboardEntidad() {
   return (
     <div>
       <Header title="Mi Dashboard" subtitle={ent.nombre_corto} />
+      <MiPlanificacion />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <ClickableKpiCard label="Actividades" value={`${ent.actividades_completadas}/${ent.total_actividades}`} sub="completadas" onClick={() => navigate("/mis-actividades")} />
         <KpiCard label="Avance Operativo" value={`${avOp}%`} sub="promedio" />
