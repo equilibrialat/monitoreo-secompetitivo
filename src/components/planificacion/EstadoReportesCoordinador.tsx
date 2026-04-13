@@ -11,6 +11,7 @@ interface EntidadPlanStatus {
   entidadNombre: string;
   programadasEsteMes: number;
   reportadas: number;
+  conRezago: number;
 }
 
 function getCurrentYearMonth(): string {
@@ -46,7 +47,6 @@ export default function EstadoReportesCoordinador() {
     });
   }, [anioActual, mesActual]);
 
-  // Map entidad nombre_corto to entidad_codigo
   const entidadCodeMap = useMemo(() => {
     const map = new Map<string, string>();
     map.set("App Cacao", "APPCACAO");
@@ -72,16 +72,16 @@ export default function EstadoReportesCoordinador() {
 
       const reportadas = programadas.filter((p: any) => reportedCodes.has(p.actividad_codigo)).length;
 
-      return {
-        entidadCodigo: codigo,
-        entidadNombre: ent.nombre_corto,
-        programadasEsteMes: programadas.length,
-        reportadas,
-      };
+      // Count activities with past months without reports (rezago)
+      const conRezago = entPlan.filter((p: any) => {
+        const meses: string[] = p.meses_programados || [];
+        return meses.some((m: string) => m < currentYM && !reportedCodes.has(p.actividad_codigo));
+      }).length;
+
+      return { entidadCodigo: codigo, entidadNombre: ent.nombre_corto, programadasEsteMes: programadas.length, reportadas, conRezago };
     });
   }, [filteredEntidades, planData, reportData, currentYM, entidadCodeMap]);
 
-  // Only show if there are entities with planificacion data
   const hasPlanData = statuses.some((s) => planData.some((p: any) => p.entidad_codigo === s.entidadCodigo));
   if (!hasPlanData && !loading) return null;
 
@@ -92,74 +92,88 @@ export default function EstadoReportesCoordinador() {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <ClipboardCheck className="h-5 w-5 text-primary" />
-          Estado de reportes — {monthNames[mesActual - 1]} {anioActual}
+          Seguimiento de compromisos — {monthNames[mesActual - 1]} {anioActual}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="text-sm text-muted-foreground">Cargando...</div>
         ) : (
-          <div className="space-y-2">
-            {statuses.map((s) => {
-              const hasPlan = planData.some((p: any) => p.entidad_codigo === s.entidadCodigo);
-              if (!hasPlan) return null;
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-2 px-3 font-medium text-muted-foreground">Entidad</th>
+                  <th className="py-2 px-3 font-medium text-muted-foreground text-center">Activ. programadas</th>
+                  <th className="py-2 px-3 font-medium text-muted-foreground text-center">Reportadas</th>
+                  <th className="py-2 px-3 font-medium text-muted-foreground text-center">Rezago</th>
+                  <th className="py-2 px-3 font-medium text-muted-foreground text-center">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statuses.filter(s => planData.some((p: any) => p.entidad_codigo === s.entidadCodigo)).map((s) => {
+                  const statusDot = s.programadasEsteMes === 0
+                    ? "bg-gray-400"
+                    : s.conRezago > 0
+                    ? "bg-red-500"
+                    : s.reportadas >= s.programadasEsteMes
+                    ? "bg-green-500"
+                    : "bg-yellow-500";
 
-              const statusDot = s.programadasEsteMes === 0
-                ? "bg-gray-400"
-                : s.reportadas >= s.programadasEsteMes
-                ? "bg-green-500"
-                : "bg-red-500";
+                  const statusLabel = s.programadasEsteMes === 0
+                    ? "Sin entregables este mes"
+                    : s.conRezago > 0
+                    ? `${s.conRezago} con rezago`
+                    : s.reportadas >= s.programadasEsteMes
+                    ? "Al día"
+                    : "Pendiente";
 
-              const statusLabel = s.programadasEsteMes === 0
-                ? "Sin entregables"
-                : `${s.reportadas}/${s.programadasEsteMes}`;
+                  const isExpanded = expandedEntity === s.entidadCodigo;
 
-              const isExpanded = expandedEntity === s.entidadCodigo;
+                  return (
+                    <tr key={s.entidadCodigo} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedEntity(isExpanded ? null : s.entidadCodigo)}>
+                      <td className="py-2.5 px-3 font-medium flex items-center gap-2">
+                        <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
+                        {s.entidadNombre}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-mono">{s.programadasEsteMes}</td>
+                      <td className="py-2.5 px-3 text-center font-mono">{s.reportadas}/{s.programadasEsteMes}</td>
+                      <td className="py-2.5 px-3 text-center text-xs text-muted-foreground">{statusLabel}</td>
+                      <td className="py-2.5 px-3 text-center"><span className={cn("inline-block h-3 w-3 rounded-full", statusDot)} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
 
-              return (
-                <div key={s.entidadCodigo} className="border rounded-lg">
-                  <button
-                    className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors"
-                    onClick={() => setExpandedEntity(isExpanded ? null : s.entidadCodigo)}
-                  >
-                    <span className={cn("h-3 w-3 rounded-full shrink-0", statusDot)} />
-                    <span className="text-sm font-medium flex-1">{s.entidadNombre}</span>
-                    <span className="text-xs text-muted-foreground">
-                      Programadas: {s.programadasEsteMes} | Reportadas: {statusLabel}
-                    </span>
-                    <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
-                  </button>
-                  {isExpanded && (
-                    <div className="px-4 pb-3 border-t">
-                      <div className="space-y-1 mt-2">
-                        {planData
-                          .filter((p: any) => p.entidad_codigo === s.entidadCodigo)
-                          .filter((p: any) => (p.meses_programados || []).includes(currentYM))
-                          .map((p: any) => {
-                            const reported = reportData.some(
-                              (r: any) => r.entidad_id === filteredEntidades.find(e => entidadCodeMap.get(e.nombre_corto) === s.entidadCodigo)?.id
-                                && r.actividades?.codigo === p.actividad_codigo
-                            );
-                            return (
-                              <div key={p.id} className="flex items-center gap-2 text-sm py-1">
-                                <span className={cn("h-2 w-2 rounded-full shrink-0", reported ? "bg-green-500" : "bg-yellow-500")} />
-                                <span className="font-mono text-xs text-primary">{p.actividad_codigo}</span>
-                                <span className="text-muted-foreground truncate">{p.actividad_descripcion}</span>
-                                <Badge variant={reported ? "default" : "outline"} className="text-[9px] ml-auto shrink-0">
-                                  {reported ? "Reportado" : "Pendiente"}
-                                </Badge>
-                              </div>
-                            );
-                          })}
-                        {planData.filter((p: any) => p.entidad_codigo === s.entidadCodigo && (p.meses_programados || []).includes(currentYM)).length === 0 && (
-                          <p className="text-xs text-muted-foreground py-2">No hay entregables programados para este mes.</p>
-                        )}
+            {/* Expanded detail */}
+            {expandedEntity && (
+              <div className="border-t mt-2 pt-2 space-y-1">
+                {planData
+                  .filter((p: any) => p.entidad_codigo === expandedEntity)
+                  .map((p: any) => {
+                    const meses: string[] = p.meses_programados || [];
+                    const isThisMonth = meses.includes(currentYM);
+                    const hasPast = meses.some((m: string) => m < currentYM);
+                    const reported = reportData.some(
+                      (r: any) => r.entidad_id === filteredEntidades.find(e => entidadCodeMap.get(e.nombre_corto) === expandedEntity)?.id
+                        && r.actividades?.codigo === p.actividad_codigo
+                    );
+                    const dotColor = reported ? "bg-green-500" : isThisMonth ? "bg-yellow-500" : hasPast ? "bg-red-500" : "bg-blue-500";
+
+                    return (
+                      <div key={p.id} className="flex items-center gap-2 text-sm py-1 px-3">
+                        <span className={cn("h-2 w-2 rounded-full shrink-0", dotColor)} />
+                        <span className="font-mono text-xs text-primary">{p.actividad_codigo}</span>
+                        <span className="text-muted-foreground truncate flex-1">{p.actividad_descripcion}</span>
+                        <Badge variant={reported ? "default" : "outline"} className="text-[9px] shrink-0">
+                          {reported ? "Reportado" : isThisMonth ? "Pendiente" : hasPast ? "Rezago" : "Futuro"}
+                        </Badge>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    );
+                  })}
+              </div>
+            )}
           </div>
         )}
       </CardContent>
