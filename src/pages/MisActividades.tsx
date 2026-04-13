@@ -135,12 +135,14 @@ export default function MisActividades() {
   }, [plans]);
 
   function getPlanEstado(actividadId: string): PlanEstado | "sin_plan" {
+    if (isClosed) return "aprobada"; // Closed trimesters: treat all as historical, no plan warnings
     const plan = planMap.get(actividadId);
     if (!plan) return "sin_plan";
     return plan.estado;
   }
 
   function isRegistroEnabled(actividadId: string): boolean {
+    if (isClosed) return false; // Closed = read-only, no registration
     return getPlanEstado(actividadId) === "aprobada";
   }
 
@@ -180,6 +182,11 @@ export default function MisActividades() {
 
   function getResultadoAvance(resCodigo: string): number {
     const acts = actsByResultado.get(resCodigo) || [];
+    if (isClosed) {
+      // For closed trimesters, use all activities with any data
+      if (acts.length === 0) return -1;
+      return Math.round(acts.reduce((s, a) => s + a.avance_operativo_pct, 0) / acts.length);
+    }
     const withPlan = acts.filter(a => getPlanEstado(a.id) === "aprobada");
     if (withPlan.length === 0) return -1;
     return Math.round(withPlan.reduce((s, a) => s + a.avance_operativo_pct, 0) / withPlan.length);
@@ -258,8 +265,8 @@ export default function MisActividades() {
       {/* Historical mode banner */}
       <HistoricalBanner />
 
-      {/* No plan info */}
-      {!loading && plans.length === 0 && (
+      {/* No plan info — only for active trimesters */}
+      {!loading && !isClosed && plans.length === 0 && (
         <Card className="mb-4 border-muted bg-muted/20">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
@@ -272,8 +279,8 @@ export default function MisActividades() {
         </Card>
       )}
 
-      {/* Approved plan compact bar */}
-      {isApproved && (
+      {/* Approved plan compact bar — only for active trimesters */}
+      {!isClosed && isApproved && (
         <Card className="mb-4 border-success/40 bg-success/5">
           <CardContent className="pt-3 pb-3">
             <div className="flex items-center gap-2">
@@ -297,7 +304,7 @@ export default function MisActividades() {
       </div>
 
       {/* Plan trimestral banner */}
-      {hasPendingProposal && (
+      {!isClosed && hasPendingProposal && (
         <Card className="mb-4 border-primary/40 bg-primary/5">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-start gap-3">
@@ -368,7 +375,7 @@ export default function MisActividades() {
         </Card>
       )}
 
-      {hasDispute && (
+      {!isClosed && hasDispute && (
         <Card className="mb-4 border-warning/40 bg-warning/5">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
