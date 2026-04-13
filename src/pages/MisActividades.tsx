@@ -83,6 +83,7 @@ export default function MisActividades() {
 
   // Active/selected trimester
   const { seleccionado, activo: trimestreActivo, isHistorical } = useTrimestreSeleccionado();
+  const isClosed = seleccionado?.estado === "cerrado";
 
   // Current period - use selected trimester
   const now = new Date();
