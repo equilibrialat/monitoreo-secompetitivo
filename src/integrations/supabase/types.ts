@@ -1151,6 +1151,66 @@ export type Database = {
           },
         ]
       }
+      planificacion_actividades: {
+        Row: {
+          actividad_codigo: string
+          actividad_descripcion: string | null
+          created_at: string | null
+          entidad_codigo: string
+          entidad_nombre: string | null
+          id: string
+          mecanismo: string | null
+          medio_verificacion: string | null
+          meses_programados: Json | null
+          meta_total: number | null
+          presupuesto_seco_usd: number | null
+          producto: string | null
+          proyecto_codigo: string | null
+          proyecto_nombre: string | null
+          responsable: string | null
+          resultado_intermedio: string | null
+          unidad_medida: string | null
+        }
+        Insert: {
+          actividad_codigo: string
+          actividad_descripcion?: string | null
+          created_at?: string | null
+          entidad_codigo: string
+          entidad_nombre?: string | null
+          id?: string
+          mecanismo?: string | null
+          medio_verificacion?: string | null
+          meses_programados?: Json | null
+          meta_total?: number | null
+          presupuesto_seco_usd?: number | null
+          producto?: string | null
+          proyecto_codigo?: string | null
+          proyecto_nombre?: string | null
+          responsable?: string | null
+          resultado_intermedio?: string | null
+          unidad_medida?: string | null
+        }
+        Update: {
+          actividad_codigo?: string
+          actividad_descripcion?: string | null
+          created_at?: string | null
+          entidad_codigo?: string
+          entidad_nombre?: string | null
+          id?: string
+          mecanismo?: string | null
+          medio_verificacion?: string | null
+          meses_programados?: Json | null
+          meta_total?: number | null
+          presupuesto_seco_usd?: number | null
+          producto?: string | null
+          proyecto_codigo?: string | null
+          proyecto_nombre?: string | null
+          responsable?: string | null
+          resultado_intermedio?: string | null
+          unidad_medida?: string | null
+        }
+        Relationships: []
+      }
       productos: {
         Row: {
           codigo: string
