@@ -2,10 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   ChevronRight, ChevronDown, FileText, Calendar, DollarSign, Target,
-  Clock, CheckCircle2, Circle, XCircle, AlertTriangle, Lock, Zap
+  Clock, CheckCircle2, Circle, XCircle, AlertTriangle, Lock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -65,13 +64,29 @@ function calcEstado(
 
   if (allPast && pastWithoutReport.length === 0) return "cerrada";
   if (pastWithoutReport.length > 0) return "con_rezago";
-  // All past/current reported, has future months
   if (meses.some((m) => m > currentYM)) return "en_progreso";
   return "al_dia";
 }
 
-function countExecuted(reportedMonths: Set<string>): number {
-  return reportedMonths.size;
+/** Determine the current-month activity badge */
+function getCurrentMonthStatus(
+  meses: string[],
+  currentYM: string,
+  reported: Set<string>
+): { label: string; variant: "current" | "in_course" | "rezago" | "none" } {
+  const isDeliveryMonth = meses.includes(currentYM);
+  const hasReport = reported.has(currentYM);
+  const firstMonth = meses[0];
+  const lastMonth = meses[meses.length - 1];
+  const isInRange = currentYM >= firstMonth && currentYM <= lastMonth;
+  const allPast = meses.every((m) => m < currentYM);
+  const pastMissing = meses.filter((m) => m < currentYM && !reported.has(m));
+
+  if (isDeliveryMonth && !hasReport) return { label: "● Entregable este mes", variant: "current" };
+  if (isDeliveryMonth && hasReport) return { label: "✓ Reportado este mes", variant: "none" };
+  if (allPast && pastMissing.length > 0) return { label: "✗ Con rezago", variant: "rezago" };
+  if (isInRange && !isDeliveryMonth) return { label: "En curso", variant: "in_course" };
+  return { label: "", variant: "none" };
 }
 
 const ESTADO_CONFIG: Record<ActividadEstado, { color: string; bgColor: string; label: string; icon: typeof Circle }> = {
@@ -88,6 +103,7 @@ export default function MiPlanificacion() {
   const { entidadId, entidades } = useRole();
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
+  const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedActividad, setSelectedActividad] = useState<PlanificacionActividad | null>(null);
@@ -96,7 +112,7 @@ export default function MiPlanificacion() {
   const entidadCodigo = entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null;
   const currentYM = getCurrentYearMonth();
 
-  useEffect(() => {
+  function loadData() {
     if (!entidadCodigo) { setActividades([]); setLoading(false); return; }
     setLoading(true);
 
@@ -108,11 +124,12 @@ export default function MiPlanificacion() {
         .order("actividad_codigo"),
       (supabase as any)
         .from("registros_mensuales")
-        .select("actividad_id, anio, mes, actividades!inner(codigo)")
+        .select("actividad_id, anio, mes, avance_valor, actividades!inner(codigo)")
         .eq("entidad_id", entidadId),
     ]).then(([planRes, regRes]: any[]) => {
       setActividades(planRes.data || []);
       const byCode = new Map<string, Set<string>>();
+      const avanceMap = new Map<string, number>();
       if (regRes.data) {
         for (const r of regRes.data) {
           const code = r.actividades?.codigo;
@@ -120,12 +137,18 @@ export default function MiPlanificacion() {
           const ym = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
           if (!byCode.has(code)) byCode.set(code, new Set());
           byCode.get(code)!.add(ym);
+          // Accumulate avance_valor
+          const prev = avanceMap.get(code) || 0;
+          avanceMap.set(code, prev + (r.avance_valor || 0));
         }
       }
       setReportsByActivity(byCode);
+      setAvanceByActivity(avanceMap);
       setLoading(false);
     });
-  }, [entidadCodigo, entidadId]);
+  }
+
+  useEffect(() => { loadData(); }, [entidadCodigo, entidadId]);
 
   /* ─── Build 5-level hierarchy ─── */
   const hierarchy = useMemo(() => {
@@ -134,7 +157,6 @@ export default function MiPlanificacion() {
     const resultadoImpacto = actividades[0]?.resultado_impacto || "";
     const resultadoFinal = actividades[0]?.resultado_final || "";
 
-    // Group: RI → Producto → Activities
     const riMap = new Map<string, { codigo: string; desc: string; productos: Map<string, { codigo: string; desc: string; acts: PlanificacionActividad[] }> }>();
 
     for (const a of actividades) {
@@ -153,7 +175,6 @@ export default function MiPlanificacion() {
     return { resultadoImpacto, resultadoFinal, ris: Array.from(riMap.values()) };
   }, [actividades]);
 
-  // Summary stats per RI
   function getRiStats(acts: PlanificacionActividad[]) {
     const counts: Record<ActividadEstado, number> = { al_dia: 0, en_progreso: 0, con_rezago: 0, por_iniciar: 0, cerrada: 0 };
     let presupuesto = 0;
@@ -213,23 +234,8 @@ export default function MiPlanificacion() {
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Level 1: Resultado de Impacto */}
-          <CollapsibleSection
-            level={1}
-            icon="📌"
-            label="Resultado de Impacto"
-            description={hierarchy.resultadoImpacto}
-            defaultOpen
-          >
-            {/* Level 2: Resultado Final */}
-            <CollapsibleSection
-              level={2}
-              icon="🎯"
-              label="Resultado Final"
-              description={hierarchy.resultadoFinal}
-              defaultOpen
-            >
-              {/* Level 3: Resultados Intermedios */}
+          <CollapsibleSection level={1} icon="📌" label="Resultado de Impacto" description={hierarchy.resultadoImpacto} defaultOpen>
+            <CollapsibleSection level={2} icon="🎯" label="Resultado Final" description={hierarchy.resultadoFinal} defaultOpen>
               {hierarchy.ris.map((ri) => {
                 const allRiActs = Array.from(ri.productos.values()).flatMap((p) => p.acts);
                 const riStats = getRiStats(allRiActs);
@@ -257,7 +263,6 @@ export default function MiPlanificacion() {
                       </div>
                     }
                   >
-                    {/* Level 4: Productos */}
                     {Array.from(ri.productos.values()).map((prod) => (
                       <CollapsibleSection
                         key={prod.codigo}
@@ -266,13 +271,11 @@ export default function MiPlanificacion() {
                         label={`${prod.codigo}. ${prod.desc.length > 120 ? prod.desc.slice(0, 120) + "…" : prod.desc}`}
                         defaultOpen
                       >
-                        {/* Level 5: Actividades */}
                         {prod.acts.map((act) => {
                           const reported = reportsByActivity.get(act.actividad_codigo) || new Set();
                           const estado = calcEstado(act.meses_programados, currentYM, reported);
-                          const ejecutado = countExecuted(reported);
+                          const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
                           const pctProgress = act.meta_total > 0 ? Math.min(100, (ejecutado / act.meta_total) * 100) : 0;
-                          const pendientes = (act.meses_programados || []).filter((m) => m <= currentYM && !reported.has(m)).length;
                           const canReport = act.meses_programados.includes(currentYM) && !reported.has(currentYM);
 
                           return (
@@ -282,7 +285,6 @@ export default function MiPlanificacion() {
                               estado={estado}
                               ejecutado={ejecutado}
                               pctProgress={pctProgress}
-                              pendientes={pendientes}
                               reported={reported}
                               currentYM={currentYM}
                               canReport={canReport}
@@ -306,16 +308,9 @@ export default function MiPlanificacion() {
           onOpenChange={setDialogOpen}
           actividad={selectedActividad}
           entidadId={entidadId!}
-          ejecutadoHastaHoy={countExecuted(reportsByActivity.get(selectedActividad.actividad_codigo) || new Set())}
+          ejecutadoHastaHoy={avanceByActivity.get(selectedActividad.actividad_codigo) || 0}
           onSaved={() => {
-            setReportsByActivity((prev) => {
-              const next = new Map(prev);
-              const code = selectedActividad.actividad_codigo;
-              const existing = next.get(code) || new Set();
-              existing.add(currentYM);
-              next.set(code, existing);
-              return next;
-            });
+            loadData();
             setDialogOpen(false);
           }}
         />
@@ -370,16 +365,116 @@ function CollapsibleSection({
   );
 }
 
+/* ─── Timeline visualization ─── */
+
+function ActivityTimeline({
+  meses,
+  reported,
+  currentYM,
+  ejecutado,
+  metaTotal,
+  estado,
+}: {
+  meses: string[];
+  reported: Set<string>;
+  currentYM: string;
+  ejecutado: number;
+  metaTotal: number;
+  estado: ActividadEstado;
+}) {
+  if (!meses.length) return null;
+
+  const sorted = [...meses].sort();
+  const pct = metaTotal > 0 ? Math.min(100, (ejecutado / metaTotal) * 100) : 0;
+  const barColor =
+    estado === "con_rezago" ? "bg-red-500" :
+    estado === "al_dia" || estado === "cerrada" ? "bg-green-500" :
+    "bg-yellow-500";
+
+  return (
+    <div className="space-y-1.5">
+      {/* Timeline bar with markers */}
+      <div className="relative">
+        {/* Labels row */}
+        <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+          {sorted.map((m, i) => (
+            <span
+              key={m}
+              className="text-center"
+              style={{
+                position: sorted.length > 2 ? "absolute" : "relative",
+                left: sorted.length > 2 ? `${(i / (sorted.length - 1)) * 100}%` : undefined,
+                transform: sorted.length > 2 ? "translateX(-50%)" : undefined,
+              }}
+            >
+              {formatYM(m)}
+            </span>
+          ))}
+        </div>
+
+        {/* Track */}
+        <div className="relative mt-5 h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all", barColor)}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+
+        {/* Markers on track */}
+        <div className="relative h-5 mt-0.5">
+          {sorted.map((m, i) => {
+            const leftPct = sorted.length === 1 ? 50 : (i / (sorted.length - 1)) * 100;
+            const isPast = m < currentYM;
+            const isCurrent = m === currentYM;
+            const hasReport = reported.has(m);
+
+            let markerContent: string;
+            let markerClass: string;
+
+            if (isPast && hasReport) {
+              markerContent = "✓";
+              markerClass = "text-green-600 font-bold";
+            } else if (isPast && !hasReport) {
+              markerContent = "✗";
+              markerClass = "text-red-600 font-bold";
+            } else if (isCurrent) {
+              markerContent = "●";
+              markerClass = "text-yellow-500 animate-pulse font-bold";
+            } else {
+              markerContent = "○";
+              markerClass = "text-muted-foreground";
+            }
+
+            return (
+              <span
+                key={m}
+                className={cn("absolute text-xs -translate-x-1/2 text-center", markerClass)}
+                style={{ left: `${leftPct}%` }}
+              >
+                {markerContent}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Executed summary */}
+      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{ejecutado} de {metaTotal}</span>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Activity card (level 5) ─── */
 
 function ActividadCard({
-  actividad: a, estado, ejecutado, pctProgress, pendientes, reported, currentYM, canReport, onRegistrar,
+  actividad: a, estado, ejecutado, pctProgress, reported, currentYM, canReport, onRegistrar,
 }: {
   actividad: PlanificacionActividad;
   estado: ActividadEstado;
   ejecutado: number;
   pctProgress: number;
-  pendientes: number;
   reported: Set<string>;
   currentYM: string;
   canReport: boolean;
@@ -387,6 +482,7 @@ function ActividadCard({
 }) {
   const cfg = ESTADO_CONFIG[estado];
   const Icon = cfg.icon;
+  const monthStatus = getCurrentMonthStatus(a.meses_programados, currentYM, reported);
 
   return (
     <div className="ml-6 border rounded-lg p-4 bg-card hover:shadow-sm transition-shadow space-y-3">
@@ -400,8 +496,23 @@ function ActividadCard({
             <Badge className={cn("text-[10px] gap-1", cfg.bgColor, cfg.color, "border-0")}>
               <Icon className="h-3 w-3" />
               {cfg.label}
-              {pendientes > 0 && estado === "con_rezago" && ` — ${pendientes} pendiente${pendientes > 1 ? "s" : ""}`}
             </Badge>
+            {/* Current month indicator */}
+            {monthStatus.label && monthStatus.variant === "current" && (
+              <Badge className="text-[10px] gap-1 bg-yellow-100 text-yellow-700 border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400 animate-pulse border-0">
+                {monthStatus.label}
+              </Badge>
+            )}
+            {monthStatus.label && monthStatus.variant === "in_course" && (
+              <Badge variant="secondary" className="text-[10px] gap-1 border-0">
+                {monthStatus.label}
+              </Badge>
+            )}
+            {monthStatus.label && monthStatus.variant === "rezago" && (
+              <Badge className="text-[10px] gap-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">
+                {monthStatus.label}
+              </Badge>
+            )}
           </div>
           <p className="text-sm text-foreground mt-1.5">{a.actividad_descripcion}</p>
         </div>
@@ -419,37 +530,15 @@ function ActividadCard({
         <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> USD {a.presupuesto_seco_usd?.toLocaleString()}</span>
       </div>
 
-      {/* Month badges */}
-      <div className="flex flex-wrap gap-1.5">
-        <span className="text-[10px] text-muted-foreground mr-1 self-center">Programación:</span>
-        {(a.meses_programados || []).map((m) => {
-          const isCurrent = m === currentYM;
-          const isPast = m < currentYM;
-          const isFuture = m > currentYM;
-          const hasReport = reported.has(m);
-
-          let badgeClass = "";
-          let statusIcon = "";
-          if (isPast && hasReport) { badgeClass = "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400"; statusIcon = "✓"; }
-          else if (isPast && !hasReport) { badgeClass = "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400"; statusIcon = "✗"; }
-          else if (isCurrent) { badgeClass = "bg-yellow-100 text-yellow-700 border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400 animate-pulse"; statusIcon = "●"; }
-          else { badgeClass = "bg-muted text-muted-foreground border-muted-foreground/20"; statusIcon = "○"; }
-
-          return (
-            <Badge key={m} variant="outline" className={cn("text-[10px] gap-1 font-normal", badgeClass)}>
-              {statusIcon} {formatYM(m)}
-            </Badge>
-          );
-        })}
-      </div>
-
-      {/* Progress bar */}
-      <div className="space-y-1">
-        <div className="flex justify-between text-[11px]">
-          <span className="text-muted-foreground">Ejecutado: {ejecutado} de {a.meta_total} ({Math.round(pctProgress)}%)</span>
-        </div>
-        <Progress value={pctProgress} className="h-2" />
-      </div>
+      {/* Timeline */}
+      <ActivityTimeline
+        meses={a.meses_programados}
+        reported={reported}
+        currentYM={currentYM}
+        ejecutado={ejecutado}
+        metaTotal={a.meta_total}
+        estado={estado}
+      />
     </div>
   );
 }
