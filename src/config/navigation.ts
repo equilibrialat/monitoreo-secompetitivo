@@ -40,6 +40,12 @@ const ENTIDAD_NAV: NavSection[] = [
     ],
   },
   {
+    label: "PLANIFICACIÓN",
+    items: [
+      { label: "Mi Planificación", path: "/mi-planificacion", icon: ClipboardList },
+    ],
+  },
+  {
     label: "MENSUAL",
     items: [
       { label: "Registrar Avance", path: "/actividades", icon: FileText },
