@@ -1165,10 +1165,16 @@ export type Database = {
           meta_total: number | null
           presupuesto_seco_usd: number | null
           producto: string | null
+          producto_codigo: string | null
+          producto_descripcion: string | null
           proyecto_codigo: string | null
           proyecto_nombre: string | null
           responsable: string | null
+          resultado_final: string | null
+          resultado_impacto: string | null
           resultado_intermedio: string | null
+          resultado_intermedio_codigo: string | null
+          resultado_intermedio_descripcion: string | null
           unidad_medida: string | null
         }
         Insert: {
@@ -1184,10 +1190,16 @@ export type Database = {
           meta_total?: number | null
           presupuesto_seco_usd?: number | null
           producto?: string | null
+          producto_codigo?: string | null
+          producto_descripcion?: string | null
           proyecto_codigo?: string | null
           proyecto_nombre?: string | null
           responsable?: string | null
+          resultado_final?: string | null
+          resultado_impacto?: string | null
           resultado_intermedio?: string | null
+          resultado_intermedio_codigo?: string | null
+          resultado_intermedio_descripcion?: string | null
           unidad_medida?: string | null
         }
         Update: {
@@ -1203,10 +1215,16 @@ export type Database = {
           meta_total?: number | null
           presupuesto_seco_usd?: number | null
           producto?: string | null
+          producto_codigo?: string | null
+          producto_descripcion?: string | null
           proyecto_codigo?: string | null
           proyecto_nombre?: string | null
           responsable?: string | null
+          resultado_final?: string | null
+          resultado_impacto?: string | null
           resultado_intermedio?: string | null
+          resultado_intermedio_codigo?: string | null
+          resultado_intermedio_descripcion?: string | null
           unidad_medida?: string | null
         }
         Relationships: []
