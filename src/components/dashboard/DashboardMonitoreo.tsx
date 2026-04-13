@@ -8,6 +8,7 @@ import { useDashboardData, type DashboardEntidad } from "@/hooks/useDashboardDat
 import { Header, MecanismoBadge, Semaforo, fmt, DashboardSkeleton, ClickableKpiCard } from "./DashboardEntidad";
 import { SeccionRevision } from "./SeccionRevision";
 import { ResumenRegional } from "./ResumenRegional";
+import EstadoReportesCoordinador from "@/components/planificacion/EstadoReportesCoordinador";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
@@ -203,6 +204,9 @@ export default function DashboardMonitoreo({
 
       {/* Regional summary (only for coordinador_regional) */}
       {title.includes("Regional") && <ResumenRegional />}
+
+      {/* Estado de reportes — planificación (coordinador_regional) */}
+      {title.includes("Regional") && <EstadoReportesCoordinador />}
 
       {/* KPIs */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
