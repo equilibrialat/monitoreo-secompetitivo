@@ -497,7 +497,7 @@ export default function MisActividades() {
                         const planEstado = getPlanEstado(act.id);
                         const plan = planMap.get(act.id);
                         const canRegister = isRegistroEnabled(act.id);
-                        const actSemaforo = canRegister
+                        const actSemaforo = (isClosed || canRegister)
                           ? getSemaforoAvance(act.avance_operativo_pct)
                           : { color: "bg-muted", text: "text-muted-foreground", label: "Bloqueado" };
                         const reg = registroMap.get(act.id);
@@ -513,12 +513,18 @@ export default function MisActividades() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-xs font-mono text-muted-foreground">{act.codigo}</span>
-                                  <PlanStatusBadge estado={planEstado} />
+                                  {isClosed ? (
+                                    <Badge className="bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5">Cerrado</Badge>
+                                  ) : (
+                                    <PlanStatusBadge estado={planEstado} />
+                                  )}
                                 </div>
                                 <span className="text-sm text-card-foreground">{act.nombre}</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                {canRegister && plan ? (
+                                {isClosed ? (
+                                  <span className={cn("text-sm font-bold", actSemaforo.text)}>{act.avance_operativo_pct}%</span>
+                                ) : canRegister && plan ? (
                                   <div className="flex items-center gap-1.5">
                                     {[0, 1, 2].map(mi => {
                                       const meta = mi === 0 ? plan.meta_mes_1 : mi === 1 ? plan.meta_mes_2 : plan.meta_mes_3;
