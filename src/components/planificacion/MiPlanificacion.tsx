@@ -2,19 +2,29 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, FileText, Calendar, DollarSign, Target, Clock, CheckCircle2, Circle, Lock } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  ChevronRight, ChevronDown, FileText, Calendar, DollarSign, Target,
+  Clock, CheckCircle2, Circle, XCircle, AlertTriangle, Lock, Zap
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { cn } from "@/lib/utils";
 import { RegistroAvancePlanificacionDialog } from "./RegistroAvancePlanificacionDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
+/* ─── Types ─── */
+
 interface PlanificacionActividad {
   id: string;
   entidad_codigo: string;
   proyecto_nombre: string;
-  resultado_intermedio: string;
-  producto: string;
+  resultado_impacto: string;
+  resultado_final: string;
+  resultado_intermedio_codigo: string;
+  resultado_intermedio_descripcion: string;
+  producto_codigo: string;
+  producto_descripcion: string;
   actividad_codigo: string;
   actividad_descripcion: string;
   unidad_medida: string;
@@ -25,75 +35,59 @@ interface PlanificacionActividad {
   responsable: string;
 }
 
-type ActividadEstado = "pendiente" | "entregado" | "por_iniciar" | "cerrada";
+type ActividadEstado = "al_dia" | "en_progreso" | "con_rezago" | "por_iniciar" | "cerrada";
 
-interface TreeNode {
-  label: string;
-  children?: TreeNode[];
-  actividad?: PlanificacionActividad;
-  estado?: ActividadEstado;
-}
+/* ─── Helpers ─── */
 
 function getCurrentYearMonth(): string {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function calcEstado(meses: string[], currentYM: string, hasReport: boolean): ActividadEstado {
-  const isCurrentMonth = meses.includes(currentYM);
-  const allPast = meses.every((m) => m < currentYM);
+const MONTH_NAMES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+function formatYM(ym: string): string {
+  const [y, m] = ym.split("-");
+  return `${MONTH_NAMES_SHORT[parseInt(m) - 1]}-${y.slice(2)}`;
+}
+
+function calcEstado(
+  meses: string[],
+  currentYM: string,
+  reportedMonths: Set<string>
+): ActividadEstado {
   const allFuture = meses.every((m) => m > currentYM);
-
-  if (isCurrentMonth && hasReport) return "entregado";
-  if (isCurrentMonth && !hasReport) return "pendiente";
   if (allFuture) return "por_iniciar";
-  if (allPast) return "cerrada";
-  // Mixed: some past, some future, none current
-  return "por_iniciar";
+
+  const pastOrCurrent = meses.filter((m) => m <= currentYM);
+  const pastWithoutReport = pastOrCurrent.filter((m) => !reportedMonths.has(m));
+  const allPast = meses.every((m) => m < currentYM);
+
+  if (allPast && pastWithoutReport.length === 0) return "cerrada";
+  if (pastWithoutReport.length > 0) return "con_rezago";
+  // All past/current reported, has future months
+  if (meses.some((m) => m > currentYM)) return "en_progreso";
+  return "al_dia";
 }
 
-const ESTADO_CONFIG: Record<ActividadEstado, { icon: typeof Circle; color: string; label: string }> = {
-  pendiente: { icon: Clock, color: "text-yellow-500", label: "Pendiente este mes" },
-  entregado: { icon: CheckCircle2, color: "text-green-500", label: "Entregado" },
-  por_iniciar: { icon: Circle, color: "text-blue-500", label: "Por iniciar" },
-  cerrada: { icon: Lock, color: "text-muted-foreground", label: "Cerrada" },
+function countExecuted(reportedMonths: Set<string>): number {
+  return reportedMonths.size;
+}
+
+const ESTADO_CONFIG: Record<ActividadEstado, { color: string; bgColor: string; label: string; icon: typeof Circle }> = {
+  al_dia:      { color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30", label: "Al día", icon: CheckCircle2 },
+  en_progreso: { color: "text-yellow-600", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", label: "En progreso", icon: Clock },
+  con_rezago:  { color: "text-red-600", bgColor: "bg-red-100 dark:bg-red-900/30", label: "Con rezago", icon: AlertTriangle },
+  por_iniciar: { color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30", label: "Por iniciar", icon: Circle },
+  cerrada:     { color: "text-muted-foreground", bgColor: "bg-muted", label: "Cerrada", icon: Lock },
 };
 
-function buildTree(actividades: PlanificacionActividad[], reportedCodes: Set<string>, currentYM: string): TreeNode[] {
-  const riMap = new Map<string, Map<string, PlanificacionActividad[]>>();
-
-  for (const a of actividades) {
-    const riKey = a.resultado_intermedio;
-    const prodKey = a.producto;
-    if (!riMap.has(riKey)) riMap.set(riKey, new Map());
-    const prodMap = riMap.get(riKey)!;
-    if (!prodMap.has(prodKey)) prodMap.set(prodKey, []);
-    prodMap.get(prodKey)!.push(a);
-  }
-
-  const tree: TreeNode[] = [];
-  for (const [ri, prodMap] of riMap) {
-    const riShort = ri.length > 80 ? ri.substring(0, ri.indexOf(":") + 1) || ri.substring(0, 60) : ri;
-    const prodNodes: TreeNode[] = [];
-    for (const [prod, acts] of prodMap) {
-      const actNodes: TreeNode[] = acts.map((a) => ({
-        label: a.actividad_codigo,
-        actividad: a,
-        estado: calcEstado(a.meses_programados, currentYM, reportedCodes.has(a.actividad_codigo)),
-      }));
-      prodNodes.push({ label: prod, children: actNodes });
-    }
-    tree.push({ label: riShort, children: prodNodes });
-  }
-  return tree;
-}
+/* ─── Main component ─── */
 
 export default function MiPlanificacion() {
   const { entidadId, entidades } = useRole();
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
-  const [reportedCodes, setReportedCodes] = useState<Set<string>>(new Set());
+  const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedActividad, setSelectedActividad] = useState<PlanificacionActividad | null>(null);
@@ -103,11 +97,7 @@ export default function MiPlanificacion() {
   const currentYM = getCurrentYearMonth();
 
   useEffect(() => {
-    if (!entidadCodigo) {
-      setActividades([]);
-      setLoading(false);
-      return;
-    }
+    if (!entidadCodigo) { setActividades([]); setLoading(false); return; }
     setLoading(true);
 
     Promise.all([
@@ -119,61 +109,81 @@ export default function MiPlanificacion() {
       (supabase as any)
         .from("registros_mensuales")
         .select("actividad_id, anio, mes, actividades!inner(codigo)")
-        .eq("entidades.id", entidadId),
+        .eq("entidad_id", entidadId),
     ]).then(([planRes, regRes]: any[]) => {
       setActividades(planRes.data || []);
-      // For now, reported codes from registros_mensuales for current month
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
-      const reported = new Set<string>();
+      const byCode = new Map<string, Set<string>>();
       if (regRes.data) {
         for (const r of regRes.data) {
-          if (r.anio === currentYear && r.mes === currentMonth && r.actividades?.codigo) {
-            reported.add(r.actividades.codigo);
-          }
+          const code = r.actividades?.codigo;
+          if (!code) continue;
+          const ym = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
+          if (!byCode.has(code)) byCode.set(code, new Set());
+          byCode.get(code)!.add(ym);
         }
       }
-      setReportedCodes(reported);
+      setReportsByActivity(byCode);
       setLoading(false);
     });
   }, [entidadCodigo, entidadId]);
 
-  const tree = useMemo(
-    () => buildTree(actividades, reportedCodes, currentYM),
-    [actividades, reportedCodes, currentYM]
-  );
+  /* ─── Build 5-level hierarchy ─── */
+  const hierarchy = useMemo(() => {
+    if (!actividades.length) return null;
 
-  // Summary stats
-  const stats = useMemo(() => {
-    const total = actividades.length;
-    let pendientes = 0, entregados = 0, porIniciar = 0, cerradas = 0;
+    const resultadoImpacto = actividades[0]?.resultado_impacto || "";
+    const resultadoFinal = actividades[0]?.resultado_final || "";
+
+    // Group: RI → Producto → Activities
+    const riMap = new Map<string, { codigo: string; desc: string; productos: Map<string, { codigo: string; desc: string; acts: PlanificacionActividad[] }> }>();
+
     for (const a of actividades) {
-      const e = calcEstado(a.meses_programados, currentYM, reportedCodes.has(a.actividad_codigo));
-      if (e === "pendiente") pendientes++;
-      else if (e === "entregado") entregados++;
-      else if (e === "por_iniciar") porIniciar++;
-      else cerradas++;
+      const riKey = a.resultado_intermedio_codigo;
+      if (!riMap.has(riKey)) {
+        riMap.set(riKey, { codigo: riKey, desc: a.resultado_intermedio_descripcion, productos: new Map() });
+      }
+      const ri = riMap.get(riKey)!;
+      const pKey = a.producto_codigo;
+      if (!ri.productos.has(pKey)) {
+        ri.productos.set(pKey, { codigo: pKey, desc: a.producto_descripcion, acts: [] });
+      }
+      ri.productos.get(pKey)!.acts.push(a);
     }
-    const presupuestoTotal = actividades.reduce((s, a) => s + (a.presupuesto_seco_usd || 0), 0);
-    return { total, pendientes, entregados, porIniciar, cerradas, presupuestoTotal };
-  }, [actividades, reportedCodes, currentYM]);
 
-  if (!entidadCodigo) return null; // Only for APPCACAO
+    return { resultadoImpacto, resultadoFinal, ris: Array.from(riMap.values()) };
+  }, [actividades]);
+
+  // Summary stats per RI
+  function getRiStats(acts: PlanificacionActividad[]) {
+    const counts: Record<ActividadEstado, number> = { al_dia: 0, en_progreso: 0, con_rezago: 0, por_iniciar: 0, cerrada: 0 };
+    let presupuesto = 0;
+    for (const a of acts) {
+      const reported = reportsByActivity.get(a.actividad_codigo) || new Set();
+      const estado = calcEstado(a.meses_programados, currentYM, reported);
+      counts[estado]++;
+      presupuesto += a.presupuesto_seco_usd || 0;
+    }
+    const hasRezago = counts.con_rezago > 0;
+    const allDone = counts.al_dia + counts.cerrada === acts.length;
+    return { counts, presupuesto, total: acts.length, status: hasRezago ? "con_rezago" : allDone ? "al_dia" : "en_progreso" };
+  }
+
+  if (!entidadCodigo) return null;
 
   if (loading) {
     return (
-      <Card>
+      <Card className="mb-6">
         <CardHeader><CardTitle>Mi Planificación</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
         </CardContent>
       </Card>
     );
   }
 
-  if (actividades.length === 0) {
+  if (!hierarchy) {
     return (
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
@@ -183,10 +193,7 @@ export default function MiPlanificacion() {
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50" />
-            <p className="text-sm">
-              Tu planificación se está configurando. En las próximas horas verás aquí el árbol
-              completo de tu proyecto con las actividades comprometidas y su estado de avance.
-            </p>
+            <p className="text-sm">Tu planificación se está configurando. Pronto verás aquí el árbol completo de tu proyecto.</p>
           </div>
         </CardContent>
       </Card>
@@ -205,21 +212,91 @@ export default function MiPlanificacion() {
             {actividades[0]?.proyecto_nombre || "Proyecto"}
           </p>
         </CardHeader>
-        <CardContent>
-          {/* Summary KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <MiniKpi label="Total actividades" value={stats.total} />
-            <MiniKpi label="Pendientes este mes" value={stats.pendientes} color="text-yellow-600" />
-            <MiniKpi label="Entregadas" value={stats.entregados} color="text-green-600" />
-            <MiniKpi label="Presupuesto SECO" value={`USD ${stats.presupuestoTotal.toLocaleString()}`} icon={<DollarSign className="h-3.5 w-3.5" />} />
-          </div>
+        <CardContent className="space-y-3">
+          {/* Level 1: Resultado de Impacto */}
+          <CollapsibleSection
+            level={1}
+            icon="📌"
+            label="Resultado de Impacto"
+            description={hierarchy.resultadoImpacto}
+            defaultOpen
+          >
+            {/* Level 2: Resultado Final */}
+            <CollapsibleSection
+              level={2}
+              icon="🎯"
+              label="Resultado Final"
+              description={hierarchy.resultadoFinal}
+              defaultOpen
+            >
+              {/* Level 3: Resultados Intermedios */}
+              {hierarchy.ris.map((ri) => {
+                const allRiActs = Array.from(ri.productos.values()).flatMap((p) => p.acts);
+                const riStats = getRiStats(allRiActs);
+                const statusDot = riStats.status === "con_rezago" ? "🔴" : riStats.status === "al_dia" ? "🟢" : "🟡";
 
-          {/* Tree */}
-          <div className="space-y-2">
-            {tree.map((ri, i) => (
-              <ResultadoNode key={i} node={ri} onRegistrar={(a) => { setSelectedActividad(a); setDialogOpen(true); }} />
-            ))}
-          </div>
+                return (
+                  <CollapsibleSection
+                    key={ri.codigo}
+                    level={3}
+                    icon="📊"
+                    label={`${ri.codigo} — ${ri.desc.length > 100 ? ri.desc.slice(0, 100) + "…" : ri.desc}`}
+                    defaultOpen
+                    badge={
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        {riStats.total} activ. | ${riStats.presupuesto.toLocaleString()} | {statusDot}
+                      </span>
+                    }
+                    summary={
+                      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground px-2 pb-2">
+                        {riStats.counts.cerrada > 0 && <span>⚫ {riStats.counts.cerrada} cerradas</span>}
+                        {riStats.counts.al_dia > 0 && <span>🟢 {riStats.counts.al_dia} al día</span>}
+                        {riStats.counts.en_progreso > 0 && <span>🟡 {riStats.counts.en_progreso} en progreso</span>}
+                        {riStats.counts.con_rezago > 0 && <span>🔴 {riStats.counts.con_rezago} con rezago</span>}
+                        {riStats.counts.por_iniciar > 0 && <span>🔵 {riStats.counts.por_iniciar} por iniciar</span>}
+                      </div>
+                    }
+                  >
+                    {/* Level 4: Productos */}
+                    {Array.from(ri.productos.values()).map((prod) => (
+                      <CollapsibleSection
+                        key={prod.codigo}
+                        level={4}
+                        icon="📦"
+                        label={`${prod.codigo}. ${prod.desc.length > 120 ? prod.desc.slice(0, 120) + "…" : prod.desc}`}
+                        defaultOpen
+                      >
+                        {/* Level 5: Actividades */}
+                        {prod.acts.map((act) => {
+                          const reported = reportsByActivity.get(act.actividad_codigo) || new Set();
+                          const estado = calcEstado(act.meses_programados, currentYM, reported);
+                          const ejecutado = countExecuted(reported);
+                          const pctProgress = act.meta_total > 0 ? Math.min(100, (ejecutado / act.meta_total) * 100) : 0;
+                          const pendientes = (act.meses_programados || []).filter((m) => m <= currentYM && !reported.has(m)).length;
+                          const canReport = act.meses_programados.includes(currentYM) && !reported.has(currentYM);
+
+                          return (
+                            <ActividadCard
+                              key={act.id}
+                              actividad={act}
+                              estado={estado}
+                              ejecutado={ejecutado}
+                              pctProgress={pctProgress}
+                              pendientes={pendientes}
+                              reported={reported}
+                              currentYM={currentYM}
+                              canReport={canReport}
+                              onRegistrar={() => { setSelectedActividad(act); setDialogOpen(true); }}
+                            />
+                          );
+                        })}
+                      </CollapsibleSection>
+                    ))}
+                  </CollapsibleSection>
+                );
+              })}
+            </CollapsibleSection>
+          </CollapsibleSection>
         </CardContent>
       </Card>
 
@@ -229,8 +306,16 @@ export default function MiPlanificacion() {
           onOpenChange={setDialogOpen}
           actividad={selectedActividad}
           entidadId={entidadId!}
+          ejecutadoHastaHoy={countExecuted(reportsByActivity.get(selectedActividad.actividad_codigo) || new Set())}
           onSaved={() => {
-            setReportedCodes((prev) => new Set([...prev, selectedActividad.actividad_codigo]));
+            setReportsByActivity((prev) => {
+              const next = new Map(prev);
+              const code = selectedActividad.actividad_codigo;
+              const existing = next.get(code) || new Set();
+              existing.add(currentYM);
+              next.set(code, existing);
+              return next;
+            });
             setDialogOpen(false);
           }}
         />
@@ -239,115 +324,131 @@ export default function MiPlanificacion() {
   );
 }
 
-function MiniKpi({ label, value, color, icon }: { label: string; value: string | number; color?: string; icon?: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-card p-3">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={cn("text-lg font-bold", color || "text-foreground")}>
-        {icon && <span className="inline-flex mr-1">{icon}</span>}
-        {value}
-      </p>
-    </div>
-  );
-}
+/* ─── Collapsible section (levels 1-4) ─── */
 
-function ResultadoNode({ node, onRegistrar }: { node: TreeNode; onRegistrar: (a: PlanificacionActividad) => void }) {
-  const [open, setOpen] = useState(true);
-  // Extract short RI label (e.g. "RESULTADO INTERMEDIO 1")
-  const riLabel = node.label.includes(":") ? node.label.substring(0, node.label.indexOf(":")).trim() : node.label;
-  const riDesc = node.label.includes(":") ? node.label.substring(node.label.indexOf(":") + 1).trim() : "";
+function CollapsibleSection({
+  level, icon, label, description, children, defaultOpen = false, badge, summary,
+}: {
+  level: 1 | 2 | 3 | 4;
+  icon: string;
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  badge?: React.ReactNode;
+  summary?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  const indentClass = level === 1 ? "" : level === 2 ? "ml-3" : level === 3 ? "ml-4" : "ml-5";
+  const textSize = level <= 2 ? "text-sm font-semibold" : level === 3 ? "text-sm font-medium" : "text-xs font-medium";
+  const borderColor = level <= 2 ? "border-primary/30" : level === 3 ? "border-primary/20" : "border-muted-foreground/20";
 
   return (
-    <div className="border rounded-lg">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors">
-        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
-        <div className="min-w-0">
-          <span className="text-sm font-semibold text-foreground">{riLabel}</span>
-          {riDesc && <p className="text-xs text-muted-foreground truncate">{riDesc}</p>}
-        </div>
-        <Badge variant="outline" className="ml-auto text-[10px] shrink-0">{node.children?.length || 0} productos</Badge>
+    <div className={cn("border-l-2 rounded-sm", borderColor, indentClass, level === 1 && "border-l-0")}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors rounded"
+      >
+        <span className="text-sm shrink-0">{icon}</span>
+        {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+        <span className={cn(textSize, "text-foreground min-w-0")}>
+          {label}
+        </span>
+        {badge && <span className="ml-auto shrink-0">{badge}</span>}
       </button>
-      {open && node.children && (
-        <div className="px-4 pb-3 space-y-2">
-          {node.children.map((prod, i) => (
-            <ProductoNode key={i} node={prod} onRegistrar={onRegistrar} />
-          ))}
+      {open && (
+        <div className="pb-1">
+          {description && level <= 2 && (
+            <p className="text-xs text-muted-foreground px-3 pb-2 pl-9">{description}</p>
+          )}
+          {summary}
+          {children}
         </div>
       )}
     </div>
   );
 }
 
-function ProductoNode({ node, onRegistrar }: { node: TreeNode; onRegistrar: (a: PlanificacionActividad) => void }) {
-  const [open, setOpen] = useState(true);
-  return (
-    <div className="ml-4 border-l-2 border-primary/20 pl-3">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 w-full text-left py-2 hover:bg-muted/30 rounded px-2 transition-colors">
-        <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
-        <span className="text-sm font-medium text-foreground">{node.label}</span>
-      </button>
-      {open && node.children && (
-        <div className="space-y-1.5 mt-1">
-          {node.children.map((actNode, i) => (
-            <ActividadRow key={i} node={actNode} onRegistrar={onRegistrar} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+/* ─── Activity card (level 5) ─── */
 
-function ActividadRow({ node, onRegistrar }: { node: TreeNode; onRegistrar: (a: PlanificacionActividad) => void }) {
-  const a = node.actividad!;
-  const estado = node.estado!;
+function ActividadCard({
+  actividad: a, estado, ejecutado, pctProgress, pendientes, reported, currentYM, canReport, onRegistrar,
+}: {
+  actividad: PlanificacionActividad;
+  estado: ActividadEstado;
+  ejecutado: number;
+  pctProgress: number;
+  pendientes: number;
+  reported: Set<string>;
+  currentYM: string;
+  canReport: boolean;
+  onRegistrar: () => void;
+}) {
   const cfg = ESTADO_CONFIG[estado];
   const Icon = cfg.icon;
-  const currentYM = getCurrentYearMonth();
 
   return (
-    <div className="ml-6 border rounded-md p-3 bg-card hover:shadow-sm transition-shadow">
-      <div className="flex items-start gap-3">
-        <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", cfg.color)} />
-        <div className="flex-1 min-w-0">
+    <div className="ml-6 border rounded-lg p-4 bg-card hover:shadow-sm transition-shadow space-y-3">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-xs font-bold text-primary">{a.actividad_codigo}</span>
-            <Badge variant="outline" className={cn("text-[9px]", cfg.color)}>{cfg.label}</Badge>
+            <Badge variant="outline" className="font-mono text-xs font-bold text-primary border-primary/30 px-2">
+              {a.actividad_codigo}
+            </Badge>
+            <Badge className={cn("text-[10px] gap-1", cfg.bgColor, cfg.color, "border-0")}>
+              <Icon className="h-3 w-3" />
+              {cfg.label}
+              {pendientes > 0 && estado === "con_rezago" && ` — ${pendientes} pendiente${pendientes > 1 ? "s" : ""}`}
+            </Badge>
           </div>
-          <p className="text-sm text-foreground mt-1">{a.actividad_descripcion}</p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Meta: {a.meta_total} {a.unidad_medida}</span>
-            <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> USD {a.presupuesto_seco_usd?.toLocaleString()}</span>
-          </div>
-          {/* Month badges */}
-          <div className="flex flex-wrap gap-1 mt-2">
-            {(a.meses_programados || []).map((m) => {
-              const [y, mo] = m.split("-");
-              const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-              const label = `${monthNames[parseInt(mo) - 1]} ${y}`;
-              const isCurrent = m === currentYM;
-              const isPast = m < currentYM;
-              return (
-                <Badge
-                  key={m}
-                  variant={isCurrent ? "default" : "outline"}
-                  className={cn(
-                    "text-[9px]",
-                    isCurrent && "bg-primary text-primary-foreground",
-                    isPast && "opacity-50 line-through"
-                  )}
-                >
-                  {label}
-                </Badge>
-              );
-            })}
-          </div>
+          <p className="text-sm text-foreground mt-1.5">{a.actividad_descripcion}</p>
         </div>
-        {estado === "pendiente" && (
-          <Button size="sm" variant="default" className="shrink-0 text-xs" onClick={() => onRegistrar(a)}>
+        {canReport && (
+          <Button size="sm" variant="default" className="shrink-0 text-xs" onClick={onRegistrar}>
             <FileText className="h-3.5 w-3.5 mr-1" />
             Registrar avance
           </Button>
         )}
+      </div>
+
+      {/* Details row */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Meta: {a.meta_total} {a.unidad_medida}</span>
+        <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> USD {a.presupuesto_seco_usd?.toLocaleString()}</span>
+      </div>
+
+      {/* Month badges */}
+      <div className="flex flex-wrap gap-1.5">
+        <span className="text-[10px] text-muted-foreground mr-1 self-center">Programación:</span>
+        {(a.meses_programados || []).map((m) => {
+          const isCurrent = m === currentYM;
+          const isPast = m < currentYM;
+          const isFuture = m > currentYM;
+          const hasReport = reported.has(m);
+
+          let badgeClass = "";
+          let statusIcon = "";
+          if (isPast && hasReport) { badgeClass = "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400"; statusIcon = "✓"; }
+          else if (isPast && !hasReport) { badgeClass = "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400"; statusIcon = "✗"; }
+          else if (isCurrent) { badgeClass = "bg-yellow-100 text-yellow-700 border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400 animate-pulse"; statusIcon = "●"; }
+          else { badgeClass = "bg-muted text-muted-foreground border-muted-foreground/20"; statusIcon = "○"; }
+
+          return (
+            <Badge key={m} variant="outline" className={cn("text-[10px] gap-1 font-normal", badgeClass)}>
+              {statusIcon} {formatYM(m)}
+            </Badge>
+          );
+        })}
+      </div>
+
+      {/* Progress bar */}
+      <div className="space-y-1">
+        <div className="flex justify-between text-[11px]">
+          <span className="text-muted-foreground">Ejecutado: {ejecutado} de {a.meta_total} ({Math.round(pctProgress)}%)</span>
+        </div>
+        <Progress value={pctProgress} className="h-2" />
       </div>
     </div>
   );
