@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  ChevronDown, ChevronRight, Loader2, Send, Save, DollarSign, AlertTriangle, CheckCircle2, Clock
+  ChevronDown, ChevronRight, Loader2, Send, Save, DollarSign, AlertTriangle, CheckCircle2, Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -18,7 +20,6 @@ import { toast } from "sonner";
 import { Header } from "@/components/dashboard/DashboardEntidad";
 import { type PlanificacionActividad, formatYM } from "@/components/planificacion/MiPlanificacion";
 
-const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const MONTH_NAMES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 const TRIMESTRE_OPTIONS = [
@@ -41,19 +42,10 @@ function getCurrentYM() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-interface FinancialForm {
-  consultorias: string;
-  terceros: string;
-  bienes: string;
-  viaticos: string;
-  contrapartida: string;
-  justificacion: string;
-  avanceTecnico: string;
+function fmt(n: number | null | undefined): string {
+  if (n == null) return "0.00";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-
-const emptyFinForm = (): FinancialForm => ({
-  consultorias: "", terceros: "", bienes: "", viaticos: "", contrapartida: "", justificacion: "", avanceTecnico: "",
-});
 
 interface MonthlyReport {
   id: string;
@@ -63,6 +55,30 @@ interface MonthlyReport {
   avance_valor: number | null;
   descripcion_avance: string | null;
   estado_registro: string;
+}
+
+interface FinView {
+  actividad_codigo: string;
+  trimestre: string;
+  fuente: string;
+  ejecutado_seco_consultorias: number;
+  ejecutado_seco_terceros: number;
+  ejecutado_seco_bienes: number;
+  ejecutado_seco_otros: number;
+  ejecutado_total_usd: number;
+  numero_comprobantes: number;
+}
+
+interface Comprobante {
+  id: string;
+  fecha_documento: string;
+  clase_documento: string | null;
+  numero_documento: string | null;
+  proveedor_nombre: string | null;
+  concepto: string;
+  monto_usd: number;
+  tipo_gasto: string | null;
+  fuente: string;
 }
 
 export default function ReporteTrimestralPage() {
@@ -80,12 +96,15 @@ export default function ReporteTrimestralPage() {
 
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [monthlyReports, setMonthlyReports] = useState<MonthlyReport[]>([]);
+  const [finData, setFinData] = useState<FinView[]>([]);
+  const [detailComprobantes, setDetailComprobantes] = useState<Comprobante[]>([]);
   const [existingTrimReports, setExistingTrimReports] = useState<Map<string, any>>(new Map());
   const [loading, setLoading] = useState(true);
   const [expandedRI, setExpandedRI] = useState<Set<string>>(new Set());
   const [expandedAct, setExpandedAct] = useState<Set<string>>(new Set());
-  const [finForms, setFinForms] = useState<Record<string, FinancialForm>>({});
   const [riResumenes, setRiResumenes] = useState<Record<string, string>>({});
+  const [techOverrides, setTechOverrides] = useState<Record<string, string>>({});
+  const [justificaciones, setJustificaciones] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(() => {
@@ -99,59 +118,44 @@ export default function ReporteTrimestralPage() {
       (supabase as any).from("planificacion_actividades").select("*").eq("entidad_codigo", entidadCodigo).order("actividad_codigo"),
       (supabase as any).from("registros_mensuales").select("id, actividad_id, anio, mes, avance_valor, descripcion_avance, estado_registro, actividades!inner(codigo)").eq("entidad_id", entidadId).eq("anio", year).in("mes", meses),
       (supabase as any).from("reportes_trimestrales").select("*").eq("entidad_codigo", entidadCodigo).eq("trimestre", trimestreKey),
-    ]).then(([planRes, regRes, trimRes]: any[]) => {
+      (supabase as any).from("v_reporte_financiero_trimestral").select("*").eq("entidad_codigo", entidadCodigo).eq("trimestre", trimestreKey),
+    ]).then(([planRes, regRes, trimRes, finRes]: any[]) => {
       setActividades(planRes.data || []);
 
       const reports: MonthlyReport[] = (regRes.data || []).map((r: any) => ({
-        id: r.id,
-        actividad_codigo: r.actividades?.codigo || "",
-        mes: r.mes,
-        anio: r.anio,
-        avance_valor: r.avance_valor,
-        descripcion_avance: r.descripcion_avance,
-        estado_registro: r.estado_registro,
+        id: r.id, actividad_codigo: r.actividades?.codigo || "",
+        mes: r.mes, anio: r.anio, avance_valor: r.avance_valor,
+        descripcion_avance: r.descripcion_avance, estado_registro: r.estado_registro,
       }));
       setMonthlyReports(reports);
+      setFinData(finRes.data || []);
 
       const trimMap = new Map<string, any>();
+      const resRi: Record<string, string> = {};
+      const justif: Record<string, string> = {};
+      const techOv: Record<string, string> = {};
+
       if (trimRes.data) {
-        for (const r of trimRes.data) trimMap.set(r.actividad_codigo, r);
-      }
-      setExistingTrimReports(trimMap);
-
-      // Pre-load forms from existing quarterly data or from monthly data
-      const forms: Record<string, FinancialForm> = {};
-      const riRes: Record<string, string> = {};
-
-      if (trimRes.data?.length) {
         for (const r of trimRes.data) {
-          forms[r.actividad_codigo] = {
-            consultorias: r.ejecutado_seco_consultorias > 0 ? String(r.ejecutado_seco_consultorias) : "",
-            terceros: r.ejecutado_seco_terceros > 0 ? String(r.ejecutado_seco_terceros) : "",
-            bienes: r.ejecutado_seco_bienes > 0 ? String(r.ejecutado_seco_bienes) : "",
-            viaticos: r.ejecutado_seco_viaticos > 0 ? String(r.ejecutado_seco_viaticos) : "",
-            contrapartida: r.ejecutado_contrapartida > 0 ? String(r.ejecutado_contrapartida) : "",
-            justificacion: r.justificacion_variacion || "",
-            avanceTecnico: r.avance_tecnico_trimestre > 0 ? String(r.avance_tecnico_trimestre) : "",
-          };
+          trimMap.set(r.actividad_codigo, r);
           if (r.resumen_tecnico_ri) {
-            // Find RI code for this activity
             const act = (planRes.data || []).find((a: any) => a.actividad_codigo === r.actividad_codigo);
-            if (act?.resultado_intermedio_codigo) {
-              riRes[act.resultado_intermedio_codigo] = r.resumen_tecnico_ri;
-            }
+            if (act?.resultado_intermedio_codigo) resRi[act.resultado_intermedio_codigo] = r.resumen_tecnico_ri;
           }
+          if (r.justificacion_variacion) justif[r.actividad_codigo] = r.justificacion_variacion;
+          if (r.avance_tecnico_trimestre != null) techOv[r.actividad_codigo] = String(r.avance_tecnico_trimestre);
         }
       }
-      setFinForms(forms);
-      setRiResumenes(riRes);
+      setExistingTrimReports(trimMap);
+      setRiResumenes(resRi);
+      setJustificaciones(justif);
+      setTechOverrides(techOv);
       setLoading(false);
     });
   }, [entidadCodigo, entidadId, selectedYear, selectedTrimestre, trimestreKey]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Filter activities that had any deliverable in the trimester months
   const trimActivities = useMemo(() => {
     return actividades.filter((a) => {
       const meses = a.meses_programados || [];
@@ -159,7 +163,6 @@ export default function ReporteTrimestralPage() {
     });
   }, [actividades, trimestreMonths]);
 
-  // Group by RI
   const riGroups = useMemo(() => {
     const groups = new Map<string, { codigo: string; desc: string; acts: PlanificacionActividad[] }>();
     for (const a of trimActivities) {
@@ -170,116 +173,88 @@ export default function ReporteTrimestralPage() {
     return Array.from(groups.values()).sort((a, b) => a.codigo.localeCompare(b.codigo));
   }, [trimActivities]);
 
-  useEffect(() => {
-    setExpandedRI(new Set(riGroups.map((g) => g.codigo)));
-  }, [riGroups]);
+  useEffect(() => { setExpandedRI(new Set(riGroups.map((g) => g.codigo))); }, [riGroups]);
 
-  // Monthly report helpers
-  function getMonthlyReportsForAct(actCode: string): MonthlyReport[] {
+  // Helpers
+  function getMonthlyReportsForAct(actCode: string) {
     return monthlyReports.filter((r) => r.actividad_codigo === actCode);
-  }
-
-  function getMonthStatus(actCode: string, monthYM: string): "enviado" | "borrador" | "pendiente" {
-    const [, m] = monthYM.split("-");
-    const mes = parseInt(m);
-    const report = monthlyReports.find(r => r.actividad_codigo === actCode && r.mes === mes);
-    if (!report) return "pendiente";
-    return report.estado_registro === "enviado" || report.estado_registro === "aprobado" ? "enviado" : "borrador";
   }
 
   function getMonthlyTechData(actCode: string) {
     const reports = getMonthlyReportsForAct(actCode);
-    const totalAvance = reports.reduce((sum, r) => sum + (r.avance_valor || 0), 0);
-    const reportIds = reports.map(r => r.id);
-    return { totalAvance, reportIds };
+    return { totalAvance: reports.reduce((sum, r) => sum + (r.avance_valor || 0), 0), reportIds: reports.map(r => r.id) };
   }
 
   function getMonthlyRISummary(riCode: string): string {
     const riActs = trimActivities.filter((a) => a.resultado_intermedio_codigo === riCode);
     const codes = riActs.map((a) => a.actividad_codigo);
     const reports = monthlyReports.filter((r) => codes.includes(r.actividad_codigo) && r.descripcion_avance);
-
     if (!reports.length) return "";
-
-    return reports
-      .sort((a, b) => a.mes - b.mes)
-      .map((r) => `${MONTH_NAMES_SHORT[r.mes - 1]}: ${r.descripcion_avance}`)
-      .join("\n\n");
+    return reports.sort((a, b) => a.mes - b.mes).map((r) => `${MONTH_NAMES_SHORT[r.mes - 1]}: ${r.descripcion_avance}`).join("\n\n");
   }
 
-  function getFinForm(actCode: string): FinancialForm {
-    if (finForms[actCode]) return finForms[actCode];
-    const tech = getMonthlyTechData(actCode);
-    return { ...emptyFinForm(), avanceTecnico: tech.totalAvance > 0 ? String(tech.totalAvance) : "" };
-  }
-
-  function updateFinForm(actCode: string, field: keyof FinancialForm, value: string) {
-    setFinForms((prev) => ({
-      ...prev,
-      [actCode]: { ...(prev[actCode] || getFinForm(actCode)), [field]: value },
-    }));
-  }
-
-  function calcSecoTotal(form: FinancialForm): number {
-    return (parseFloat(form.consultorias) || 0) + (parseFloat(form.terceros) || 0) + (parseFloat(form.bienes) || 0) + (parseFloat(form.viaticos) || 0);
+  function getFinForAct(actCode: string): { seco: FinView | null; contrapartida: FinView | null } {
+    return {
+      seco: finData.find(f => f.actividad_codigo === actCode && f.fuente === "seco") || null,
+      contrapartida: finData.find(f => f.actividad_codigo === actCode && f.fuente !== "seco") || null,
+    };
   }
 
   function calcPresupuestoProgramado(act: PlanificacionActividad): number {
     const meses = act.meses_programados || [];
     if (!meses.length) return 0;
-    const trimestresWithDeliverables = new Set<string>();
+    const trims = new Set<string>();
     for (const m of meses) {
-      const month = parseInt(m.split("-")[1]);
-      if (month <= 3) trimestresWithDeliverables.add(`${m.split("-")[0]}-T1`);
-      else if (month <= 6) trimestresWithDeliverables.add(`${m.split("-")[0]}-T2`);
-      else if (month <= 9) trimestresWithDeliverables.add(`${m.split("-")[0]}-T3`);
-      else trimestresWithDeliverables.add(`${m.split("-")[0]}-T4`);
+      const mo = parseInt(m.split("-")[1]);
+      const y = m.split("-")[0];
+      if (mo <= 3) trims.add(`${y}-T1`);
+      else if (mo <= 6) trims.add(`${y}-T2`);
+      else if (mo <= 9) trims.add(`${y}-T3`);
+      else trims.add(`${y}-T4`);
     }
-    const total = act.presupuesto_seco_usd || 0;
-    return trimestresWithDeliverables.size > 0 ? total / trimestresWithDeliverables.size : 0;
+    return trims.size > 0 ? (act.presupuesto_seco_usd || 0) / trims.size : 0;
   }
 
-  function getVarianceClass(programado: number, ejecutado: number): { color: string; icon: string; level: string } {
-    if (programado <= 0) return { color: "", icon: "", level: "none" };
+  function getVarianceInfo(programado: number, ejecutado: number) {
+    if (programado <= 0) return { color: "", icon: "", level: "none" as const, pct: 0 };
     const pct = Math.abs(programado - ejecutado) / programado;
-    if (pct <= 0.10) return { color: "text-green-600", icon: "🟢", level: "low" };
-    if (pct <= 0.20) return { color: "text-amber-600", icon: "🟡", level: "medium" };
-    return { color: "text-red-600", icon: "🔴", level: "high" };
+    if (pct <= 0.10) return { color: "text-green-600", icon: "🟢", level: "low" as const, pct };
+    if (pct <= 0.20) return { color: "text-amber-600", icon: "🟡", level: "medium" as const, pct };
+    return { color: "text-red-600", icon: "🔴", level: "high" as const, pct };
   }
 
-  // Compute global summary
+  // Load comprobantes detail for sheet
+  async function loadComprobantesDetail(actCode: string) {
+    const { data } = await (supabase as any).from("comprobantes").select("id, fecha_documento, clase_documento, numero_documento, proveedor_nombre, concepto, monto_usd, tipo_gasto, fuente").eq("entidad_codigo", entidadCodigo).eq("actividad_codigo", actCode).eq("trimestre", trimestreKey).order("fecha_documento");
+    setDetailComprobantes(data || []);
+  }
+
+  // Global summary from view data
   const globalSummary = useMemo(() => {
     let totalProgramado = 0;
-    let totalEjecutado = 0;
+    let totalEjecutadoSeco = 0;
     let totalContrapartida = 0;
     let actsWithReport = 0;
 
     for (const act of trimActivities) {
-      const form = getFinForm(act.actividad_codigo);
       totalProgramado += calcPresupuestoProgramado(act);
-      totalEjecutado += calcSecoTotal(form);
-      totalContrapartida += parseFloat(form.contrapartida) || 0;
-
-      const reports = getMonthlyReportsForAct(act.actividad_codigo);
-      if (reports.length > 0) actsWithReport++;
+      const fin = getFinForAct(act.actividad_codigo);
+      totalEjecutadoSeco += fin.seco?.ejecutado_total_usd || 0;
+      totalContrapartida += fin.contrapartida?.ejecutado_total_usd || 0;
+      if (getMonthlyReportsForAct(act.actividad_codigo).length > 0) actsWithReport++;
     }
-
-    return { totalProgramado, totalEjecutado, totalContrapartida, actsWithReport, totalActs: trimActivities.length };
-  }, [trimActivities, finForms, monthlyReports]);
+    return { totalProgramado, totalEjecutadoSeco, totalContrapartida, actsWithReport, totalActs: trimActivities.length };
+  }, [trimActivities, finData, monthlyReports]);
 
   async function handleSaveAll(asBorrador: boolean) {
     setSaving(true);
     let errors = 0;
-
     for (const act of trimActivities) {
-      const form = getFinForm(act.actividad_codigo);
-      const secoTotal = calcSecoTotal(form);
+      const fin = getFinForAct(act.actividad_codigo);
       const tech = getMonthlyTechData(act.actividad_codigo);
-      const avanceTecTrimestre = parseFloat(form.avanceTecnico) || tech.totalAvance || 0;
+      const avanceTec = parseFloat(techOverrides[act.actividad_codigo]) || tech.totalAvance || 0;
       const presupuestoProg = calcPresupuestoProgramado(act);
-
-      // Get all monthly avance for total historical
-      // For simplicity, use trimester avance as trimestre value
+      const secoTotal = fin.seco?.ejecutado_total_usd || 0;
       const riResumen = riResumenes[act.resultado_intermedio_codigo] || getMonthlyRISummary(act.resultado_intermedio_codigo) || "";
 
       const record: Record<string, any> = {
@@ -288,40 +263,32 @@ export default function ReporteTrimestralPage() {
         trimestre: trimestreKey,
         meses_incluidos: trimestreMonths,
         resumen_tecnico_ri: riResumen,
-        avance_tecnico_trimestre: avanceTecTrimestre,
-        avance_tecnico_acumulado: avanceTecTrimestre, // Will be enhanced later with full historical
+        avance_tecnico_trimestre: avanceTec,
+        avance_tecnico_acumulado: avanceTec,
         presupuesto_seco_programado: presupuestoProg,
-        ejecutado_seco_consultorias: parseFloat(form.consultorias) || 0,
-        ejecutado_seco_terceros: parseFloat(form.terceros) || 0,
-        ejecutado_seco_bienes: parseFloat(form.bienes) || 0,
-        ejecutado_seco_viaticos: parseFloat(form.viaticos) || 0,
-        ejecutado_contrapartida: parseFloat(form.contrapartida) || 0,
+        ejecutado_seco_consultorias: fin.seco?.ejecutado_seco_consultorias || 0,
+        ejecutado_seco_terceros: fin.seco?.ejecutado_seco_terceros || 0,
+        ejecutado_seco_bienes: fin.seco?.ejecutado_seco_bienes || 0,
+        ejecutado_seco_viaticos: fin.seco?.ejecutado_seco_otros || 0,
+        ejecutado_contrapartida: fin.contrapartida?.ejecutado_total_usd || 0,
         variacion_seco: presupuestoProg - secoTotal,
-        justificacion_variacion: form.justificacion || null,
+        justificacion_variacion: justificaciones[act.actividad_codigo] || null,
         reportes_mensuales_origen: tech.reportIds,
         estado: asBorrador ? "borrador" : "enviado",
         enviado_at: asBorrador ? null : new Date().toISOString(),
       };
 
       const existing = existingTrimReports.get(act.actividad_codigo);
-      let error: any;
-      if (existing) {
-        const { error: e } = await (supabase as any).from("reportes_trimestrales").update(record).eq("id", existing.id);
-        error = e;
-      } else {
-        const { error: e } = await (supabase as any).from("reportes_trimestrales").insert(record);
-        error = e;
-      }
+      const { error } = existing
+        ? await (supabase as any).from("reportes_trimestrales").update(record).eq("id", existing.id)
+        : await (supabase as any).from("reportes_trimestrales").insert(record);
       if (error) { errors++; console.error(error); }
     }
-
     setSaving(false);
     if (errors === 0) {
       toast.success(asBorrador ? "Borrador guardado." : "Reporte trimestral enviado.");
       loadData();
-    } else {
-      toast.error(`${errors} error(es) al guardar.`);
-    }
+    } else toast.error(`${errors} error(es) al guardar.`);
   }
 
   const isReadOnly = useMemo(() => {
@@ -330,88 +297,57 @@ export default function ReporteTrimestralPage() {
 
   if (!entidadCodigo) return null;
 
-  const yearOptions = [currentYear - 1, currentYear, currentYear + 1].map((y) => String(y));
+  const yearOptions = [currentYear - 1, currentYear, currentYear + 1].map(String);
   const currentYM = getCurrentYM();
 
   return (
     <div>
       <Header title="Avance del Proyecto" subtitle={entidad?.nombre_corto} />
 
-      {/* Trimestre selector */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {TRIMESTRE_OPTIONS.map((t) => (
-              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-            ))}
-          </SelectContent>
+          <SelectContent>{TRIMESTRE_OPTIONS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={selectedYear} onValueChange={setSelectedYear}>
           <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {yearOptions.map((y) => (
-              <SelectItem key={y} value={y}>{y}</SelectItem>
-            ))}
-          </SelectContent>
+          <SelectContent>{yearOptions.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
         </Select>
-        {isReadOnly && (
-          <Badge className="bg-green-100 text-green-700 text-xs">✓ Enviado</Badge>
-        )}
+        {isReadOnly && <Badge className="bg-green-100 text-green-700 text-xs">✓ Enviado</Badge>}
       </div>
 
       {loading ? (
-        <Card><CardContent className="py-6 space-y-3">
-          {[1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
-        </CardContent></Card>
+        <Card><CardContent className="py-6 space-y-3">{[1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</CardContent></Card>
       ) : riGroups.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center">
-            <p className="text-sm text-muted-foreground">No hay actividades programadas para este trimestre.</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="py-10 text-center"><p className="text-sm text-muted-foreground">No hay actividades programadas para este trimestre.</p></CardContent></Card>
       ) : (
         <div className="space-y-4">
-          {/* Header */}
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <p className="font-medium">REPORTE TRIMESTRAL — {selectedTrimestre} {selectedYear} ({trimConfig.months.map(m => MONTH_NAMES_SHORT[parseInt(m) - 1]).join(" · ")})</p>
             <p className="text-xs text-muted-foreground mt-0.5">{entidad?.nombre_corto}</p>
           </div>
 
-          {/* Monthly report status bar */}
+          {/* Monthly status bar */}
           <Card>
             <CardContent className="py-3">
               <p className="text-xs font-medium text-muted-foreground mb-2">Estado de reportes mensuales del trimestre:</p>
               <div className="flex flex-wrap gap-3">
                 {trimestreMonths.map((ym) => {
-                  const [, m] = ym.split("-");
-                  const mesIdx = parseInt(m) - 1;
+                  const m = parseInt(ym.split("-")[1]);
                   const isFuture = ym > currentYM;
-                  // Check if ANY activity has a report for this month
-                  const hasReports = monthlyReports.some(r => r.mes === parseInt(m) && (r.estado_registro === "enviado" || r.estado_registro === "aprobado"));
-                  const hasBorradores = monthlyReports.some(r => r.mes === parseInt(m) && r.estado_registro === "borrador");
-
+                  const hasEnv = monthlyReports.some(r => r.mes === m && (r.estado_registro === "enviado" || r.estado_registro === "aprobado"));
+                  const hasBor = monthlyReports.some(r => r.mes === m && r.estado_registro === "borrador");
                   return (
                     <div key={ym} className="flex items-center gap-1.5 text-xs">
-                      <span className="font-medium">{MONTH_NAMES_SHORT[mesIdx]}-{selectedYear.slice(2)}:</span>
-                      {isFuture ? (
-                        <span className="text-muted-foreground">◌ futuro</span>
-                      ) : hasReports ? (
-                        <span className="text-green-600 font-medium">✓ enviado</span>
-                      ) : hasBorradores ? (
-                        <span className="text-amber-600 font-medium">borrador</span>
-                      ) : (
-                        <span className="text-amber-500 font-medium">⚠ pendiente</span>
-                      )}
+                      <span className="font-medium">{MONTH_NAMES_SHORT[m - 1]}-{selectedYear.slice(2)}:</span>
+                      {isFuture ? <span className="text-muted-foreground">◌</span>
+                        : hasEnv ? <span className="text-green-600 font-medium">✓ enviado</span>
+                        : hasBor ? <span className="text-amber-600 font-medium">borrador</span>
+                        : <span className="text-amber-500 font-medium">⚠ pendiente</span>}
                     </div>
                   );
                 })}
               </div>
-              {monthlyReports.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-2 italic">
-                  Los datos técnicos no están disponibles aún. Puedes completar el trimestral igual y ajustar después.
-                </p>
-              )}
             </CardContent>
           </Card>
 
@@ -419,17 +355,10 @@ export default function ReporteTrimestralPage() {
           {riGroups.map((ri) => {
             const isRIExpanded = expandedRI.has(ri.codigo);
             const monthlySummary = getMonthlyRISummary(ri.codigo);
-
             return (
               <Card key={ri.codigo}>
-                <div
-                  className="flex items-start gap-2 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => setExpandedRI((prev) => {
-                    const next = new Set(prev);
-                    next.has(ri.codigo) ? next.delete(ri.codigo) : next.add(ri.codigo);
-                    return next;
-                  })}
-                >
+                <div className="flex items-start gap-2 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                  onClick={() => setExpandedRI(prev => { const n = new Set(prev); n.has(ri.codigo) ? n.delete(ri.codigo) : n.add(ri.codigo); return n; })}>
                   {isRIExpanded ? <ChevronDown className="h-4 w-4 mt-0.5 shrink-0" /> : <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -445,52 +374,47 @@ export default function ReporteTrimestralPage() {
                     {/* RI Technical Summary */}
                     <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
                       <Label className="text-xs font-medium text-primary">Resumen técnico del trimestre ({ri.codigo})</Label>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">
-                        Pre-cargado desde reportes mensuales. Puede editar y sintetizar.
-                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">Pre-cargado desde reportes mensuales. Puede editar y sintetizar.</p>
                       <Textarea
-                        placeholder="Síntesis técnica del trimestre para este resultado intermedio..."
+                        placeholder="Síntesis técnica del trimestre..."
                         value={riResumenes[ri.codigo] ?? monthlySummary ?? ""}
-                        onChange={(e) => setRiResumenes((prev) => ({ ...prev, [ri.codigo]: e.target.value }))}
-                        rows={4}
-                        disabled={isReadOnly}
+                        onChange={(e) => setRiResumenes(prev => ({ ...prev, [ri.codigo]: e.target.value }))}
+                        rows={4} disabled={isReadOnly}
                       />
                     </div>
 
                     {/* Activities */}
                     {ri.acts.map((act) => {
                       const isActExpanded = expandedAct.has(act.actividad_codigo);
-                      const form = getFinForm(act.actividad_codigo);
                       const tech = getMonthlyTechData(act.actividad_codigo);
+                      const fin = getFinForAct(act.actividad_codigo);
                       const presupuestoProg = calcPresupuestoProgramado(act);
-                      const secoTotal = calcSecoTotal(form);
+                      const secoTotal = fin.seco?.ejecutado_total_usd || 0;
                       const diff = presupuestoProg - secoTotal;
-                      const variance = getVarianceClass(presupuestoProg, secoTotal);
-                      const showJustificacion = variance.level === "medium" || variance.level === "high";
+                      const variance = getVarianceInfo(presupuestoProg, secoTotal);
+                      const showJustif = variance.level === "medium" || variance.level === "high";
                       const actReports = getMonthlyReportsForAct(act.actividad_codigo);
-                      const hasNoMonthlyReports = actReports.length === 0;
+                      const hasNoReports = actReports.length === 0;
+                      const numComprobantes = fin.seco?.numero_comprobantes || 0;
 
-                      // Determine which months in this trimester have reports for this activity
                       const monthSourceStatus = trimestreMonths.map(ym => {
-                        const [, m] = ym.split("-");
-                        const status = getMonthStatus(act.actividad_codigo, ym);
-                        return { ym, label: MONTH_NAMES_SHORT[parseInt(m) - 1], status };
+                        const m = parseInt(ym.split("-")[1]);
+                        const report = monthlyReports.find(r => r.actividad_codigo === act.actividad_codigo && r.mes === m);
+                        const status = !report ? "pendiente" : (report.estado_registro === "enviado" || report.estado_registro === "aprobado") ? "enviado" : "borrador";
+                        return { label: MONTH_NAMES_SHORT[m - 1], status };
                       });
 
                       return (
-                        <div key={act.id} className={cn("border rounded-lg", isActExpanded && "ring-1 ring-primary/20", hasNoMonthlyReports && "border-amber-200")}>
-                          <div
-                            className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-muted/30"
-                            onClick={() => setExpandedAct((prev) => {
-                              const next = new Set(prev);
-                              next.has(act.actividad_codigo) ? next.delete(act.actividad_codigo) : next.add(act.actividad_codigo);
-                              return next;
-                            })}
-                          >
+                        <div key={act.id} className={cn("border rounded-lg", isActExpanded && "ring-1 ring-primary/20", hasNoReports && "border-amber-200")}>
+                          <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-muted/30"
+                            onClick={() => setExpandedAct(prev => { const n = new Set(prev); n.has(act.actividad_codigo) ? n.delete(act.actividad_codigo) : n.add(act.actividad_codigo); return n; })}>
                             {isActExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                             <span className="text-xs font-mono font-bold text-primary shrink-0">{act.actividad_codigo}</span>
                             <span className="text-sm truncate flex-1">{act.actividad_descripcion}</span>
-                            {hasNoMonthlyReports && (
+                            {numComprobantes > 0 && (
+                              <Badge variant="outline" className="text-[10px] shrink-0">{numComprobantes} comp.</Badge>
+                            )}
+                            {hasNoReports && (
                               <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600 shrink-0">
                                 <AlertTriangle className="h-3 w-3 mr-0.5" /> Sin rep. mensual
                               </Badge>
@@ -499,7 +423,7 @@ export default function ReporteTrimestralPage() {
 
                           {isActExpanded && (
                             <div className="px-3 pb-3 space-y-3">
-                              {/* Monthly source indicator */}
+                              {/* Source bar */}
                               <div className="bg-muted/50 rounded p-2 text-xs">
                                 <span className="text-muted-foreground mr-1">Fuente:</span>
                                 {monthSourceStatus.map(({ label, status }, i) => (
@@ -509,35 +433,20 @@ export default function ReporteTrimestralPage() {
                                 ))}
                               </div>
 
-                              {hasNoMonthlyReports && (
-                                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 rounded p-2 text-xs text-amber-700">
-                                  <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />
-                                  Sin reporte mensual en este trimestre. El financiero sí puede registrarse aunque el técnico esté pendiente.
-                                </div>
-                              )}
-
-                              {/* TECHNICAL section */}
+                              {/* TECHNICAL */}
                               <div>
                                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Técnico</p>
                                 <div className="bg-muted/50 rounded p-2 text-xs space-y-1">
-                                  <p>
-                                    <span className="text-muted-foreground">Avance desde mensuales:</span>{" "}
-                                    <strong>{tech.totalAvance}</strong> {act.unidad_medida}
-                                  </p>
-                                  <p>
-                                    <span className="text-muted-foreground">Acumulado histórico:</span>{" "}
-                                    <strong>{tech.totalAvance} de {act.meta_total}</strong> ({act.meta_total ? Math.round((tech.totalAvance / act.meta_total) * 100) : 0}%)
-                                  </p>
+                                  <p><span className="text-muted-foreground">Avance desde mensuales:</span> <strong>{tech.totalAvance}</strong> {act.unidad_medida}</p>
+                                  <p><span className="text-muted-foreground">Acumulado:</span> <strong>{tech.totalAvance} de {act.meta_total}</strong> ({act.meta_total ? Math.round((tech.totalAvance / act.meta_total) * 100) : 0}%)</p>
                                 </div>
                                 <div className="mt-2">
                                   <Label className="text-xs text-muted-foreground">Avance técnico trimestre (editable)</Label>
                                   <div className="flex items-center gap-2 mt-1">
-                                    <Input
-                                      type="number" min={0} step={1}
-                                      value={form.avanceTecnico || String(tech.totalAvance || "")}
-                                      onChange={(e) => updateFinForm(act.actividad_codigo, "avanceTecnico", e.target.value)}
-                                      className="w-24 h-8 text-sm"
-                                      disabled={isReadOnly}
+                                    <Input type="number" min={0} step={1}
+                                      value={techOverrides[act.actividad_codigo] ?? String(tech.totalAvance || "")}
+                                      onChange={(e) => setTechOverrides(prev => ({ ...prev, [act.actividad_codigo]: e.target.value }))}
+                                      className="w-24 h-8 text-sm" disabled={isReadOnly}
                                     />
                                     <span className="text-xs text-muted-foreground">{act.unidad_medida}</span>
                                   </div>
@@ -546,90 +455,102 @@ export default function ReporteTrimestralPage() {
 
                               <Separator />
 
-                              {/* FINANCIAL section */}
+                              {/* FINANCIAL — READ-ONLY from comprobantes */}
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
                                   <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Financiero</p>
+                                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Financiero (calculado de comprobantes)</p>
                                 </div>
 
-                                <div className="bg-muted/50 rounded p-2 text-xs mb-3">
-                                  <p>
-                                    <span className="text-muted-foreground">Presupuesto SECO programado {selectedTrimestre}:</span>{" "}
-                                    <strong>USD {presupuestoProg.toLocaleString("en", { minimumFractionDigits: 0 })}</strong>
-                                  </p>
+                                <div className="bg-muted/50 rounded p-2 text-xs mb-2">
+                                  <p><span className="text-muted-foreground">Presupuesto SECO programado {selectedTrimestre}:</span> <strong>USD {fmt(presupuestoProg)}</strong></p>
                                 </div>
 
-                                <div className="space-y-2">
-                                  <p className="text-xs text-muted-foreground">Ejecutado SECO {selectedTrimestre}:</p>
-                                  {[
-                                    { key: "consultorias" as const, label: "Serv. consultoría" },
-                                    { key: "terceros" as const, label: "Serv. terceros" },
-                                    { key: "bienes" as const, label: "Bienes de consumo" },
-                                    { key: "viaticos" as const, label: "Viáticos" },
-                                  ].map(({ key, label }) => (
-                                    <div key={key} className="flex items-center gap-2">
-                                      <span className="text-xs w-36 shrink-0">{label}</span>
-                                      <Input
-                                        type="number" min={0} step={0.01}
-                                        placeholder="0"
-                                        value={form[key]}
-                                        onChange={(e) => updateFinForm(act.actividad_codigo, key, e.target.value)}
-                                        className="w-28 h-7 text-xs"
-                                        disabled={isReadOnly}
-                                      />
-                                      <span className="text-xs text-muted-foreground">USD</span>
+                                {numComprobantes === 0 ? (
+                                  <div className="bg-muted/30 rounded p-3 text-xs text-muted-foreground italic">
+                                    Sin comprobantes registrados para este trimestre. Registre comprobantes en Gestión &gt; Contratos.
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1.5 text-xs">
+                                    <p className="text-muted-foreground mb-1">Ejecutado SECO {selectedTrimestre}:</p>
+                                    {[
+                                      { label: "Consultorías", val: fin.seco?.ejecutado_seco_consultorias || 0 },
+                                      { label: "Terceros", val: fin.seco?.ejecutado_seco_terceros || 0 },
+                                      { label: "Bienes", val: fin.seco?.ejecutado_seco_bienes || 0 },
+                                      { label: "Viáticos/Honorarios", val: fin.seco?.ejecutado_seco_otros || 0 },
+                                    ].filter(x => x.val > 0).map(({ label, val }) => (
+                                      <div key={label} className="flex items-center gap-2">
+                                        <span className="w-40 shrink-0">{label}</span>
+                                        <span className="font-mono font-medium">USD {fmt(val)}</span>
+                                      </div>
+                                    ))}
+                                    <div className="flex items-center gap-2 pt-1 border-t">
+                                      <span className="w-40 shrink-0 font-semibold">Total SECO</span>
+                                      <span className="font-mono font-bold">USD {fmt(secoTotal)}</span>
+                                      <span className="text-muted-foreground">({numComprobantes} comprobantes)</span>
+                                      <Sheet>
+                                        <SheetTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => loadComprobantesDetail(act.actividad_codigo)}>
+                                            <Eye className="h-3 w-3 mr-1" /> ver detalle
+                                          </Button>
+                                        </SheetTrigger>
+                                        <SheetContent className="overflow-y-auto">
+                                          <SheetHeader><SheetTitle className="text-sm">Comprobantes — {act.actividad_codigo} — {trimestreKey}</SheetTitle></SheetHeader>
+                                          <div className="mt-4">
+                                            <Table>
+                                              <TableHeader><TableRow>
+                                                <TableHead className="text-xs">Fecha</TableHead>
+                                                <TableHead className="text-xs">Doc</TableHead>
+                                                <TableHead className="text-xs">Concepto</TableHead>
+                                                <TableHead className="text-xs text-right">USD</TableHead>
+                                              </TableRow></TableHeader>
+                                              <TableBody>
+                                                {detailComprobantes.map(c => (
+                                                  <TableRow key={c.id}>
+                                                    <TableCell className="text-xs">{c.fecha_documento}</TableCell>
+                                                    <TableCell className="text-xs">{c.clase_documento}</TableCell>
+                                                    <TableCell className="text-xs max-w-[200px] truncate">{c.concepto}</TableCell>
+                                                    <TableCell className="text-xs text-right font-mono">{fmt(c.monto_usd)}</TableCell>
+                                                  </TableRow>
+                                                ))}
+                                              </TableBody>
+                                            </Table>
+                                          </div>
+                                        </SheetContent>
+                                      </Sheet>
                                     </div>
-                                  ))}
 
-                                  <div className="flex items-center gap-2 pt-1 border-t">
-                                    <span className="text-xs w-36 font-semibold">Total ejecutado SECO</span>
-                                    <span className="text-xs font-bold w-28 text-right">USD {secoTotal.toLocaleString("en", { minimumFractionDigits: 2 })}</span>
+                                    {(fin.contrapartida?.ejecutado_total_usd || 0) > 0 && (
+                                      <div className="flex items-center gap-2 pt-1">
+                                        <span className="w-40 shrink-0">Contrapartida</span>
+                                        <span className="font-mono font-medium">USD {fmt(fin.contrapartida?.ejecutado_total_usd)}</span>
+                                      </div>
+                                    )}
                                   </div>
-                                </div>
+                                )}
 
-                                <div className="mt-3">
-                                  <Label className="text-xs text-muted-foreground">Ejecutado Contrapartida {selectedTrimestre}</Label>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Input
-                                      type="number" min={0} step={0.01}
-                                      placeholder="0"
-                                      value={form.contrapartida}
-                                      onChange={(e) => updateFinForm(act.actividad_codigo, "contrapartida", e.target.value)}
-                                      className="w-28 h-7 text-xs"
-                                      disabled={isReadOnly}
-                                    />
-                                    <span className="text-xs text-muted-foreground">USD</span>
+                                {/* Variance */}
+                                {numComprobantes > 0 && (
+                                  <div className={cn("mt-3 rounded p-2 text-xs flex items-center gap-2",
+                                    variance.level === "high" ? "bg-red-50 dark:bg-red-900/20" :
+                                    variance.level === "medium" ? "bg-amber-50 dark:bg-amber-900/10" : "bg-muted/50")}>
+                                    <span className="text-muted-foreground">Variación:</span>
+                                    <strong className={variance.color}>
+                                      USD {fmt(diff)} {presupuestoProg > 0 && `(${Math.round((diff / presupuestoProg) * 100)}%)`}
+                                    </strong>
+                                    <span>{variance.icon}</span>
                                   </div>
-                                </div>
+                                )}
 
-                                {/* Difference */}
-                                <div className={cn("mt-3 rounded p-2 text-xs flex items-center gap-2",
-                                  variance.level === "high" ? "bg-red-50 dark:bg-red-900/20" :
-                                  variance.level === "medium" ? "bg-amber-50 dark:bg-amber-900/10" : "bg-muted/50")}>
-                                  <span className="text-muted-foreground">Diferencia:</span>
-                                  <strong className={variance.color}>
-                                    USD {diff.toLocaleString("en", { minimumFractionDigits: 2 })}
-                                    {presupuestoProg > 0 && ` (${Math.round((diff / presupuestoProg) * 100)}%)`}
-                                  </strong>
-                                  <span>{variance.icon}</span>
-                                </div>
-
-                                {/* Justification */}
-                                {showJustificacion && (
+                                {showJustif && (
                                   <div className="mt-3">
                                     <div className="flex items-center gap-1.5 mb-1">
                                       <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                                      <Label className="text-xs text-amber-600">
-                                        Justificación de variación ({variance.level === "high" ? ">20%" : ">10%"}) *
-                                      </Label>
+                                      <Label className="text-xs text-amber-600">Justificación de variación ({variance.level === "high" ? ">20%" : ">10%"}) *</Label>
                                     </div>
-                                    <Textarea
-                                      placeholder="Explique la razón de la variación entre presupuesto programado y ejecutado..."
-                                      value={form.justificacion}
-                                      onChange={(e) => updateFinForm(act.actividad_codigo, "justificacion", e.target.value)}
-                                      rows={2}
-                                      disabled={isReadOnly}
+                                    <Textarea placeholder="Explique la razón de la variación..." rows={2} disabled={isReadOnly}
+                                      value={justificaciones[act.actividad_codigo] || ""}
+                                      onChange={(e) => setJustificaciones(prev => ({ ...prev, [act.actividad_codigo]: e.target.value }))}
                                     />
                                   </div>
                                 )}
@@ -648,35 +569,31 @@ export default function ReporteTrimestralPage() {
           {/* GLOBAL SUMMARY */}
           <Card className="border-2">
             <CardContent className="py-4">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Resumen del trimestre (calculado automático)</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Resumen del trimestre (calculado de comprobantes)</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Presupuesto SECO programado {selectedTrimestre}:</span>
-                  <p className="font-bold mt-0.5">USD {globalSummary.totalProgramado.toLocaleString("en", { minimumFractionDigits: 0 })}</p>
+                  <span className="text-muted-foreground">Presupuesto SECO programado:</span>
+                  <p className="font-bold mt-0.5">USD {fmt(globalSummary.totalProgramado)}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Total ejecutado SECO {selectedTrimestre}:</span>
-                  <p className="font-bold mt-0.5">USD {globalSummary.totalEjecutado.toLocaleString("en", { minimumFractionDigits: 0 })}</p>
+                  <span className="text-muted-foreground">Total ejecutado SECO:</span>
+                  <p className="font-bold mt-0.5">USD {fmt(globalSummary.totalEjecutadoSeco)}</p>
                 </div>
                 <div>
                   {(() => {
-                    const diff = globalSummary.totalProgramado - globalSummary.totalEjecutado;
-                    const v = getVarianceClass(globalSummary.totalProgramado, globalSummary.totalEjecutado);
-                    return (
-                      <>
-                        <span className="text-muted-foreground">Variación:</span>
-                        <p className={cn("font-bold mt-0.5", v.color)}>
-                          USD {diff.toLocaleString("en", { minimumFractionDigits: 0 })}
-                          {globalSummary.totalProgramado > 0 && ` (${Math.round((diff / globalSummary.totalProgramado) * 100)}%)`}
-                          {" "}{v.icon}
-                        </p>
-                      </>
-                    );
+                    const d = globalSummary.totalProgramado - globalSummary.totalEjecutadoSeco;
+                    const v = getVarianceInfo(globalSummary.totalProgramado, globalSummary.totalEjecutadoSeco);
+                    return (<>
+                      <span className="text-muted-foreground">Variación:</span>
+                      <p className={cn("font-bold mt-0.5", v.color)}>
+                        USD {fmt(d)} {globalSummary.totalProgramado > 0 && `(${Math.round((d / globalSummary.totalProgramado) * 100)}%)`} {v.icon}
+                      </p>
+                    </>);
                   })()}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Contrapartida ejecutada {selectedTrimestre}:</span>
-                  <p className="font-bold mt-0.5">USD {globalSummary.totalContrapartida.toLocaleString("en", { minimumFractionDigits: 0 })}</p>
+                  <span className="text-muted-foreground">Contrapartida ejecutada:</span>
+                  <p className="font-bold mt-0.5">USD {fmt(globalSummary.totalContrapartida)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Actividades con reporte técnico:</span>
@@ -686,7 +603,7 @@ export default function ReporteTrimestralPage() {
             </CardContent>
           </Card>
 
-          {/* Global actions */}
+          {/* Actions */}
           {!isReadOnly ? (
             <div className="flex justify-end gap-3 pt-2 pb-6">
               <Button variant="outline" onClick={() => handleSaveAll(true)} disabled={saving}>
