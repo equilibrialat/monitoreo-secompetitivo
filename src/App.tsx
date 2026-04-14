@@ -31,6 +31,7 @@ import AdministracionPage from "./pages/AdministracionPage";
 import MisIniciativasPage from "./pages/MisIniciativasPage";
 import RegistroRapidoPage from "./pages/RegistroRapidoPage";
 import GestionFinancieraPage from "./pages/GestionFinancieraPage";
+import GestionContratosFinPage from "./pages/GestionContratosFinPage";
 import PlanificacionTrimestralPage from "./pages/PlanificacionTrimestralPage";
 import MiPlanificacionPage from "./pages/MiPlanificacionPage";
 import RegistrarAvancePage from "./pages/RegistrarAvancePage";
@@ -75,6 +76,7 @@ const App = () => (
               {/* Administracion routes */}
               <Route path="/contratos" element={<ContratosPage />} />
               <Route path="/gestion-financiera" element={<GestionFinancieraPage />} />
+              <Route path="/gestion-contratos" element={<GestionContratosFinPage />} />
               <Route path="/desembolsos" element={<DesembolsosPage />} />
               <Route path="/viaticos" element={<ViaticosPage />} />
               <Route path="/reasignaciones" element={<ReasignacionesPage />} />
