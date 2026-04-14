@@ -1,23 +1,29 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-  ChevronRight, ChevronDown, FileText, Calendar, DollarSign, Target,
-  Clock, CheckCircle2, Circle, XCircle, AlertTriangle, Lock
+  ChevronRight, ChevronDown, Calendar, Target, DollarSign,
+  CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { cn } from "@/lib/utils";
-import { RegistroAvancePlanificacionDialog } from "./RegistroAvancePlanificacionDialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /* ─── Types ─── */
 
-interface PlanificacionActividad {
+export interface PlanificacionActividad {
   id: string;
   entidad_codigo: string;
+  entidad_nombre: string;
+  proyecto_codigo: string;
   proyecto_nombre: string;
+  mecanismo: string;
   resultado_impacto: string;
   resultado_final: string;
   resultado_intermedio_codigo: string;
@@ -30,86 +36,112 @@ interface PlanificacionActividad {
   medio_verificacion: string;
   meta_total: number;
   presupuesto_seco_usd: number;
+  presupuesto_contrapartida_usd: number;
   meses_programados: string[];
   responsable: string;
 }
 
-type ActividadEstado = "al_dia" | "en_progreso" | "con_rezago" | "por_iniciar" | "cerrada";
+export type ActividadEstado =
+  | "entregable_este_mes"
+  | "con_rezago"
+  | "en_progreso"
+  | "al_dia"
+  | "completada"
+  | "por_iniciar";
 
 /* ─── Helpers ─── */
 
-function getCurrentYearMonth(): string {
+export function getCurrentYearMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 const MONTH_NAMES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-function formatYM(ym: string): string {
+export function formatYM(ym: string): string {
   const [y, m] = ym.split("-");
   return `${MONTH_NAMES_SHORT[parseInt(m) - 1]}-${y.slice(2)}`;
 }
 
-function calcEstado(
+export function calcEstado(
+  meses: string[],
+  currentYM: string,
+  reportedMonths: Set<string>,
+  ejecutado: number,
+  metaTotal: number
+): ActividadEstado {
+  if (!meses.length) return "por_iniciar";
+
+  const sorted = [...meses].sort();
+  const allFuture = sorted.every((m) => m > currentYM);
+  if (allFuture) return "por_iniciar";
+
+  const pastOrCurrent = sorted.filter((m) => m <= currentYM);
+  const pastWithoutReport = pastOrCurrent.filter((m) => !reportedMonths.has(m));
+  const allReported = pastWithoutReport.length === 0;
+  const allPast = sorted.every((m) => m <= currentYM);
+
+  // Completada: all months reported and ejecutado >= meta
+  if (allPast && allReported && ejecutado >= metaTotal && metaTotal > 0) return "completada";
+
+  // Con rezago: past delivery months missing reports
+  if (pastWithoutReport.length > 0) return "con_rezago";
+
+  // Entregable este mes: current month is delivery month, not yet reported
+  if (sorted.includes(currentYM) && !reportedMonths.has(currentYM)) return "entregable_este_mes";
+
+  // Al día: all past/current reported, future months remain
+  if (allReported && sorted.some((m) => m > currentYM)) return "al_dia";
+
+  // En progreso: between first and last, not a delivery month this month
+  return "en_progreso";
+}
+
+export function calcProximoEntregable(
   meses: string[],
   currentYM: string,
   reportedMonths: Set<string>
-): ActividadEstado {
-  const allFuture = meses.every((m) => m > currentYM);
-  if (allFuture) return "por_iniciar";
-
-  const pastOrCurrent = meses.filter((m) => m <= currentYM);
-  const pastWithoutReport = pastOrCurrent.filter((m) => !reportedMonths.has(m));
-  const allPast = meses.every((m) => m < currentYM);
-
-  if (allPast && pastWithoutReport.length === 0) return "cerrada";
-  if (pastWithoutReport.length > 0) return "con_rezago";
-  if (meses.some((m) => m > currentYM)) return "en_progreso";
-  return "al_dia";
+): string | null {
+  const sorted = [...meses].sort();
+  for (const m of sorted) {
+    if (m >= currentYM && !reportedMonths.has(m)) return m;
+  }
+  // Check past unreported
+  for (const m of sorted) {
+    if (m < currentYM && !reportedMonths.has(m)) return m;
+  }
+  return null;
 }
 
-/** Determine the current-month activity badge */
-function getCurrentMonthStatus(
-  meses: string[],
-  currentYM: string,
-  reported: Set<string>
-): { label: string; variant: "current" | "in_course" | "rezago" | "none" } {
-  const isDeliveryMonth = meses.includes(currentYM);
-  const hasReport = reported.has(currentYM);
-  const firstMonth = meses[0];
-  const lastMonth = meses[meses.length - 1];
-  const isInRange = currentYM >= firstMonth && currentYM <= lastMonth;
-  const allPast = meses.every((m) => m < currentYM);
-  const pastMissing = meses.filter((m) => m < currentYM && !reported.has(m));
-
-  if (isDeliveryMonth && !hasReport) return { label: "● Entregable este mes", variant: "current" };
-  if (isDeliveryMonth && hasReport) return { label: "✓ Reportado este mes", variant: "none" };
-  if (allPast && pastMissing.length > 0) return { label: "✗ Con rezago", variant: "rezago" };
-  if (isInRange && !isDeliveryMonth) return { label: "En curso", variant: "in_course" };
-  return { label: "", variant: "none" };
-}
-
-const ESTADO_CONFIG: Record<ActividadEstado, { color: string; bgColor: string; label: string; icon: typeof Circle }> = {
-  al_dia:      { color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30", label: "Al día", icon: CheckCircle2 },
-  en_progreso: { color: "text-yellow-600", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", label: "En progreso", icon: Clock },
-  con_rezago:  { color: "text-red-600", bgColor: "bg-red-100 dark:bg-red-900/30", label: "Con rezago", icon: AlertTriangle },
-  por_iniciar: { color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30", label: "Por iniciar", icon: Circle },
-  cerrada:     { color: "text-muted-foreground", bgColor: "bg-muted", label: "Cerrada", icon: Lock },
+const ESTADO_CONFIG: Record<ActividadEstado, { color: string; bgColor: string; dotClass: string; label: string; icon: typeof Circle }> = {
+  entregable_este_mes: { color: "text-yellow-700 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", dotClass: "bg-yellow-500 animate-pulse", label: "Entregable este mes", icon: Circle },
+  con_rezago:          { color: "text-red-600", bgColor: "bg-red-100 dark:bg-red-900/30", dotClass: "bg-red-500", label: "Con rezago", icon: AlertTriangle },
+  en_progreso:         { color: "text-amber-600", bgColor: "bg-amber-50 dark:bg-amber-900/20", dotClass: "bg-amber-400", label: "En progreso", icon: Clock },
+  al_dia:              { color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30", dotClass: "bg-green-500", label: "Al día", icon: CheckCircle2 },
+  completada:          { color: "text-emerald-700 dark:text-emerald-400", bgColor: "bg-emerald-100 dark:bg-emerald-900/30", dotClass: "bg-emerald-600", label: "Completada", icon: Star },
+  por_iniciar:         { color: "text-muted-foreground", bgColor: "bg-muted", dotClass: "bg-gray-400", label: "Por iniciar", icon: Lock },
 };
+
+export { ESTADO_CONFIG };
 
 /* ─── Main component ─── */
 
-export default function MiPlanificacion() {
+interface MiPlanificacionProps {
+  readOnly?: boolean;
+  entidadCodigoOverride?: string;
+}
+
+export default function MiPlanificacion({ readOnly = false, entidadCodigoOverride }: MiPlanificacionProps) {
   const { entidadId, entidades } = useRole();
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedActividad, setSelectedActividad] = useState<PlanificacionActividad | null>(null);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   const entidad = entidades.find((e) => e.id === entidadId);
-  const entidadCodigo = entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null;
+  const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
   const currentYM = getCurrentYearMonth();
 
   function loadData() {
@@ -124,7 +156,7 @@ export default function MiPlanificacion() {
         .order("actividad_codigo"),
       (supabase as any)
         .from("registros_mensuales")
-        .select("actividad_id, anio, mes, avance_valor, actividades!inner(codigo)")
+        .select("actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)")
         .eq("entidad_id", entidadId),
     ]).then(([planRes, regRes]: any[]) => {
       setActividades(planRes.data || []);
@@ -137,9 +169,11 @@ export default function MiPlanificacion() {
           const ym = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
           if (!byCode.has(code)) byCode.set(code, new Set());
           byCode.get(code)!.add(ym);
-          // Accumulate avance_valor
-          const prev = avanceMap.get(code) || 0;
-          avanceMap.set(code, prev + (r.avance_valor || 0));
+          // Only count avance from non-draft reports
+          if (r.estado_registro !== "borrador") {
+            const prev = avanceMap.get(code) || 0;
+            avanceMap.set(code, prev + (r.avance_valor || 0));
+          }
         }
       }
       setReportsByActivity(byCode);
@@ -150,14 +184,16 @@ export default function MiPlanificacion() {
 
   useEffect(() => { loadData(); }, [entidadCodigo, entidadId]);
 
-  /* ─── Build 5-level hierarchy ─── */
+  /* ─── Build hierarchy ─── */
   const hierarchy = useMemo(() => {
     if (!actividades.length) return null;
 
-    const resultadoImpacto = actividades[0]?.resultado_impacto || "";
-    const resultadoFinal = actividades[0]?.resultado_final || "";
-
-    const riMap = new Map<string, { codigo: string; desc: string; productos: Map<string, { codigo: string; desc: string; acts: PlanificacionActividad[] }> }>();
+    const first = actividades[0];
+    const riMap = new Map<string, {
+      codigo: string;
+      desc: string;
+      productos: Map<string, { codigo: string; desc: string; acts: PlanificacionActividad[] }>;
+    }>();
 
     for (const a of actividades) {
       const riKey = a.resultado_intermedio_codigo;
@@ -172,21 +208,48 @@ export default function MiPlanificacion() {
       ri.productos.get(pKey)!.acts.push(a);
     }
 
-    return { resultadoImpacto, resultadoFinal, ris: Array.from(riMap.values()) };
+    return {
+      resultadoImpacto: first.resultado_impacto,
+      resultadoFinal: first.resultado_final,
+      proyectoNombre: first.proyecto_nombre,
+      entidadNombre: first.entidad_nombre,
+      mecanismo: first.mecanismo,
+      ris: Array.from(riMap.values()),
+    };
   }, [actividades]);
 
-  function getRiStats(acts: PlanificacionActividad[]) {
-    const counts: Record<ActividadEstado, number> = { al_dia: 0, en_progreso: 0, con_rezago: 0, por_iniciar: 0, cerrada: 0 };
-    let presupuesto = 0;
+  function getActStats(act: PlanificacionActividad) {
+    const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+    const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
+    const estado = calcEstado(act.meses_programados || [], currentYM, reported, ejecutado, act.meta_total || 0);
+    const proximo = calcProximoEntregable(act.meses_programados || [], currentYM, reported);
+    return { reported, ejecutado, estado, proximo };
+  }
+
+  function getRiSemaforo(acts: PlanificacionActividad[]): ActividadEstado {
+    let worst: ActividadEstado = "completada";
+    const priority: ActividadEstado[] = ["con_rezago", "entregable_este_mes", "en_progreso", "al_dia", "por_iniciar", "completada"];
     for (const a of acts) {
-      const reported = reportsByActivity.get(a.actividad_codigo) || new Set();
-      const estado = calcEstado(a.meses_programados, currentYM, reported);
-      counts[estado]++;
-      presupuesto += a.presupuesto_seco_usd || 0;
+      const { estado } = getActStats(a);
+      if (priority.indexOf(estado) < priority.indexOf(worst)) worst = estado;
     }
-    const hasRezago = counts.con_rezago > 0;
-    const allDone = counts.al_dia + counts.cerrada === acts.length;
-    return { counts, presupuesto, total: acts.length, status: hasRezago ? "con_rezago" : allDone ? "al_dia" : "en_progreso" };
+    return worst;
+  }
+
+  function toggleSection(key: string) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  function formatProximo(proximo: string | null, estado: ActividadEstado): string {
+    if (estado === "completada") return "Completada";
+    if (!proximo) return "—";
+    if (proximo === currentYM) return "Este mes";
+    if (proximo < currentYM) return "Vencido";
+    return formatYM(proximo);
   }
 
   if (!entidadCodigo) return null;
@@ -196,7 +259,7 @@ export default function MiPlanificacion() {
       <Card className="mb-6">
         <CardHeader><CardTitle>Mi Planificación</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
         </CardContent>
       </Card>
     );
@@ -214,7 +277,7 @@ export default function MiPlanificacion() {
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50" />
-            <p className="text-sm">Tu planificación se está configurando. Pronto verás aquí el árbol completo de tu proyecto.</p>
+            <p className="text-sm">Tu planificación se está configurando. Pronto verás aquí el árbol completo de tu proyecto con las actividades comprometidas y su estado de avance.</p>
           </div>
         </CardContent>
       </Card>
@@ -222,323 +285,246 @@ export default function MiPlanificacion() {
   }
 
   return (
-    <>
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Calendar className="h-5 w-5 text-primary" />
-            Mi Planificación — Anexo B
-          </CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            {actividades[0]?.proyecto_nombre || "Proyecto"}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <CollapsibleSection level={1} icon="📌" label="Resultado de Impacto" description={hierarchy.resultadoImpacto} defaultOpen>
-            <CollapsibleSection level={2} icon="🎯" label="Resultado Final" description={hierarchy.resultadoFinal} defaultOpen>
-              {hierarchy.ris.map((ri) => {
-                const allRiActs = Array.from(ri.productos.values()).flatMap((p) => p.acts);
-                const riStats = getRiStats(allRiActs);
-                const statusDot = riStats.status === "con_rezago" ? "🔴" : riStats.status === "al_dia" ? "🟢" : "🟡";
+    <Card className="mb-6">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Calendar className="h-5 w-5 text-primary" />
+          Mi Planificación — Anexo B
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          {hierarchy.proyectoNombre} · {hierarchy.entidadNombre} · Mecanismo {hierarchy.mecanismo}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {/* Level 1: Resultado de Impacto */}
+        <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <span>📌</span> {hierarchy.resultadoImpacto}
+        </div>
 
-                return (
-                  <CollapsibleSection
-                    key={ri.codigo}
-                    level={3}
-                    icon="📊"
-                    label={`${ri.codigo} — ${ri.desc.length > 100 ? ri.desc.slice(0, 100) + "…" : ri.desc}`}
-                    defaultOpen
-                    badge={
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                        {riStats.total} activ. | ${riStats.presupuesto.toLocaleString()} | {statusDot}
-                      </span>
-                    }
-                    summary={
-                      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground px-2 pb-2">
-                        {riStats.counts.cerrada > 0 && <span>⚫ {riStats.counts.cerrada} cerradas</span>}
-                        {riStats.counts.al_dia > 0 && <span>🟢 {riStats.counts.al_dia} al día</span>}
-                        {riStats.counts.en_progreso > 0 && <span>🟡 {riStats.counts.en_progreso} en progreso</span>}
-                        {riStats.counts.con_rezago > 0 && <span>🔴 {riStats.counts.con_rezago} con rezago</span>}
-                        {riStats.counts.por_iniciar > 0 && <span>🔵 {riStats.counts.por_iniciar} por iniciar</span>}
+        {/* Level 2: Resultado Final */}
+        <div className="text-sm font-medium text-foreground flex items-center gap-2 ml-3">
+          <span>🎯</span> {hierarchy.resultadoFinal}
+        </div>
+
+        {/* Level 3+: RIs */}
+        {hierarchy.ris.map((ri) => {
+          const allRiActs = Array.from(ri.productos.values()).flatMap((p) => p.acts);
+          const riSemaforo = getRiSemaforo(allRiActs);
+          const riCfg = ESTADO_CONFIG[riSemaforo];
+          const riPresupuesto = allRiActs.reduce((s, a) => s + (a.presupuesto_seco_usd || 0), 0);
+          const riKey = `ri-${ri.codigo}`;
+          const riCollapsed = collapsedSections.has(riKey);
+
+          return (
+            <div key={ri.codigo} className="ml-4">
+              {/* RI header */}
+              <button
+                onClick={() => toggleSection(riKey)}
+                className="flex items-center gap-2 w-full text-left px-2 py-2 rounded hover:bg-muted/50 transition-colors"
+              >
+                {riCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                <span className="text-sm">📊</span>
+                <span className="text-sm font-medium flex-1 min-w-0 truncate">
+                  {ri.codigo} — {ri.desc}
+                </span>
+                <span className="flex items-center gap-3 text-[10px] text-muted-foreground shrink-0">
+                  <span>{allRiActs.length} activ.</span>
+                  <span>${riPresupuesto.toLocaleString()}</span>
+                  <span className={cn("h-2.5 w-2.5 rounded-full inline-block", riCfg.dotClass)} />
+                </span>
+              </button>
+
+              {!riCollapsed && (
+                <div className="ml-2">
+                  {Array.from(ri.productos.values()).map((prod) => {
+                    const prodKey = `prod-${prod.codigo}`;
+                    const prodCollapsed = collapsedSections.has(prodKey);
+
+                    return (
+                      <div key={prod.codigo} className="ml-3">
+                        {/* Product header */}
+                        <button
+                          onClick={() => toggleSection(prodKey)}
+                          className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-muted/50 transition-colors"
+                        >
+                          {prodCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                          <span className="text-xs">📦</span>
+                          <span className="text-xs font-medium text-foreground truncate">
+                            {prod.codigo}. {prod.desc}
+                          </span>
+                        </button>
+
+                        {!prodCollapsed && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm ml-2">
+                              <thead>
+                                <tr className="border-b text-[11px] text-muted-foreground">
+                                  <th className="py-1.5 px-2 text-center w-[60px]">Cód.</th>
+                                  <th className="py-1.5 px-2 text-left">Actividad</th>
+                                  <th className="py-1.5 px-2 text-left w-[100px]">Unidad</th>
+                                  <th className="py-1.5 px-2 text-center w-[50px]">Meta</th>
+                                  <th className="py-1.5 px-2 text-center w-[80px]">Ejecutado</th>
+                                  <th className="py-1.5 px-2 text-center w-[90px]">Próximo</th>
+                                  <th className="py-1.5 px-2 text-center w-[40px]">Estado</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {prod.acts.map((act) => {
+                                  const { reported, ejecutado, estado, proximo } = getActStats(act);
+                                  const cfg = ESTADO_CONFIG[estado];
+                                  const isExpanded = expandedRow === act.id;
+                                  const proximoLabel = formatProximo(proximo, estado);
+                                  const proximoClass =
+                                    proximoLabel === "Vencido" ? "text-red-600 font-semibold" :
+                                    proximoLabel === "Este mes" ? "text-yellow-600 font-semibold" :
+                                    proximoLabel === "Completada" ? "text-emerald-600" : "";
+
+                                  return (
+                                    <ActividadRow
+                                      key={act.id}
+                                      act={act}
+                                      ejecutado={ejecutado}
+                                      estado={estado}
+                                      cfg={cfg}
+                                      proximo={proximoLabel}
+                                      proximoClass={proximoClass}
+                                      isExpanded={isExpanded}
+                                      reported={reported}
+                                      currentYM={currentYM}
+                                      onToggle={() => setExpandedRow(isExpanded ? null : act.id)}
+                                    />
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
-                    }
-                  >
-                    {Array.from(ri.productos.values()).map((prod) => (
-                      <CollapsibleSection
-                        key={prod.codigo}
-                        level={4}
-                        icon="📦"
-                        label={`${prod.codigo}. ${prod.desc.length > 120 ? prod.desc.slice(0, 120) + "…" : prod.desc}`}
-                        defaultOpen
-                      >
-                        {prod.acts.map((act) => {
-                          const reported = reportsByActivity.get(act.actividad_codigo) || new Set();
-                          const estado = calcEstado(act.meses_programados, currentYM, reported);
-                          const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
-                          const pctProgress = act.meta_total > 0 ? Math.min(100, (ejecutado / act.meta_total) * 100) : 0;
-                          const canReport = act.meses_programados.includes(currentYM) && !reported.has(currentYM);
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
 
-                          return (
-                            <ActividadCard
-                              key={act.id}
-                              actividad={act}
-                              estado={estado}
-                              ejecutado={ejecutado}
-                              pctProgress={pctProgress}
-                              reported={reported}
-                              currentYM={currentYM}
-                              canReport={canReport}
-                              onRegistrar={() => { setSelectedActividad(act); setDialogOpen(true); }}
-                            />
-                          );
-                        })}
-                      </CollapsibleSection>
+/* ─── Activity row + expandable detail ─── */
+
+function ActividadRow({
+  act, ejecutado, estado, cfg, proximo, proximoClass, isExpanded, reported, currentYM, onToggle,
+}: {
+  act: PlanificacionActividad;
+  ejecutado: number;
+  estado: ActividadEstado;
+  cfg: (typeof ESTADO_CONFIG)[ActividadEstado];
+  proximo: string;
+  proximoClass: string;
+  isExpanded: boolean;
+  reported: Set<string>;
+  currentYM: string;
+  onToggle: () => void;
+}) {
+  const meses = (act.meses_programados || []).sort();
+
+  return (
+    <>
+      <tr
+        className={cn(
+          "border-b last:border-0 cursor-pointer hover:bg-muted/30 transition-colors",
+          isExpanded && "bg-muted/20"
+        )}
+        onClick={onToggle}
+      >
+        <td className="py-2 px-2 text-center font-mono text-xs font-bold text-primary">{act.actividad_codigo}</td>
+        <td className="py-2 px-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-xs text-foreground line-clamp-1">{act.actividad_descripcion}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-sm text-xs">
+              {act.actividad_descripcion}
+            </TooltipContent>
+          </Tooltip>
+        </td>
+        <td className="py-2 px-2 text-xs text-muted-foreground">{act.unidad_medida}</td>
+        <td className="py-2 px-2 text-center text-xs font-semibold">{act.meta_total}</td>
+        <td className="py-2 px-2 text-center text-xs font-mono">
+          <span className={cn(ejecutado > 0 && "font-semibold")}>{ejecutado}</span>
+          <span className="text-muted-foreground"> / {act.meta_total}</span>
+        </td>
+        <td className={cn("py-2 px-2 text-center text-xs", proximoClass)}>{proximo}</td>
+        <td className="py-2 px-2 text-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn("inline-block h-3 w-3 rounded-full", cfg.dotClass)} />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">{cfg.label}</TooltipContent>
+          </Tooltip>
+        </td>
+      </tr>
+
+      {/* Expanded detail panel */}
+      {isExpanded && (
+        <tr>
+          <td colSpan={7} className="p-0">
+            <div className="bg-muted/30 border-t border-b px-4 py-3 space-y-2 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <span className="text-muted-foreground font-medium">Descripción completa:</span>
+                  <p className="text-foreground mt-0.5">{act.actividad_descripcion}</p>
+                </div>
+                <div className="space-y-1">
+                  <div><span className="text-muted-foreground">Medio de verificación:</span> {act.medio_verificacion || "—"}</div>
+                  <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> <span className="text-muted-foreground">Presupuesto SECO:</span> USD {(act.presupuesto_seco_usd || 0).toLocaleString()}</div>
+                  <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> <span className="text-muted-foreground">Contrapartida:</span> USD {(act.presupuesto_contrapartida_usd || 0).toLocaleString()}</div>
+                  <div><span className="text-muted-foreground">Responsable:</span> {act.responsable || "—"}</div>
+                </div>
+              </div>
+
+              {/* Month badges */}
+              <div>
+                <span className="text-muted-foreground font-medium">Meses de entrega:</span>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {meses.map((m) => {
+                    const isPast = m < currentYM;
+                    const isCurrent = m === currentYM;
+                    const hasReport = reported.has(m);
+
+                    let badgeClass = "border-muted-foreground/30 text-muted-foreground"; // future
+                    let icon = "○";
+                    if (isPast && hasReport) { badgeClass = "border-green-500 text-green-600 bg-green-50 dark:bg-green-900/20"; icon = "✓"; }
+                    else if (isPast && !hasReport) { badgeClass = "border-red-500 text-red-600 bg-red-50 dark:bg-red-900/20"; icon = "✗"; }
+                    else if (isCurrent && !hasReport) { badgeClass = "border-yellow-500 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 animate-pulse"; icon = "●"; }
+                    else if (isCurrent && hasReport) { badgeClass = "border-green-500 text-green-600 bg-green-50 dark:bg-green-900/20"; icon = "✓"; }
+
+                    return (
+                      <Badge key={m} variant="outline" className={cn("text-[10px] gap-1 px-1.5", badgeClass)}>
+                        {icon} {formatYM(m)}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Report history - placeholder */}
+              {reported.size > 0 && (
+                <div>
+                  <span className="text-muted-foreground font-medium">Historial de reportes:</span>
+                  <div className="mt-1 text-muted-foreground">
+                    {Array.from(reported).sort().map((m) => (
+                      <span key={m} className="inline-block mr-2">✓ {formatYM(m)}</span>
                     ))}
-                  </CollapsibleSection>
-                );
-              })}
-            </CollapsibleSection>
-          </CollapsibleSection>
-        </CardContent>
-      </Card>
-
-      {selectedActividad && (
-        <RegistroAvancePlanificacionDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          actividad={selectedActividad}
-          entidadId={entidadId!}
-          ejecutadoHastaHoy={avanceByActivity.get(selectedActividad.actividad_codigo) || 0}
-          onSaved={() => {
-            loadData();
-            setDialogOpen(false);
-          }}
-        />
+                  </div>
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
       )}
     </>
-  );
-}
-
-/* ─── Collapsible section (levels 1-4) ─── */
-
-function CollapsibleSection({
-  level, icon, label, description, children, defaultOpen = false, badge, summary,
-}: {
-  level: 1 | 2 | 3 | 4;
-  icon: string;
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  badge?: React.ReactNode;
-  summary?: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  const indentClass = level === 1 ? "" : level === 2 ? "ml-3" : level === 3 ? "ml-4" : "ml-5";
-  const textSize = level <= 2 ? "text-sm font-semibold" : level === 3 ? "text-sm font-medium" : "text-xs font-medium";
-  const borderColor = level <= 2 ? "border-primary/30" : level === 3 ? "border-primary/20" : "border-muted-foreground/20";
-
-  return (
-    <div className={cn("border-l-2 rounded-sm", borderColor, indentClass, level === 1 && "border-l-0")}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors rounded"
-      >
-        <span className="text-sm shrink-0">{icon}</span>
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-        <span className={cn(textSize, "text-foreground min-w-0")}>
-          {label}
-        </span>
-        {badge && <span className="ml-auto shrink-0">{badge}</span>}
-      </button>
-      {open && (
-        <div className="pb-1">
-          {description && level <= 2 && (
-            <p className="text-xs text-muted-foreground px-3 pb-2 pl-9">{description}</p>
-          )}
-          {summary}
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── Timeline visualization ─── */
-
-function ActivityTimeline({
-  meses,
-  reported,
-  currentYM,
-  ejecutado,
-  metaTotal,
-  estado,
-}: {
-  meses: string[];
-  reported: Set<string>;
-  currentYM: string;
-  ejecutado: number;
-  metaTotal: number;
-  estado: ActividadEstado;
-}) {
-  if (!meses.length) return null;
-
-  const sorted = [...meses].sort();
-  const pct = metaTotal > 0 ? Math.min(100, (ejecutado / metaTotal) * 100) : 0;
-  const barColor =
-    estado === "con_rezago" ? "bg-red-500" :
-    estado === "al_dia" || estado === "cerrada" ? "bg-green-500" :
-    "bg-yellow-500";
-
-  return (
-    <div className="space-y-1.5">
-      {/* Timeline bar with markers */}
-      <div className="relative">
-        {/* Labels row */}
-        <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-          {sorted.map((m, i) => (
-            <span
-              key={m}
-              className="text-center"
-              style={{
-                position: sorted.length > 2 ? "absolute" : "relative",
-                left: sorted.length > 2 ? `${(i / (sorted.length - 1)) * 100}%` : undefined,
-                transform: sorted.length > 2 ? "translateX(-50%)" : undefined,
-              }}
-            >
-              {formatYM(m)}
-            </span>
-          ))}
-        </div>
-
-        {/* Track */}
-        <div className="relative mt-5 h-2 rounded-full bg-muted overflow-hidden">
-          <div
-            className={cn("h-full rounded-full transition-all", barColor)}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-
-        {/* Markers on track */}
-        <div className="relative h-5 mt-0.5">
-          {sorted.map((m, i) => {
-            const leftPct = sorted.length === 1 ? 50 : (i / (sorted.length - 1)) * 100;
-            const isPast = m < currentYM;
-            const isCurrent = m === currentYM;
-            const hasReport = reported.has(m);
-
-            let markerContent: string;
-            let markerClass: string;
-
-            if (isPast && hasReport) {
-              markerContent = "✓";
-              markerClass = "text-green-600 font-bold";
-            } else if (isPast && !hasReport) {
-              markerContent = "✗";
-              markerClass = "text-red-600 font-bold";
-            } else if (isCurrent) {
-              markerContent = "●";
-              markerClass = "text-yellow-500 animate-pulse font-bold";
-            } else {
-              markerContent = "○";
-              markerClass = "text-muted-foreground";
-            }
-
-            return (
-              <span
-                key={m}
-                className={cn("absolute text-xs -translate-x-1/2 text-center", markerClass)}
-                style={{ left: `${leftPct}%` }}
-              >
-                {markerContent}
-              </span>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Executed summary */}
-      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{ejecutado} de {metaTotal}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Activity card (level 5) ─── */
-
-function ActividadCard({
-  actividad: a, estado, ejecutado, pctProgress, reported, currentYM, canReport, onRegistrar,
-}: {
-  actividad: PlanificacionActividad;
-  estado: ActividadEstado;
-  ejecutado: number;
-  pctProgress: number;
-  reported: Set<string>;
-  currentYM: string;
-  canReport: boolean;
-  onRegistrar: () => void;
-}) {
-  const cfg = ESTADO_CONFIG[estado];
-  const Icon = cfg.icon;
-  const monthStatus = getCurrentMonthStatus(a.meses_programados, currentYM, reported);
-
-  return (
-    <div className="ml-6 border rounded-lg p-4 bg-card hover:shadow-sm transition-shadow space-y-3">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="font-mono text-xs font-bold text-primary border-primary/30 px-2">
-              {a.actividad_codigo}
-            </Badge>
-            <Badge className={cn("text-[10px] gap-1", cfg.bgColor, cfg.color, "border-0")}>
-              <Icon className="h-3 w-3" />
-              {cfg.label}
-            </Badge>
-            {/* Current month indicator */}
-            {monthStatus.label && monthStatus.variant === "current" && (
-              <Badge className="text-[10px] gap-1 bg-yellow-100 text-yellow-700 border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400 animate-pulse border-0">
-                {monthStatus.label}
-              </Badge>
-            )}
-            {monthStatus.label && monthStatus.variant === "in_course" && (
-              <Badge variant="secondary" className="text-[10px] gap-1 border-0">
-                {monthStatus.label}
-              </Badge>
-            )}
-            {monthStatus.label && monthStatus.variant === "rezago" && (
-              <Badge className="text-[10px] gap-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">
-                {monthStatus.label}
-              </Badge>
-            )}
-          </div>
-          <p className="text-sm text-foreground mt-1.5">{a.actividad_descripcion}</p>
-        </div>
-        {canReport && (
-          <Button size="sm" variant="default" className="shrink-0 text-xs" onClick={onRegistrar}>
-            <FileText className="h-3.5 w-3.5 mr-1" />
-            Registrar avance
-          </Button>
-        )}
-      </div>
-
-      {/* Details row */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Meta: {a.meta_total} {a.unidad_medida}</span>
-        <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> USD {a.presupuesto_seco_usd?.toLocaleString()}</span>
-      </div>
-
-      {/* Timeline */}
-      <ActivityTimeline
-        meses={a.meses_programados}
-        reported={reported}
-        currentYM={currentYM}
-        ejecutado={ejecutado}
-        metaTotal={a.meta_total}
-        estado={estado}
-      />
-    </div>
   );
 }
