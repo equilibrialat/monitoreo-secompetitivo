@@ -33,6 +33,7 @@ import RegistroRapidoPage from "./pages/RegistroRapidoPage";
 import GestionFinancieraPage from "./pages/GestionFinancieraPage";
 import PlanificacionTrimestralPage from "./pages/PlanificacionTrimestralPage";
 import MiPlanificacionPage from "./pages/MiPlanificacionPage";
+import RegistrarAvancePage from "./pages/RegistrarAvancePage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -49,7 +50,7 @@ const App = () => (
               <Route path="/dashboard" element={<Index />} />
 
               {/* Entidad routes */}
-              <Route path="/actividades" element={<MisActividades />} />
+              <Route path="/actividades" element={<RegistrarAvancePage />} />
               <Route path="/mi-planificacion" element={<MiPlanificacionPage />} />
               <Route path="/registro-mensual" element={<RegistroMensualPage />} />
               <Route path="/registro-rapido" element={<RegistroRapidoPage />} />

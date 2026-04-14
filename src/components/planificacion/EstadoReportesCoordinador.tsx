@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
-import { ClipboardCheck, ChevronRight } from "lucide-react";
+import { ClipboardCheck, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getCurrentYearMonth, calcEstado, formatYM, ESTADO_CONFIG } from "./MiPlanificacion";
 
 interface EntidadPlanStatus {
   entidadCodigo: string;
@@ -12,11 +13,6 @@ interface EntidadPlanStatus {
   programadasEsteMes: number;
   reportadas: number;
   conRezago: number;
-}
-
-function getCurrentYearMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export default function EstadoReportesCoordinador() {
@@ -37,7 +33,7 @@ export default function EstadoReportesCoordinador() {
       (supabase as any).from("planificacion_actividades").select("*").order("actividad_codigo"),
       (supabase as any)
         .from("registros_mensuales")
-        .select("entidad_id, anio, mes, actividad_id, actividades!inner(codigo)")
+        .select("entidad_id, anio, mes, avance_valor, estado_registro, actividad_id, actividades!inner(codigo)")
         .eq("anio", anioActual)
         .eq("mes", mesActual),
     ]).then(([planRes, regRes]: any[]) => {
@@ -72,7 +68,6 @@ export default function EstadoReportesCoordinador() {
 
       const reportadas = programadas.filter((p: any) => reportedCodes.has(p.actividad_codigo)).length;
 
-      // Count activities with past months without reports (rezago)
       const conRezago = entPlan.filter((p: any) => {
         const meses: string[] = p.meses_programados || [];
         return meses.some((m: string) => m < currentYM && !reportedCodes.has(p.actividad_codigo));
@@ -112,7 +107,7 @@ export default function EstadoReportesCoordinador() {
               </thead>
               <tbody>
                 {statuses.filter(s => planData.some((p: any) => p.entidad_codigo === s.entidadCodigo)).map((s) => {
-                  const statusDot = s.programadasEsteMes === 0
+                  const dotColor = s.programadasEsteMes === 0
                     ? "bg-gray-400"
                     : s.conRezago > 0
                     ? "bg-red-500"
@@ -133,20 +128,21 @@ export default function EstadoReportesCoordinador() {
                   return (
                     <tr key={s.entidadCodigo} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedEntity(isExpanded ? null : s.entidadCodigo)}>
                       <td className="py-2.5 px-3 font-medium flex items-center gap-2">
-                        <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
+                        {isExpanded
+                          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
                         {s.entidadNombre}
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono">{s.programadasEsteMes}</td>
                       <td className="py-2.5 px-3 text-center font-mono">{s.reportadas}/{s.programadasEsteMes}</td>
                       <td className="py-2.5 px-3 text-center text-xs text-muted-foreground">{statusLabel}</td>
-                      <td className="py-2.5 px-3 text-center"><span className={cn("inline-block h-3 w-3 rounded-full", statusDot)} /></td>
+                      <td className="py-2.5 px-3 text-center"><span className={cn("inline-block h-3 w-3 rounded-full", dotColor)} /></td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
 
-            {/* Expanded detail */}
             {expandedEntity && (
               <div className="border-t mt-2 pt-2 space-y-1">
                 {planData

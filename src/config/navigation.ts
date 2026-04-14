@@ -48,7 +48,7 @@ const ENTIDAD_NAV: NavSection[] = [
   {
     label: "MENSUAL",
     items: [
-      { label: "Registrar Avance", path: "/actividades", icon: FileText },
+      { label: "Registrar Avance", path: "/actividades", icon: FileText },  // Separate view for pending deliverables
       { label: "Registro Rápido", path: "/registro-rapido", icon: Zap },
     ],
   },
