@@ -48,14 +48,12 @@ const ENTIDAD_NAV: NavSection[] = [
   {
     label: "MENSUAL",
     items: [
-      { label: "Registrar Avance", path: "/actividades", icon: FileText },  // Separate view for pending deliverables
-      { label: "Registro Rápido", path: "/registro-rapido", icon: Zap },
+      { label: "Registrar Avance", path: "/actividades", icon: FileText },
     ],
   },
   {
     label: "TRIMESTRAL",
     items: [
-      { label: "Plan Trimestral", path: "/planificacion-trimestral", icon: ClipboardList },
       { label: "Avance del Proyecto", path: "/avance-proyecto", icon: BarChart3 },
       { label: "Generar Reporte", path: "/generar-reportes", icon: FileDown },
     ],
