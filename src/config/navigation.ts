@@ -56,7 +56,7 @@ const ENTIDAD_NAV: NavSection[] = [
     label: "TRIMESTRAL",
     items: [
       { label: "Plan Trimestral", path: "/planificacion-trimestral", icon: ClipboardList },
-      { label: "Avance del Proyecto", path: "/indicadores-impacto", icon: BarChart3 },
+      { label: "Avance del Proyecto", path: "/avance-proyecto", icon: BarChart3 },
       { label: "Generar Reporte", path: "/generar-reportes", icon: FileDown },
     ],
   },
