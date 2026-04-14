@@ -2971,6 +2971,7 @@ export type Database = {
         Row: {
           actividad_codigo: string
           avance_tecnico_acumulado: number | null
+          avance_tecnico_trimestre: number | null
           created_at: string | null
           ejecutado_contrapartida: number | null
           ejecutado_seco_bienes: number | null
@@ -2980,18 +2981,20 @@ export type Database = {
           ejecutado_seco_viaticos: number | null
           entidad_codigo: string
           enviado_at: string | null
-          estado: string
+          estado: string | null
           id: string
           justificacion_variacion: string | null
+          meses_incluidos: Json | null
           presupuesto_seco_programado: number | null
-          resultado_intermedio_codigo: string | null
+          reportes_mensuales_origen: Json | null
           resumen_tecnico_ri: string | null
           trimestre: string
-          updated_at: string | null
+          variacion_seco: number | null
         }
         Insert: {
           actividad_codigo: string
           avance_tecnico_acumulado?: number | null
+          avance_tecnico_trimestre?: number | null
           created_at?: string | null
           ejecutado_contrapartida?: number | null
           ejecutado_seco_bienes?: number | null
@@ -3001,18 +3004,20 @@ export type Database = {
           ejecutado_seco_viaticos?: number | null
           entidad_codigo: string
           enviado_at?: string | null
-          estado?: string
+          estado?: string | null
           id?: string
           justificacion_variacion?: string | null
+          meses_incluidos?: Json | null
           presupuesto_seco_programado?: number | null
-          resultado_intermedio_codigo?: string | null
+          reportes_mensuales_origen?: Json | null
           resumen_tecnico_ri?: string | null
           trimestre: string
-          updated_at?: string | null
+          variacion_seco?: number | null
         }
         Update: {
           actividad_codigo?: string
           avance_tecnico_acumulado?: number | null
+          avance_tecnico_trimestre?: number | null
           created_at?: string | null
           ejecutado_contrapartida?: number | null
           ejecutado_seco_bienes?: number | null
@@ -3022,14 +3027,15 @@ export type Database = {
           ejecutado_seco_viaticos?: number | null
           entidad_codigo?: string
           enviado_at?: string | null
-          estado?: string
+          estado?: string | null
           id?: string
           justificacion_variacion?: string | null
+          meses_incluidos?: Json | null
           presupuesto_seco_programado?: number | null
-          resultado_intermedio_codigo?: string | null
+          reportes_mensuales_origen?: Json | null
           resumen_tecnico_ri?: string | null
           trimestre?: string
-          updated_at?: string | null
+          variacion_seco?: number | null
         }
         Relationships: []
       }
