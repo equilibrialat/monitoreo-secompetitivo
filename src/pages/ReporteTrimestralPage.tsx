@@ -375,7 +375,7 @@ export default function ReporteTrimestralPage() {
           {/* Header */}
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <p className="font-medium">REPORTE TRIMESTRAL — {selectedTrimestre} {selectedYear} ({trimConfig.months.map(m => MONTH_NAMES_SHORT[parseInt(m) - 1]).join(" · ")})</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{entidad?.nombre_corto} · {entidad?.titulo_proyecto || "Chocolate Bean to Bar"}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{entidad?.nombre_corto}</p>
           </div>
 
           {/* Monthly report status bar */}

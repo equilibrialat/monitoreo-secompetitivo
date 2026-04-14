@@ -529,7 +529,7 @@ export default function RegistrarAvancePage() {
         <div className="space-y-4">
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <p className="font-medium">REPORTE MENSUAL — {MONTH_NAMES[selectedMes - 1]} {selectedYear}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{entidad?.nombre_corto} · {entidad?.titulo_proyecto || "Chocolate Bean to Bar"}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{entidad?.nombre_corto}</p>
           </div>
 
           {/* SECTION 1: OVERDUE / VENCIDAS */}
