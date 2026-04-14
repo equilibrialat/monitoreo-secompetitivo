@@ -1163,6 +1163,7 @@ export type Database = {
           medio_verificacion: string | null
           meses_programados: Json | null
           meta_total: number | null
+          presupuesto_contrapartida_usd: number | null
           presupuesto_seco_usd: number | null
           producto: string | null
           producto_codigo: string | null
@@ -1188,6 +1189,7 @@ export type Database = {
           medio_verificacion?: string | null
           meses_programados?: Json | null
           meta_total?: number | null
+          presupuesto_contrapartida_usd?: number | null
           presupuesto_seco_usd?: number | null
           producto?: string | null
           producto_codigo?: string | null
@@ -1213,6 +1215,7 @@ export type Database = {
           medio_verificacion?: string | null
           meses_programados?: Json | null
           meta_total?: number | null
+          presupuesto_contrapartida_usd?: number | null
           presupuesto_seco_usd?: number | null
           producto?: string | null
           producto_codigo?: string | null
