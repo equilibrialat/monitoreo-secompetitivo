@@ -31,6 +31,7 @@ import AdministracionPage from "./pages/AdministracionPage";
 import MisIniciativasPage from "./pages/MisIniciativasPage";
 import RegistroRapidoPage from "./pages/RegistroRapidoPage";
 import GestionFinancieraPage from "./pages/GestionFinancieraPage";
+import GestionContratosFinPage from "./pages/GestionContratosFinPage";
 import PlanificacionTrimestralPage from "./pages/PlanificacionTrimestralPage";
 import MiPlanificacionPage from "./pages/MiPlanificacionPage";
 import RegistrarAvancePage from "./pages/RegistrarAvancePage";
