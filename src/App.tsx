@@ -34,6 +34,7 @@ import GestionFinancieraPage from "./pages/GestionFinancieraPage";
 import PlanificacionTrimestralPage from "./pages/PlanificacionTrimestralPage";
 import MiPlanificacionPage from "./pages/MiPlanificacionPage";
 import RegistrarAvancePage from "./pages/RegistrarAvancePage";
+import ReporteTrimestralPage from "./pages/ReporteTrimestralPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/registro-mensual" element={<RegistroMensualPage />} />
               <Route path="/registro-rapido" element={<RegistroRapidoPage />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
+              <Route path="/avance-proyecto" element={<ReporteTrimestralPage />} />
 
               {/* Gestor routes */}
               <Route path="/mis-iniciativas" element={<MisIniciativasPage />} />
