@@ -120,6 +120,86 @@ export type Database = {
           },
         ]
       }
+      comprobantes: {
+        Row: {
+          actividad_codigo: string
+          clase_documento: string | null
+          concepto: string
+          contrato_id: string | null
+          created_at: string | null
+          documento_url: string | null
+          entidad_codigo: string
+          fecha_documento: string
+          fuente: string | null
+          id: string
+          igv_usd: number | null
+          mes: string
+          moneda: string | null
+          monto_moneda_origen: number
+          monto_usd: number
+          numero_documento: string | null
+          proveedor_nombre: string | null
+          ruc: string | null
+          tipo_cambio: number | null
+          tipo_gasto: string | null
+          trimestre: string
+        }
+        Insert: {
+          actividad_codigo: string
+          clase_documento?: string | null
+          concepto: string
+          contrato_id?: string | null
+          created_at?: string | null
+          documento_url?: string | null
+          entidad_codigo: string
+          fecha_documento: string
+          fuente?: string | null
+          id?: string
+          igv_usd?: number | null
+          mes: string
+          moneda?: string | null
+          monto_moneda_origen: number
+          monto_usd: number
+          numero_documento?: string | null
+          proveedor_nombre?: string | null
+          ruc?: string | null
+          tipo_cambio?: number | null
+          tipo_gasto?: string | null
+          trimestre: string
+        }
+        Update: {
+          actividad_codigo?: string
+          clase_documento?: string | null
+          concepto?: string
+          contrato_id?: string | null
+          created_at?: string | null
+          documento_url?: string | null
+          entidad_codigo?: string
+          fecha_documento?: string
+          fuente?: string | null
+          id?: string
+          igv_usd?: number | null
+          mes?: string
+          moneda?: string | null
+          monto_moneda_origen?: number
+          monto_usd?: number
+          numero_documento?: string | null
+          proveedor_nombre?: string | null
+          ruc?: string | null
+          tipo_cambio?: number | null
+          tipo_gasto?: string | null
+          trimestre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comprobantes_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos_financieros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config_gatillos_actividad: {
         Row: {
           aplica_mecanismo:
@@ -325,6 +405,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contratos_financieros: {
+        Row: {
+          actividad_codigo: string
+          created_at: string | null
+          documento_url: string | null
+          entidad_codigo: string
+          estado: string | null
+          fecha_fin: string | null
+          fecha_inicio: string | null
+          id: string
+          moneda: string | null
+          monto_contrato_moneda_origen: number | null
+          monto_contrato_usd: number | null
+          numero_contrato: string | null
+          objeto_contrato: string
+          proveedor_nombre: string
+          ruc: string | null
+          tipo: string | null
+          tipo_cambio: number | null
+          tipo_gasto: string | null
+          trimestre_inicio: string | null
+        }
+        Insert: {
+          actividad_codigo: string
+          created_at?: string | null
+          documento_url?: string | null
+          entidad_codigo: string
+          estado?: string | null
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          moneda?: string | null
+          monto_contrato_moneda_origen?: number | null
+          monto_contrato_usd?: number | null
+          numero_contrato?: string | null
+          objeto_contrato: string
+          proveedor_nombre: string
+          ruc?: string | null
+          tipo?: string | null
+          tipo_cambio?: number | null
+          tipo_gasto?: string | null
+          trimestre_inicio?: string | null
+        }
+        Update: {
+          actividad_codigo?: string
+          created_at?: string | null
+          documento_url?: string | null
+          entidad_codigo?: string
+          estado?: string | null
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          moneda?: string | null
+          monto_contrato_moneda_origen?: number | null
+          monto_contrato_usd?: number | null
+          numero_contrato?: string | null
+          objeto_contrato?: string
+          proveedor_nombre?: string
+          ruc?: string | null
+          tipo?: string | null
+          tipo_cambio?: number | null
+          tipo_gasto?: string | null
+          trimestre_inicio?: string | null
+        }
+        Relationships: []
       }
       desembolsos: {
         Row: {
@@ -3403,6 +3549,21 @@ export type Database = {
           sobregiros_seco: number | null
           tipo_entidad: Database["public"]["Enums"]["tipo_entidad"] | null
           total_actividades: number | null
+        }
+        Relationships: []
+      }
+      v_reporte_financiero_trimestral: {
+        Row: {
+          actividad_codigo: string | null
+          ejecutado_seco_bienes: number | null
+          ejecutado_seco_consultorias: number | null
+          ejecutado_seco_otros: number | null
+          ejecutado_seco_terceros: number | null
+          ejecutado_total_usd: number | null
+          entidad_codigo: string | null
+          fuente: string | null
+          numero_comprobantes: number | null
+          trimestre: string | null
         }
         Relationships: []
       }
