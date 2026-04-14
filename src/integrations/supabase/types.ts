@@ -2967,6 +2967,72 @@ export type Database = {
           },
         ]
       }
+      reportes_trimestrales: {
+        Row: {
+          actividad_codigo: string
+          avance_tecnico_acumulado: number | null
+          created_at: string | null
+          ejecutado_contrapartida: number | null
+          ejecutado_seco_bienes: number | null
+          ejecutado_seco_consultorias: number | null
+          ejecutado_seco_terceros: number | null
+          ejecutado_seco_total: number | null
+          ejecutado_seco_viaticos: number | null
+          entidad_codigo: string
+          enviado_at: string | null
+          estado: string
+          id: string
+          justificacion_variacion: string | null
+          presupuesto_seco_programado: number | null
+          resultado_intermedio_codigo: string | null
+          resumen_tecnico_ri: string | null
+          trimestre: string
+          updated_at: string | null
+        }
+        Insert: {
+          actividad_codigo: string
+          avance_tecnico_acumulado?: number | null
+          created_at?: string | null
+          ejecutado_contrapartida?: number | null
+          ejecutado_seco_bienes?: number | null
+          ejecutado_seco_consultorias?: number | null
+          ejecutado_seco_terceros?: number | null
+          ejecutado_seco_total?: number | null
+          ejecutado_seco_viaticos?: number | null
+          entidad_codigo: string
+          enviado_at?: string | null
+          estado?: string
+          id?: string
+          justificacion_variacion?: string | null
+          presupuesto_seco_programado?: number | null
+          resultado_intermedio_codigo?: string | null
+          resumen_tecnico_ri?: string | null
+          trimestre: string
+          updated_at?: string | null
+        }
+        Update: {
+          actividad_codigo?: string
+          avance_tecnico_acumulado?: number | null
+          created_at?: string | null
+          ejecutado_contrapartida?: number | null
+          ejecutado_seco_bienes?: number | null
+          ejecutado_seco_consultorias?: number | null
+          ejecutado_seco_terceros?: number | null
+          ejecutado_seco_total?: number | null
+          ejecutado_seco_viaticos?: number | null
+          entidad_codigo?: string
+          enviado_at?: string | null
+          estado?: string
+          id?: string
+          justificacion_variacion?: string | null
+          presupuesto_seco_programado?: number | null
+          resultado_intermedio_codigo?: string | null
+          resumen_tecnico_ri?: string | null
+          trimestre?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       resultados: {
         Row: {
           codigo: string
