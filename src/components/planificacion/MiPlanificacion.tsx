@@ -168,12 +168,32 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         .order("actividad_codigo"),
       (supabase as any)
         .from("registros_mensuales")
-        .select("actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)")
+        .select("actividad_id, anio, mes, avance_valor, estado_registro, fecha_registro, actividades!inner(codigo)")
         .eq("entidad_id", entidadId),
-    ]).then(([planRes, regRes]: any[]) => {
+      // Fetch activity UUIDs
+      (supabase as any)
+        .from("actividades")
+        .select("id, codigo")
+        .eq("entidad_id", entidadId),
+      // Fetch last financial entries
+      (supabase as any)
+        .from("ejecucion_financiera")
+        .select("actividad_id, created_at, actividades!inner(codigo)")
+        .eq("entidad_id", entidadId)
+        .order("created_at", { ascending: false }),
+    ]).then(([planRes, regRes, actRes, efRes]: any[]) => {
       setActividades(planRes.data || []);
+
+      // Activity ID map
+      const idMap = new Map<string, string>();
+      if (actRes.data) {
+        for (const a of actRes.data) idMap.set(a.codigo, a.id);
+      }
+      setActIdMap(idMap);
+
       const byCode = new Map<string, Set<string>>();
       const avanceMap = new Map<string, number>();
+      const lastTecMap = new Map<string, string>();
       if (regRes.data) {
         for (const r of regRes.data) {
           const code = r.actividades?.codigo;
@@ -181,15 +201,32 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
           const ym = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
           if (!byCode.has(code)) byCode.set(code, new Set());
           byCode.get(code)!.add(ym);
-          // Only count avance from non-draft reports
           if (r.estado_registro !== "borrador") {
             const prev = avanceMap.get(code) || 0;
             avanceMap.set(code, prev + (r.avance_valor || 0));
+          }
+          // Track latest registro date
+          if (r.fecha_registro) {
+            const prev = lastTecMap.get(code);
+            if (!prev || r.fecha_registro > prev) lastTecMap.set(code, r.fecha_registro);
           }
         }
       }
       setReportsByActivity(byCode);
       setAvanceByActivity(avanceMap);
+      setLastTecnico(lastTecMap);
+
+      // Last financial update per activity code
+      const lastFinMap = new Map<string, string>();
+      if (efRes.data) {
+        for (const ef of efRes.data) {
+          const code = ef.actividades?.codigo;
+          if (!code || lastFinMap.has(code)) continue;
+          lastFinMap.set(code, ef.created_at);
+        }
+      }
+      setLastFinanciero(lastFinMap);
+
       setLoading(false);
     });
   }
