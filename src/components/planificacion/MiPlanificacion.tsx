@@ -404,6 +404,14 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
+        {/* Filter bar */}
+        <PlanificacionFilters
+          filters={filters}
+          onChange={setFilters}
+          totalCount={totalActCount}
+          filteredCount={filteredActCount}
+        />
+
         {/* Level 1: Resultado de Impacto */}
         <div className="text-sm font-semibold text-foreground flex items-center gap-2">
           <span>📌</span> {hierarchy.resultadoImpacto}
@@ -417,6 +425,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         {/* Level 3+: RIs */}
         {hierarchy.ris.map((ri) => {
           const allRiActs = Array.from(ri.productos.values()).flatMap((p) => p.acts);
+          const filteredRiActs = filtersActive ? allRiActs.filter(matchesFilters) : allRiActs;
+          if (filtersActive && filteredRiActs.length === 0) return null;
           const riSemaforo = getRiSemaforo(allRiActs);
           const riCfg = ESTADO_CONFIG[riSemaforo];
           const riPresupuesto = allRiActs.reduce((s, a) => s + (a.presupuesto_seco_usd || 0), 0);
