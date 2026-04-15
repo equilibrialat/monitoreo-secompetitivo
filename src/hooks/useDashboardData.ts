@@ -222,6 +222,7 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
       observaciones_detalle: obsDetalle,
       has_data: hasActData || hasRtData,
       solo_reportes_trimestrales: soloRT,
+      sin_planificacion: !entidadesConPlanificacion.has(d.codigo || ""),
     };
   });
 }
