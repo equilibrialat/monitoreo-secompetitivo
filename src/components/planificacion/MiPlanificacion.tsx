@@ -18,6 +18,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import PlanificacionFilters, {
+  type PlanificacionFilterState,
+  EMPTY_FILTERS,
+  hasActiveFilters,
+} from "./PlanificacionFilters";
 
 /* ─── Types ─── */
 
