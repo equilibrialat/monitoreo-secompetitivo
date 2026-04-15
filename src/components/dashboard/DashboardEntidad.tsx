@@ -8,8 +8,9 @@ import { useDashboardData, type DashboardEntidad as DashboardEntidadType } from 
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, CheckCircle2, AlertTriangle, Target,
-  Activity, TrendingUp, DollarSign, Calendar, ArrowRight, FileText
+  Activity, TrendingUp, DollarSign, Calendar, ArrowRight, FileText, Info
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { type PlanificacionActividad, getCurrentYearMonth, formatYM } from "@/components/planificacion/MiPlanificacion";
@@ -69,9 +70,8 @@ export default function DashboardEntidad() {
           const ym = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
           if (!byCode.has(code)) byCode.set(code, new Set());
           byCode.get(code)!.add(ym);
-          if (r.estado_registro !== "borrador") {
-            avanceMap.set(code, (avanceMap.get(code) || 0) + (r.avance_valor || 0));
-          }
+          // Count all records (including borradores) for avance
+          avanceMap.set(code, (avanceMap.get(code) || 0) + (r.avance_valor || 0));
         }
       }
       setReportsByActivity(byCode);
@@ -92,7 +92,7 @@ export default function DashboardEntidad() {
 
     const allPast = sorted.every(m => m <= currentYM);
     const allReported = sorted.every(m => reported.has(m));
-    if (allPast && allReported && ejecutado >= (act.meta_total || 0) && (act.meta_total || 0) > 0) return "completada";
+    if (allPast && allReported) return "completada";
 
     const pastWithout = sorted.filter(m => m < currentYM && !reported.has(m));
     if (pastWithout.length > 0) return "vencida";
@@ -116,9 +116,13 @@ export default function DashboardEntidad() {
       if (lifecycle === "completada") completadas++;
       if (lifecycle === "vencida") vencidas++;
 
-      const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
-      const meta = act.meta_total || 0;
-      if (meta > 0) totalAvancePct += Math.min((ejecutado / meta) * 100, 100);
+      // Avance based on reported months / total scheduled months
+      const meses = (act.meses_programados || []) as string[];
+      const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+      if (meses.length > 0) {
+        const reportedCount = meses.filter(m => reported.has(m)).length;
+        totalAvancePct += (reportedCount / meses.length) * 100;
+      }
 
       presupuestoTotal += (act.presupuesto_seco_usd || 0);
     }
@@ -199,43 +203,50 @@ export default function DashboardEntidad() {
       <Header title={`Hola, ${entidadNombre} 👋`} subtitle={`${MONTH_NAMES[currentMes - 1]} ${currentYear}`} />
 
       {/* ═══ SECCIÓN A — KPI Cards ═══ */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard
-          icon={TrendingUp}
-          label="% Avance del producto"
-          value={`${kpis.avanceProducto}%`}
-          accent={kpis.avanceProducto >= 50 ? "green" : kpis.avanceProducto >= 25 ? "amber" : "red"}
-        />
-        <KpiCard
-          icon={Target}
-          label="Nivel de cumplimiento"
-          value={`${kpis.nivelCumplimiento}%`}
-          accent={kpis.nivelCumplimiento >= 70 ? "green" : kpis.nivelCumplimiento >= 40 ? "amber" : "red"}
-        />
-        <KpiCard
-          icon={Activity}
-          label="Total de actividades"
-          value={String(kpis.total)}
-        />
-        <KpiCard
-          icon={CheckCircle2}
-          label="Actividades completadas"
-          value={String(kpis.completadas)}
-          accent="green"
-        />
-        <KpiCard
-          icon={AlertTriangle}
-          label="Actividades vencidas"
-          value={String(kpis.vencidas)}
-          accent={kpis.vencidas > 0 ? "red" : "green"}
-        />
-        <KpiCard
-          icon={DollarSign}
-          label="Contribución al producto"
-          value={`${kpis.contribucionProducto}%`}
-          accent={kpis.contribucionProducto >= 50 ? "green" : "amber"}
-        />
-      </div>
+      <TooltipProvider delayDuration={200}>
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <KpiCard
+            icon={TrendingUp}
+            label="% Avance del producto"
+            value={`${kpis.avanceProducto}%`}
+            accent={kpis.avanceProducto >= 50 ? "green" : kpis.avanceProducto >= 25 ? "amber" : "red"}
+            tooltip="Promedio de entregables reportados respecto al total de meses programados por actividad."
+          />
+          <KpiCard
+            icon={Target}
+            label="Nivel de cumplimiento"
+            value={`${kpis.nivelCumplimiento}%`}
+            accent={kpis.nivelCumplimiento >= 70 ? "green" : kpis.nivelCumplimiento >= 40 ? "amber" : "red"}
+            tooltip="Porcentaje de actividades que ya reportaron todos sus entregables programados."
+          />
+          <KpiCard
+            icon={Activity}
+            label="Total de actividades"
+            value={String(kpis.total)}
+          />
+          <KpiCard
+            icon={CheckCircle2}
+            label="Actividades completadas"
+            value={String(kpis.completadas)}
+            accent="green"
+          />
+          <KpiCard
+            icon={AlertTriangle}
+            label="Actividades vencidas"
+            value={String(kpis.vencidas)}
+            accent={kpis.vencidas > 0 ? "red" : "green"}
+            tooltip="Actividades con entregables cuyo mes programado ya pasó sin registro."
+            onClick={() => navigate("/mi-planificacion")}
+          />
+          <KpiCard
+            icon={DollarSign}
+            label="Contribución al producto"
+            value={`${kpis.contribucionProducto}%`}
+            accent={kpis.contribucionProducto >= 50 ? "green" : "amber"}
+            tooltip="Porcentaje de ejecución financiera SECO respecto al presupuesto asignado."
+          />
+        </div>
+      </TooltipProvider>
 
       {/* ═══ SECCIÓN B — Lo que toca entregar este mes ═══ */}
       <div className="space-y-2">
@@ -392,7 +403,7 @@ export function Header({ title, subtitle }: { title: string; subtitle?: string }
 
 type AccentColor = "green" | "amber" | "red" | undefined;
 
-export function KpiCard({ icon: Icon, label, value, sub, accent }: { icon: typeof Activity; label: string; value: string; sub?: string; accent?: AccentColor }) {
+export function KpiCard({ icon: Icon, label, value, sub, accent, tooltip, onClick }: { icon: typeof Activity; label: string; value: string; sub?: string; accent?: AccentColor; tooltip?: string; onClick?: () => void }) {
   const accentBorder = accent === "green" ? "border-green-200 dark:border-green-800" :
                        accent === "amber" ? "border-amber-200 dark:border-amber-800" :
                        accent === "red" ? "border-red-200 dark:border-red-800" : "";
@@ -401,11 +412,21 @@ export function KpiCard({ icon: Icon, label, value, sub, accent }: { icon: typeo
                      accent === "red" ? "text-red-600" : "text-primary";
 
   return (
-    <Card className={accentBorder}>
+    <Card className={cn(accentBorder, onClick && "cursor-pointer hover:shadow-md hover:border-primary/30 transition-all")} onClick={onClick}>
       <CardContent className="pt-4 pb-3">
         <div className="flex items-center gap-2 mb-1">
           <Icon className={`h-4 w-4 ${accentIcon}`} />
           <p className="text-[11px] font-medium text-muted-foreground leading-tight">{label}</p>
+          {tooltip && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[220px] text-xs">
+                {tooltip}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
         <p className="text-2xl font-bold text-foreground">{value}</p>
         {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
