@@ -64,7 +64,7 @@ const DEFAULT_FILTERS: GlobalFilters = {
 const RoleContext = createContext<RoleContextValue | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<AppRole>("entidad_mec_a");
+  const [role, setRole] = useState<AppRole>("entidad_mec_b");
   const [entidadId, setEntidadId] = useState<string | null>(null);
   const [entidades, setEntidades] = useState<EntidadOption[]>([]);
   const [loadingEntidades, setLoadingEntidades] = useState(true);
@@ -119,8 +119,14 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           const filteredFull = fullEnts.filter((e: any) =>
             activeIds.has(e.id) || entCodesWithRT.has(e.codigo)
           );
-          setEntidades(filteredFull);
-          if (!entidadId && filteredFull.length > 0) setEntidadId(filteredFull[0].id);
+          const list = filteredFull.length > 0 ? filteredFull : filtered;
+          setEntidades(list);
+          if (!entidadId && list.length > 0) {
+            const defaultEntity = list.find((e: any) =>
+              e.nombre_corto?.toLowerCase().includes("cacao")
+            ) || list[0];
+            setEntidadId(defaultEntity.id);
+          }
         } else {
           setEntidades(filtered);
           if (!entidadId && filtered.length > 0) setEntidadId(filtered[0].id);
