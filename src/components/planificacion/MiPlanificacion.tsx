@@ -455,6 +455,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
               {!riCollapsed && (
                 <div className="ml-2">
                   {Array.from(ri.productos.values()).map((prod) => {
+                    const filteredProdActs = filtersActive ? prod.acts.filter(matchesFilters) : prod.acts;
+                    if (filtersActive && filteredProdActs.length === 0) return null;
                     const prodKey = `prod-${prod.codigo}`;
                     const prodCollapsed = collapsedSections.has(prodKey);
 
