@@ -553,12 +553,38 @@ function ActividadRow({
             <TooltipContent side="top" className="text-xs">{cfg.label}</TooltipContent>
           </Tooltip>
         </td>
+        {!readOnly && (
+          <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={onOpenTecnico}>
+              <FileEdit className="h-3 w-3" />
+              Registrar
+            </Button>
+            {lastTecnicoDate && (
+              <div className="text-[9px] text-muted-foreground mt-0.5">
+                {new Date(lastTecnicoDate).toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}
+              </div>
+            )}
+          </td>
+        )}
+        {!readOnly && (
+          <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={onOpenPresup}>
+              <Wallet className="h-3 w-3" />
+              Registrar
+            </Button>
+            {lastFinancieroDate && (
+              <div className="text-[9px] text-muted-foreground mt-0.5">
+                {new Date(lastFinancieroDate).toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}
+              </div>
+            )}
+          </td>
+        )}
       </tr>
 
       {/* Expanded detail panel */}
       {isExpanded && (
         <tr>
-          <td colSpan={7} className="p-0">
+          <td colSpan={readOnly ? 7 : 9} className="p-0">
             <div className="bg-muted/30 border-t border-b px-4 py-3 space-y-2 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
