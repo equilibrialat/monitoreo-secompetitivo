@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import MesReportarSelect, { parseMesReportar } from "./MesReportarSelect";
 
 const TIPOS_COMPROBANTE = [
   { value: "factura", label: "Factura" },
@@ -37,6 +38,8 @@ interface ModalAvancePresupuestarioProps {
   entidadId: string;
   registroMensualId?: string;
   onSaved?: () => void;
+  mesesProgramados?: string[];
+  mesesReportados?: Set<string>;
 }
 
 export default function ModalAvancePresupuestario({
@@ -48,13 +51,18 @@ export default function ModalAvancePresupuestario({
   entidadId,
   registroMensualId,
   onSaved,
+  mesesProgramados,
+  mesesReportados,
 }: ModalAvancePresupuestarioProps) {
   const [monto, setMonto] = useState<string>("");
   const [tipoComprobante, setTipoComprobante] = useState("factura");
   const [fuente, setFuente] = useState("cofinanciamiento_seco");
   const [fecha, setFecha] = useState<Date>(new Date());
   const [archivo, setArchivo] = useState<File | null>(null);
+  const [mesReportar, setMesReportar] = useState<string>("");
   const [saving, setSaving] = useState(false);
+
+  const hasMesesProps = mesesProgramados && mesesReportados;
 
   const handleSave = async () => {
     const montoNum = parseFloat(monto);
@@ -66,14 +74,27 @@ export default function ModalAvancePresupuestario({
       toast.error("No se encontró el ID de la actividad");
       return;
     }
+    if (hasMesesProps && !mesReportar) {
+      toast.error("Selecciona el mes a reportar");
+      return;
+    }
 
     setSaving(true);
     try {
-      // If no registroMensualId, create one first
       let regId = registroMensualId;
       if (!regId) {
-        const mes = fecha.getMonth() + 1;
-        const anio = fecha.getFullYear();
+        let mes: number;
+        let anio: number;
+
+        if (hasMesesProps && mesReportar) {
+          const parsed = parseMesReportar(mesReportar);
+          mes = parsed.mes;
+          anio = parsed.anio;
+        } else {
+          mes = fecha.getMonth() + 1;
+          anio = fecha.getFullYear();
+        }
+
         const { data: newReg, error: regErr } = await supabase
           .from("registros_mensuales")
           .insert({
@@ -103,7 +124,6 @@ export default function ModalAvancePresupuestario({
         }
       }
 
-      // Insert ejecucion_financiera
       const { error: efError } = await supabase.from("ejecucion_financiera").insert({
         actividad_id: actividadId,
         entidad_id: entidadId,
@@ -123,6 +143,7 @@ export default function ModalAvancePresupuestario({
       setFuente("cofinanciamiento_seco");
       setFecha(new Date());
       setArchivo(null);
+      setMesReportar("");
       onOpenChange(false);
       onSaved?.();
     } catch (err: any) {
@@ -143,6 +164,16 @@ export default function ModalAvancePresupuestario({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Mes a reportar selector */}
+          {hasMesesProps && (
+            <MesReportarSelect
+              mesesProgramados={mesesProgramados}
+              mesesReportados={mesesReportados}
+              value={mesReportar}
+              onValueChange={setMesReportar}
+            />
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="monto">Monto ejecutado (USD)</Label>
