@@ -133,16 +133,43 @@ export default function DashboardEntidad() {
     return { total, completadas, vencidas, avanceProducto, nivelCumplimiento, contribucionProducto };
   }, [actividades, reportsByActivity, avanceByActivity, ent, currentYM]);
 
-  /* ─── Tasks this month (max 3) ─── */
-  const tareasDelMes = useMemo(() => {
-    const tasks: PlanificacionActividad[] = [];
+  /* ─── Activities with pending deliverables (replaces tareasDelMes) ─── */
+  type ActividadDesglose = PlanificacionActividad & {
+    rezagados: number;
+    esteMes: boolean;
+    pendientes: number;
+    reportados: number;
+  };
+
+  const actividadesConPendientes = useMemo(() => {
+    const result: ActividadDesglose[] = [];
     for (const act of actividades) {
-      if (getLifecycle(act) === "entregable_este_mes") {
-        tasks.push(act);
-        if (tasks.length >= 5) break;
+      const meses = (act.meses_programados || []) as string[];
+      if (!meses.length) continue;
+      const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+
+      let rezagados = 0;
+      let esteMes = false;
+      let pendientes = 0;
+      let reportadosCount = 0;
+
+      for (const m of meses) {
+        if (reported.has(m)) { reportadosCount++; continue; }
+        if (m < currentYM) rezagados++;
+        else if (m === currentYM) esteMes = true;
+        else pendientes++;
+      }
+
+      if (rezagados > 0 || esteMes) {
+        result.push({ ...act, rezagados, esteMes, pendientes, reportados: reportadosCount });
       }
     }
-    return tasks;
+    // Sort: esteMes first, then by rezagados desc
+    result.sort((a, b) => {
+      if (a.esteMes !== b.esteMes) return a.esteMes ? -1 : 1;
+      return b.rezagados - a.rezagados;
+    });
+    return result;
   }, [actividades, reportsByActivity, avanceByActivity, currentYM]);
 
   /* ─── Render ─── */
