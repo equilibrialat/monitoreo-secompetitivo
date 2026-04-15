@@ -477,6 +477,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         actividadId={actIdMap.get(modalTecnico.act.actividad_codigo)}
         entidadId={entidadId || ""}
         onSaved={loadData}
+        mesesProgramados={modalTecnico.act.meses_programados || []}
+        mesesReportados={reportsByActivity.get(modalTecnico.act.actividad_codigo) || new Set()}
       />
     )}
     {modalPresup.act && (
@@ -488,6 +490,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         actividadId={actIdMap.get(modalPresup.act.actividad_codigo)}
         entidadId={entidadId || ""}
         onSaved={loadData}
+        mesesProgramados={modalPresup.act.meses_programados || []}
+        mesesReportados={reportsByActivity.get(modalPresup.act.actividad_codigo) || new Set()}
       />
     )}
     </>

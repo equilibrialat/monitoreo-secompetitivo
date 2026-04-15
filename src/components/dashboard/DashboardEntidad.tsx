@@ -13,6 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { type PlanificacionActividad, getCurrentYearMonth, formatYM } from "@/components/planificacion/MiPlanificacion";
 import ModalAvanceTecnico from "@/components/planificacion/ModalAvanceTecnico";
+import ModalAvancePresupuestario from "@/components/planificacion/ModalAvancePresupuestario";
 
 /* ─── Helpers ─── */
 
