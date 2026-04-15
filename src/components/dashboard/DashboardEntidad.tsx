@@ -38,6 +38,7 @@ export default function DashboardEntidad() {
   const [actIdMap, setActIdMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [modalTecnico, setModalTecnico] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
+  const [modalPresup, setModalPresup] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
 
   const currentYM = getCurrentYearMonth();
   const currentMes = parseInt(currentYM.split("-")[1]);
