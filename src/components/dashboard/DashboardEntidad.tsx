@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -7,13 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/contexts/RoleContext";
 import { useDashboardData, type DashboardEntidad as DashboardEntidadType } from "@/hooks/useDashboardData";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, ChevronDown, ChevronRight, CheckCircle2, AlertTriangle, Clock, ArrowRight, DollarSign, FileText } from "lucide-react";
+import { LayoutDashboard, ChevronDown, ChevronRight, CheckCircle2, ArrowRight, DollarSign, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
 import { type PlanificacionActividad, getCurrentYearMonth, formatYM } from "@/components/planificacion/MiPlanificacion";
+import NarrativeBlock from "./NarrativeBlock";
+import DocumentUploadBlock from "./DocumentUploadBlock";
 
 const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const MONTH_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function getCurrentTrimestreInfo() {
   const now = new Date();
@@ -35,14 +35,13 @@ export default function DashboardEntidad() {
   const navigate = useNavigate();
 
   const entidad = entidadOptions.find((e) => e.id === entidadId);
-  const entidadCodigo = entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null;
-  const isAppcacao = !!entidadCodigo;
+  const entidadCodigo = (entidad as any)?.codigo || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
   const ent = dashData?.find((e) => e.entidad_id === entidadId);
 
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
-  const [finSummary, setFinSummary] = useState<{ ejecutadoTotal: number; trimEjecutado: number; trimProgramado: number; comprometido: number }>({ ejecutadoTotal: 0, trimEjecutado: 0, trimProgramado: 0, comprometido: 0 });
+  const [finSummary, setFinSummary] = useState<{ ejecutadoTotal: number; trimEjecutado: number }>({ ejecutadoTotal: 0, trimEjecutado: 0 });
   const [loading, setLoading] = useState(true);
   const [completedOpen, setCompletedOpen] = useState(false);
 
@@ -59,8 +58,7 @@ export default function DashboardEntidad() {
       (supabase as any).from("planificacion_actividades").select("*").eq("entidad_codigo", entidadCodigo).order("actividad_codigo"),
       (supabase as any).from("registros_mensuales").select("id, actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)").eq("entidad_id", entidadId),
       (supabase as any).from("comprobantes").select("monto_usd, trimestre").eq("entidad_codigo", entidadCodigo),
-      (supabase as any).from("contratos_financieros").select("monto_contrato_usd, estado").eq("entidad_codigo", entidadCodigo).eq("estado", "vigente"),
-    ]).then(([planRes, regRes, compRes, contRes]: any[]) => {
+    ]).then(([planRes, regRes, compRes]: any[]) => {
       setActividades(planRes.data || []);
 
       const byCode = new Map<string, Set<string>>();
@@ -78,39 +76,16 @@ export default function DashboardEntidad() {
       setReportsByActivity(byCode);
       setAvanceByActivity(avanceMap);
 
-      // Financial summary
       const comps = compRes.data || [];
       const ejecutadoTotal = comps.reduce((s: number, c: any) => s + Number(c.monto_usd || 0), 0);
       const trimEjecutado = comps.filter((c: any) => c.trimestre === trimInfo.key).reduce((s: number, c: any) => s + Number(c.monto_usd || 0), 0);
-      const comprometido = (contRes.data || []).reduce((s: number, c: any) => s + Number(c.monto_contrato_usd || 0), 0);
-
-      // Programado for trim
-      const acts = planRes.data || [];
-      let trimProgramado = 0;
-      for (const a of acts) {
-        const meses = (a.meses_programados || []) as string[];
-        if (meses.some((m: string) => trimInfo.months.includes(m))) {
-          const trims = new Set<string>();
-          for (const m of meses) {
-            const mo = parseInt(m.split("-")[1]);
-            const y = m.split("-")[0];
-            if (mo <= 3) trims.add(`${y}-T1`);
-            else if (mo <= 6) trims.add(`${y}-T2`);
-            else if (mo <= 9) trims.add(`${y}-T3`);
-            else trims.add(`${y}-T4`);
-          }
-          trimProgramado += trims.size > 0 ? (a.presupuesto_seco_usd || 0) / trims.size : 0;
-        }
-      }
-
-      setFinSummary({ ejecutadoTotal, trimEjecutado, trimProgramado, comprometido });
+      setFinSummary({ ejecutadoTotal, trimEjecutado });
       setLoading(false);
     });
   }, [entidadCodigo, entidadId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Lifecycle calculation
   function getLifecycle(act: PlanificacionActividad): ActivityLifecycle {
     const meses = (act.meses_programados || []) as string[];
     if (!meses.length) return "por_iniciar";
@@ -130,18 +105,13 @@ export default function DashboardEntidad() {
     return "en_curso";
   }
 
-  const { pendientes, vencidas, enCurso, completadas, riCount, productoCount } = useMemo(() => {
+  const { pendientes, vencidas, enCurso, completadas } = useMemo(() => {
     const pendientes: PlanificacionActividad[] = [];
     const vencidas: { act: PlanificacionActividad; mesVencido: string }[] = [];
     const enCurso: { act: PlanificacionActividad; proximoMes: string | null }[] = [];
     const completadas: PlanificacionActividad[] = [];
-    const riSet = new Set<string>();
-    const prodSet = new Set<string>();
 
     for (const act of actividades) {
-      if (act.resultado_intermedio_codigo) riSet.add(act.resultado_intermedio_codigo);
-      if (act.producto_codigo) prodSet.add(act.producto_codigo);
-
       const lifecycle = getLifecycle(act);
       const meses = (act.meses_programados || []) as string[];
       const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
@@ -152,9 +122,7 @@ export default function DashboardEntidad() {
         const sorted = [...meses].sort();
         const firstUnreported = sorted.find(m => m < currentYM && !reported.has(m));
         vencidas.push({ act, mesVencido: firstUnreported || sorted[0] });
-        if (meses.includes(currentYM) && !reported.has(currentYM)) {
-          pendientes.push(act);
-        }
+        if (meses.includes(currentYM) && !reported.has(currentYM)) pendientes.push(act);
       } else if (lifecycle === "entregable_este_mes") {
         pendientes.push(act);
       } else {
@@ -163,18 +131,15 @@ export default function DashboardEntidad() {
         enCurso.push({ act, proximoMes: nextMonth || null });
       }
     }
-
     vencidas.sort((a, b) => a.mesVencido.localeCompare(b.mesVencido));
-    return { pendientes, vencidas, enCurso, completadas, riCount: riSet.size, productoCount: prodSet.size };
+    return { pendientes, vencidas, enCurso, completadas };
   }, [actividades, reportsByActivity, avanceByActivity, currentYM]);
 
   const presupuestoTotal = ent?.presupuesto_seco_total || 0;
-  const pctEjecutado = presupuestoTotal > 0 ? ((finSummary.ejecutadoTotal / presupuestoTotal) * 100).toFixed(1) : "0";
 
   if (dashLoading || loading) return <DashboardSkeleton />;
 
-  if (!isAppcacao) {
-    // Fallback for non-APPCACAO entities — simple KPIs
+  if (!entidadCodigo) {
     if (!ent) return <div className="text-muted-foreground text-center py-12">Selecciona una entidad en el panel lateral.</div>;
     return (
       <div>
@@ -183,160 +148,149 @@ export default function DashboardEntidad() {
           <KpiCard label="Actividades" value={`${ent.actividades_completadas}/${ent.total_actividades}`} sub="completadas" />
           <KpiCard label="Avance Operativo" value={`${ent.avance_operativo_promedio ?? 0}%`} sub="promedio" />
           <KpiCard label="Ejecución SECO" value={`${ent.pct_ejecucion_seco}%`} sub={`USD ${fmt(ent.ejecutado_seco_total)} / ${fmt(ent.presupuesto_seco_total)}`} />
-          <KpiCard label="Pendientes revisión" value={String(ent.pendientes_revision)} sub="registros" />
         </div>
       </div>
     );
   }
 
+  const entidadNombre = entidad?.nombre_corto || entidadCodigo;
+  const actividadesParaUpload = actividades.map(a => ({ codigo: a.actividad_codigo, nombre: a.actividad_descripcion || "" }));
+
   return (
-    <div>
-      <Header title="Mi Dashboard" subtitle={entidad?.nombre_corto} />
+    <div className="space-y-4">
+      {/* BLOQUE A — Bienvenida contextual */}
+      <div>
+        <h1 className="text-xl font-bold text-foreground mb-1">Hola, {entidadNombre} 👋</h1>
+        <NarrativeBlock
+          tipo="resumen_entidad"
+          params={{ entidad_codigo: entidadCodigo }}
+        />
+      </div>
 
-      {/* TOP STRIP — always visible */}
-      <div className="grid gap-3 sm:grid-cols-3 mb-6">
-        {/* COMPROMISOS */}
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Compromisos</p>
-            <p className="text-2xl font-bold">{actividades.length}</p>
-            <p className="text-xs text-muted-foreground">actividades total proyecto</p>
-            <div className="mt-2 text-xs space-y-0.5 text-muted-foreground">
-              <p>{riCount} RI activos · {productoCount} productos</p>
-            </div>
+      {/* BLOQUE B — Lo que te toca hacer hoy */}
+      {(pendientes.length > 0 || vencidas.length > 0) ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Lo que te toca hacer — {MONTH_NAMES[currentMes - 1]} {currentYear}
+          </p>
+          {pendientes.map((act) => (
+            <Card key={act.actividad_codigo} className="border-l-4 border-l-yellow-500">
+              <CardContent className="py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">● {act.actividad_codigo} — {act.actividad_descripcion}</p>
+                    <NarrativeBlock
+                      tipo="contexto_actividad"
+                      params={{ entidad_codigo: entidadCodigo, actividad_codigo: act.actividad_codigo }}
+                      className="border-0 bg-transparent p-0 mt-1"
+                    />
+                  </div>
+                  <Button size="sm" className="shrink-0 text-xs" onClick={() => navigate("/actividades")}>
+                    Registrar avance →
+                  </Button>
+                </div>
+                <Badge variant="outline" className="mt-2 text-[10px] border-yellow-300 text-yellow-700">Entregable este mes</Badge>
+              </CardContent>
+            </Card>
+          ))}
+          {vencidas.map(({ act, mesVencido }) => (
+            <Card key={`${act.actividad_codigo}_${mesVencido}`} className="border-l-4 border-l-destructive">
+              <CardContent className="py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">✗ {act.actividad_codigo} — {act.actividad_descripcion}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Pendiente desde {formatYM(mesVencido)}</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="shrink-0 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => navigate("/actividades")}>
+                    Reportar rezago →
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="py-4">
+            <p className="text-sm text-foreground">
+              ✓ Estás al día este mes.
+              {enCurso.length > 0 && enCurso[0].proximoMes && (
+                <span className="text-muted-foreground"> Próximo entregable: {enCurso[0].act.actividad_codigo} en {formatYM(enCurso[0].proximoMes)}.</span>
+              )}
+            </p>
           </CardContent>
         </Card>
+      )}
 
-        {/* TÉCNICO HOY */}
+      {/* BLOQUE C — Cómo va tu proyecto */}
+      <div className="grid gap-3 grid-cols-3">
         <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Técnico hoy</p>
-            <p className="text-2xl font-bold">{pendientes.length}</p>
-            <p className="text-xs text-muted-foreground">pendientes este mes</p>
-            <div className="mt-2 text-xs space-y-0.5 text-muted-foreground">
-              <p>{vencidas.length} con rezago · {enCurso.length} en curso · {completadas.length} completadas</p>
-            </div>
+          <CardContent className="pt-4 pb-3 text-center">
+            <p className="text-3xl font-bold">{pendientes.length} de {pendientes.length + completadas.length + vencidas.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">entregables este mes</p>
           </CardContent>
         </Card>
-
-        {/* FINANCIERO */}
         <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Financiero</p>
-            <p className="text-2xl font-bold">USD {fmt(finSummary.ejecutadoTotal)}</p>
-            <p className="text-xs text-muted-foreground">ejecutado total · {pctEjecutado}% del convenio</p>
-            <div className="mt-2 text-xs space-y-0.5 text-muted-foreground">
-              <p>{trimInfo.label}: USD {fmt(finSummary.trimEjecutado)} registrado / USD {fmt(finSummary.trimProgramado)} progr.</p>
-            </div>
+          <CardContent className="pt-4 pb-3 text-center">
+            <p className="text-3xl font-bold">USD {fmt(finSummary.trimEjecutado)}</p>
+            <p className="text-xs text-muted-foreground mt-1">ejecutado este trimestre</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 text-center">
+            <p className="text-3xl font-bold">{actividades.length - completadas.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">actividades en progreso de {actividades.length}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* ESTADO DE ESTE MES */}
-      <div className="space-y-3">
-        {(pendientes.length > 0 || vencidas.length > 0) && (
+      {/* BLOQUE D — Documentos de sustento */}
+      <DocumentUploadBlock entidadCodigo={entidadCodigo} actividades={actividadesParaUpload} />
+
+      {/* Completadas (collapsed) */}
+      {completadas.length > 0 && (
+        <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
           <Card>
-            <CardContent className="py-3">
-              <p className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-                Estado de este mes — {MONTH_NAMES[currentMes - 1]} {currentYear}
-              </p>
-              <div className="space-y-2">
-                {/* Entregables este mes */}
-                {pendientes.map((act) => (
-                  <div key={act.actividad_codigo} className="flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-muted/50 transition-colors">
-                    <span className="text-yellow-600">●</span>
-                    <span className="font-mono text-xs font-bold text-primary shrink-0">{act.actividad_codigo}</span>
-                    <span className="truncate flex-1">{act.actividad_descripcion}</span>
-                    <Badge variant="outline" className="text-[10px] shrink-0 border-yellow-300 text-yellow-700">Entregable hoy</Badge>
-                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 shrink-0" onClick={() => navigate("/actividades")}>
-                      Reportar
-                    </Button>
-                  </div>
-                ))}
-
-                {/* Vencidas */}
-                {vencidas.map(({ act, mesVencido }) => (
-                  <div key={`${act.actividad_codigo}_${mesVencido}`} className="flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-muted/50 transition-colors">
-                    <span className="text-destructive">✗</span>
-                    <span className="font-mono text-xs font-bold text-primary shrink-0">{act.actividad_codigo}</span>
-                    <span className="truncate flex-1">{act.actividad_descripcion}</span>
-                    <Badge variant="outline" className="text-[10px] shrink-0 border-destructive/30 text-destructive">Vencido {formatYM(mesVencido)}</Badge>
-                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => navigate("/actividades")}>
-                      Reportar rezago
-                    </Button>
-                  </div>
-                ))}
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                {completedOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actividades completadas</span>
+                <Badge variant="outline" className="text-[10px]">{completadas.length}</Badge>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* EN CURSO */}
-        {enCurso.length > 0 && (
-          <Card>
-            <CardContent className="py-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                En curso (sin entregable este mes)
-              </p>
-              <div className="space-y-1.5">
-                {enCurso.map(({ act, proximoMes }) => (
-                  <div key={act.actividad_codigo} className="flex items-center gap-2 text-sm py-1 px-2">
-                    <span className="font-mono text-xs text-muted-foreground shrink-0">{act.actividad_codigo}</span>
-                    <span className="truncate flex-1 text-muted-foreground">{act.actividad_descripcion}</span>
-                    {proximoMes && <span className="text-[10px] text-muted-foreground shrink-0">próximo: {formatYM(proximoMes)}</span>}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* COMPLETADAS */}
-        {completadas.length > 0 && (
-          <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
-            <Card>
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
-                  {completedOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actividades completadas</span>
-                  <Badge variant="outline" className="text-[10px]">{completadas.length}</Badge>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 pb-3">
+                <div className="flex flex-wrap gap-2">
+                  {completadas.map((act) => (
+                    <Badge key={act.actividad_codigo} variant="outline" className="text-xs gap-1 text-green-700 border-green-200">
+                      <CheckCircle2 className="h-3 w-3" /> {act.actividad_codigo} ✓
+                    </Badge>
+                  ))}
                 </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0 pb-3">
-                  <div className="flex flex-wrap gap-2">
-                    {completadas.map((act) => (
-                      <Badge key={act.actividad_codigo} variant="outline" className="text-xs gap-1 text-green-700 border-green-200">
-                        <CheckCircle2 className="h-3 w-3" /> {act.actividad_codigo} ✓
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
 
-        {/* Quick links */}
-        <div className="flex flex-wrap gap-2 pt-2 pb-4">
-          <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/gestion-contratos-fin")}>
-            <DollarSign className="h-3 w-3 mr-1" /> Ver contratos
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/gestion-contratos-fin")}>
-            <FileText className="h-3 w-3 mr-1" /> Ver comprobantes
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/mi-planificacion")}>
-            Ver por actividad
-          </Button>
-        </div>
+      {/* Quick links */}
+      <div className="flex flex-wrap gap-2 pb-4">
+        <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/mi-planificacion")}>
+          Ver planificación completa
+        </Button>
+        <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/gestion-contratos-fin")}>
+          <DollarSign className="h-3 w-3 mr-1" /> Contratos
+        </Button>
+        <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/avance-proyecto")}>
+          <FileText className="h-3 w-3 mr-1" /> Reporte trimestral
+        </Button>
       </div>
     </div>
   );
 }
 
-// --- Shared sub-components used across dashboards ---
-
+// --- Shared sub-components ---
 export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="flex items-center gap-3 mb-4 md:mb-6">
@@ -401,10 +355,18 @@ export function fmt(n: number) {
 
 export function DashboardSkeleton() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {[1, 2, 3, 4].map((i) => (
-        <Card key={i}><CardContent className="pt-5 pb-4"><div className="h-2 w-20 rounded bg-muted mb-3" /><div className="h-8 w-16 rounded bg-muted" /></CardContent></Card>
-      ))}
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[1, 2, 3].map(i => (
+          <Card key={i}><CardContent className="pt-5 pb-4"><Skeleton className="h-8 w-16" /></CardContent></Card>
+        ))}
+      </div>
     </div>
   );
 }
