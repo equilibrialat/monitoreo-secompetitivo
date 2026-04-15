@@ -58,7 +58,7 @@ export default function DashboardCadenasValor() {
     queryKey: ["trimestres-disponibles"],
     queryFn: async (): Promise<string[]> => {
       const { data } = await (supabase as any).from("reportes_trimestrales").select("trimestre");
-      return [...new Set((data || []).map((r: any) => r.trimestre as string))].sort();
+      return [...new Set((data || []).map((r: any) => String(r.trimestre)))].sort();
     },
     staleTime: 120_000,
   });
