@@ -465,6 +465,31 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         })}
       </CardContent>
     </Card>
+
+    {/* Modals */}
+    {modalTecnico.act && (
+      <ModalAvanceTecnico
+        open={modalTecnico.open}
+        onOpenChange={(o) => setModalTecnico({ open: o, act: o ? modalTecnico.act : null })}
+        actividadCodigo={modalTecnico.act.actividad_codigo}
+        actividadDescripcion={modalTecnico.act.actividad_descripcion}
+        actividadId={actIdMap.get(modalTecnico.act.actividad_codigo)}
+        entidadId={entidadId || ""}
+        onSaved={loadData}
+      />
+    )}
+    {modalPresup.act && (
+      <ModalAvancePresupuestario
+        open={modalPresup.open}
+        onOpenChange={(o) => setModalPresup({ open: o, act: o ? modalPresup.act : null })}
+        actividadCodigo={modalPresup.act.actividad_codigo}
+        actividadDescripcion={modalPresup.act.actividad_descripcion}
+        actividadId={actIdMap.get(modalPresup.act.actividad_codigo)}
+        entidadId={entidadId || ""}
+        onSaved={loadData}
+      />
+    )}
+    </>
   );
 }
 
