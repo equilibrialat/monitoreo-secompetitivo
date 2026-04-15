@@ -430,21 +430,26 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                     proximoLabel === "Este mes" ? "text-yellow-600 font-semibold" :
                                     proximoLabel === "Completada" ? "text-emerald-600" : "";
 
-                                  return (
-                                    <ActividadRow
-                                      key={act.id}
-                                      act={act}
-                                      ejecutado={ejecutado}
-                                      estado={estado}
-                                      cfg={cfg}
-                                      proximo={proximoLabel}
-                                      proximoClass={proximoClass}
-                                      isExpanded={isExpanded}
-                                      reported={reported}
-                                      currentYM={currentYM}
-                                      onToggle={() => setExpandedRow(isExpanded ? null : act.id)}
-                                    />
-                                  );
+                                    return (
+                                      <ActividadRow
+                                        key={act.id}
+                                        act={act}
+                                        ejecutado={ejecutado}
+                                        estado={estado}
+                                        cfg={cfg}
+                                        proximo={proximoLabel}
+                                        proximoClass={proximoClass}
+                                        isExpanded={isExpanded}
+                                        reported={reported}
+                                        currentYM={currentYM}
+                                        readOnly={readOnly}
+                                        lastTecnicoDate={lastTecnico.get(act.actividad_codigo)}
+                                        lastFinancieroDate={lastFinanciero.get(act.actividad_codigo)}
+                                        onToggle={() => setExpandedRow(isExpanded ? null : act.id)}
+                                        onOpenTecnico={() => setModalTecnico({ open: true, act })}
+                                        onOpenPresup={() => setModalPresup({ open: true, act })}
+                                      />
+                                    );
                                 })}
                               </tbody>
                             </table>
