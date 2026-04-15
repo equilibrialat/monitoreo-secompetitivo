@@ -63,9 +63,9 @@ export default function DashboardCadenasValor() {
   // Alertas de rezago: actividades con gasto sin avance técnico o viceversa
   const alertasRezago = useMemo(() => {
     if (!actividades) return [];
+    const mecBCodes = new Set(mecB.map(e => e.codigo));
     return actividades.filter(a => {
-      const ent = mecB.find(e => e.codigo === a.entidad_codigo || e.nombre_corto === a.entidad_nombre);
-      if (!ent) return false;
+      if (!mecBCodes.has(a.entidad_codigo)) return false;
       return a.semaforo_global === "rojo";
     }).slice(0, 10);
   }, [actividades, mecB]);
