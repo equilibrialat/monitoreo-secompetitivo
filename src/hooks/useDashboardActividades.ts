@@ -45,8 +45,8 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
   const regs = regRes.data || [];
   const ents = entRes.data || [];
 
-  const entMap = new Map(ents.map((e: any) => [e.codigo, e]));
-  const entIdToCode = new Map(ents.map((e: any) => [e.id, e.codigo]));
+  const entMap = new Map<string, any>(ents.map((e: any) => [e.codigo, e]));
+  const entIdToCode = new Map<string, string>(ents.map((e: any) => [e.id, e.codigo]));
   const currentYM = getCurrentYM();
 
   // Aggregate comprobantes by entidad+actividad
