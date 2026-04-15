@@ -410,11 +410,13 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                 <tr className="border-b text-[11px] text-muted-foreground">
                                   <th className="py-1.5 px-2 text-center w-[60px]">Cód.</th>
                                   <th className="py-1.5 px-2 text-left">Actividad</th>
-                                  <th className="py-1.5 px-2 text-left w-[100px]">Unidad</th>
+                                  <th className="py-1.5 px-2 text-left w-[80px]">Unidad</th>
                                   <th className="py-1.5 px-2 text-center w-[50px]">Meta</th>
-                                  <th className="py-1.5 px-2 text-center w-[80px]">Ejecutado</th>
-                                  <th className="py-1.5 px-2 text-center w-[90px]">Próximo</th>
+                                  <th className="py-1.5 px-2 text-center w-[70px]">Ejecutado</th>
+                                  <th className="py-1.5 px-2 text-center w-[80px]">Próximo</th>
                                   <th className="py-1.5 px-2 text-center w-[40px]">Estado</th>
+                                  {!readOnly && <th className="py-1.5 px-2 text-center w-[110px]">Av. Técnico</th>}
+                                  {!readOnly && <th className="py-1.5 px-2 text-center w-[110px]">Av. Presup.</th>}
                                 </tr>
                               </thead>
                               <tbody>
