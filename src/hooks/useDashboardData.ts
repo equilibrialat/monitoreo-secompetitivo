@@ -95,6 +95,12 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
     (supabase as any).from("planificacion_actividades").select("entidad_codigo"),
   ]);
 
+  // Track which entidad_codigo has planificacion_actividades (Anexo B)
+  const entidadesConPlanificacion = new Set<string>();
+  for (const pa of planActResult.data || []) {
+    entidadesConPlanificacion.add(pa.entidad_codigo);
+  }
+
   const approvedMetaActivities = new Set<string>();
   const metasByEntity = new Map<string, { total: number; approved: number }>();
   for (const m of metasResult.data || []) {
