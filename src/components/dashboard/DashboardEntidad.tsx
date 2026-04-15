@@ -135,11 +135,10 @@ export default function DashboardEntidad() {
   const tareasDelMes = useMemo(() => {
     const tasks: PlanificacionActividad[] = [];
     for (const act of actividades) {
-      const lifecycle = getLifecycle(act);
-      if (lifecycle === "entregable_este_mes" || lifecycle === "vencida") {
+      if (getLifecycle(act) === "entregable_este_mes") {
         tasks.push(act);
+        if (tasks.length >= 5) break;
       }
-      if (tasks.length >= 3) break;
     }
     return tasks;
   }, [actividades, reportsByActivity, avanceByActivity, currentYM]);
@@ -222,20 +221,14 @@ export default function DashboardEntidad() {
             </CardContent>
           </Card>
         ) : (
-          tareasDelMes.map((act) => {
-            const lifecycle = getLifecycle(act);
-            const isVencida = lifecycle === "vencida";
-            return (
-              <Card key={act.actividad_codigo} className={`border-l-4 ${isVencida ? "border-l-red-500" : "border-l-yellow-500"}`}>
+          tareasDelMes.map((act) => (
+              <Card key={act.actividad_codigo} className="border-l-4 border-l-yellow-500">
                 <CardContent className="py-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">
-                        {isVencida ? "✗" : "●"} {act.actividad_codigo} — {act.actividad_descripcion}
+                        ● {act.actividad_codigo} — {act.actividad_descripcion}
                       </p>
-                      {isVencida && (
-                        <p className="text-xs text-red-600 mt-0.5">Tiene meses vencidos sin reporte</p>
-                      )}
                     </div>
                     <Button
                       size="sm"
@@ -245,27 +238,38 @@ export default function DashboardEntidad() {
                       Registrar avance <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
-                  <Badge variant="outline" className={`mt-2 text-[10px] ${isVencida ? "border-red-300 text-red-700" : "border-yellow-300 text-yellow-700"}`}>
-                    {isVencida ? "Con rezago" : "Entregable este mes"}
+                  <Badge variant="outline" className="mt-2 text-[10px] border-yellow-300 text-yellow-700">
+                    Entregable este mes
                   </Badge>
                 </CardContent>
               </Card>
-            );
-          })
+            ))
         )}
-      </div>
 
-      {/* ═══ SECCIÓN C — Badge de alerta ═══ */}
-      {kpis.vencidas > 0 && (
-        <button
-          onClick={() => navigate("/mi-planificacion")}
-          className="inline-flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-        >
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
-          🔴 {kpis.vencidas} actividad{kpis.vencidas > 1 ? "es" : ""} vencida{kpis.vencidas > 1 ? "s" : ""}
-          <ArrowRight className="h-3.5 w-3.5 ml-1" />
-        </button>
-      )}
+        {/* ─── Status badges ─── */}
+        <div className="flex flex-wrap gap-2 mt-1">
+          {kpis.vencidas > 0 && (
+            <button
+              onClick={() => navigate("/mi-planificacion")}
+              className="inline-flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+            >
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
+              🔴 {kpis.vencidas} actividad{kpis.vencidas > 1 ? "es" : ""} vencida{kpis.vencidas > 1 ? "s" : ""}
+              <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            </button>
+          )}
+          {kpis.completadas > 0 && (
+            <button
+              onClick={() => navigate("/mi-planificacion")}
+              className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              ✅ {kpis.completadas} actividad{kpis.completadas > 1 ? "es" : ""} completada{kpis.completadas > 1 ? "s" : ""}
+              <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Quick links */}
       <div className="flex flex-wrap gap-2 pb-4">
