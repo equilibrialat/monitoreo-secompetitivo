@@ -497,7 +497,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
 /* ─── Activity row + expandable detail ─── */
 
 function ActividadRow({
-  act, ejecutado, estado, cfg, proximo, proximoClass, isExpanded, reported, currentYM, onToggle,
+  act, ejecutado, estado, cfg, proximo, proximoClass, isExpanded, reported, currentYM, readOnly,
+  lastTecnicoDate, lastFinancieroDate, onToggle, onOpenTecnico, onOpenPresup,
 }: {
   act: PlanificacionActividad;
   ejecutado: number;
@@ -508,7 +509,12 @@ function ActividadRow({
   isExpanded: boolean;
   reported: Set<string>;
   currentYM: string;
+  readOnly: boolean;
+  lastTecnicoDate?: string;
+  lastFinancieroDate?: string;
   onToggle: () => void;
+  onOpenTecnico: () => void;
+  onOpenPresup: () => void;
 }) {
   const meses = (act.meses_programados || []).sort();
 
