@@ -16,7 +16,14 @@ import { useQuery } from "@tanstack/react-query";
 const SEMAFORO_COLORS = { verde: "bg-emerald-500", amarillo: "bg-yellow-500", rojo: "bg-red-500", gris: "bg-muted-foreground/40" };
 
 function getEntitySemaforo(e: DashboardEntidad): "verde" | "amarillo" | "rojo" | "gris" {
-  if (e.total_actividades === 0) return "gris";
+  if (e.total_actividades === 0 && !e.has_data) return "gris";
+  if (e.sin_planificacion) {
+    // Without planificacion, use only financial execution
+    if (e.pct_ejecucion_seco > 80) return "verde";
+    if (e.pct_ejecucion_seco > 30) return "amarillo";
+    if (e.pct_ejecucion_seco > 0) return "rojo";
+    return "gris";
+  }
   const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
   if (e.meses_sin_reporte.length >= 2 || desfase > 30) return "rojo";
   if (desfase > 15 || e.meses_sin_reporte.length > 0) return "amarillo";
