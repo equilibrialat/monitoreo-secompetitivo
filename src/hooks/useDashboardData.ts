@@ -34,11 +34,8 @@ export interface DashboardEntidad {
   meses_sin_reporte: string[];
   registros_en_revision: number;
   observaciones_detalle: string[];
-  // Whether entity has any data (actividades OR reportes_trimestrales)
   has_data: boolean;
-  // Whether data comes from reportes_trimestrales only (no actividades table)
   solo_reportes_trimestrales: boolean;
-  // Whether entity has planificacion_actividades (Anexo B) loaded
   sin_planificacion: boolean;
 }
 
@@ -51,11 +48,25 @@ export interface SobregirosDetalle {
   pct: number;
 }
 
-async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
+/** Parse trimestre key like "2025-T4" → { anio: 2025, t: 4, meses: [10,11,12] } */
+function parseTrimestre(trimKey: string) {
+  const match = trimKey.match(/^(\d{4})-T(\d)$/);
+  if (!match) return { anio: new Date().getFullYear(), t: 4, meses: [10, 11, 12] };
+  const anio = parseInt(match[1]);
+  const t = parseInt(match[2]);
+  const mesInicio = (t - 1) * 3 + 1;
+  return { anio, t, meses: [mesInicio, mesInicio + 1, mesInicio + 2] };
+}
+
+async function fetchDashboardEntidades(trimestre?: string): Promise<DashboardEntidad[]> {
+  const trimInfo = trimestre ? parseTrimestre(trimestre) : parseTrimestre(calcTrimestreActual());
+  const trimestreKey = trimestre || calcTrimestreActual();
+
   // Fetch view data and reportes_trimestrales aggregation in parallel
   const [viewRes, rtRes] = await Promise.all([
     (supabase as any).from("v_dashboard_entidad").select("*"),
-    (supabase as any).from("reportes_trimestrales").select("entidad_codigo, ejecutado_seco_total, presupuesto_seco_programado, avance_tecnico_trimestre, resumen_tecnico_ri"),
+    (supabase as any).from("reportes_trimestrales").select("entidad_codigo, ejecutado_seco_total, presupuesto_seco_programado, avance_tecnico_trimestre, resumen_tecnico_ri, trimestre")
+      .eq("trimestre", trimestreKey),
   ]);
 
   if (viewRes.error) {
@@ -88,7 +99,7 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   const [actResult, pendResult, regResult, noIniciadaResult, voucherResult, metasResult, planActResult] = await Promise.all([
     (supabase as any).from("actividades").select("id, entidad_id, avance_operativo_pct").in("entidad_id", entidadIds),
     (supabase as any).from("registros_mensuales").select("entidad_id").in("estado_registro", ["borrador", "en_revision_tecnica", "en_revision_financiera"]),
-    (supabase as any).from("registros_mensuales").select("entidad_id, mes, anio, estado_registro, observaciones_revision").eq("anio", 2025).in("mes", [10, 11, 12]),
+    (supabase as any).from("registros_mensuales").select("entidad_id, mes, anio, estado_registro, observaciones_revision").eq("anio", trimInfo.anio).in("mes", trimInfo.meses),
     (supabase as any).from("actividades").select("entidad_id, estado_actual").in("entidad_id", entidadIds).eq("estado_actual", "no_iniciada"),
     (supabase as any).from("vouchers_gasto").select("entidad_id, monto_usd"),
     (supabase as any).from("plan_trimestral").select("actividad_id, entidad_id, estado").in("entidad_id", entidadIds),
@@ -151,8 +162,8 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
 
     const mesesConRegistro = new Set(regs.map((r: any) => r.mes));
     const mesesFaltantes: string[] = [];
-    for (const m of [10, 11, 12]) {
-      if (!mesesConRegistro.has(m)) mesesFaltantes.push(`${MESES_NOMBRE[m]} 2025`);
+    for (const m of trimInfo.meses) {
+      if (!mesesConRegistro.has(m)) mesesFaltantes.push(`${MESES_NOMBRE[m]} ${trimInfo.anio}`);
     }
 
     const observados = regs.filter((r: any) => r.estado_registro === "observado");
@@ -176,12 +187,10 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
 
     const pctEjecucion = presupuestoSeco > 0 ? Math.round((ejecutadoSeco / presupuestoSeco) * 100) : 0;
 
-    // Avance operativo: for RT-only entities, use RT avance if available
     let avanceOp: number | null = null;
     if (av && av.count > 0) {
       avanceOp = Math.round(av.sum / av.count);
     } else if (soloRT) {
-      // No avance técnico calculable without planificación
       avanceOp = null;
     } else {
       const entityMetas = metasByEntity.get(d.entidad_id);
@@ -227,10 +236,19 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   });
 }
 
-export function useDashboardData() {
+function calcTrimestreActual(): string {
+  const mes = new Date().getMonth() + 1;
+  const año = new Date().getFullYear();
+  const t = mes <= 3 ? "T1" : mes <= 6 ? "T2" : mes <= 9 ? "T3" : "T4";
+  return `${año}-${t}`;
+}
+
+export { calcTrimestreActual };
+
+export function useDashboardData(trimestre?: string) {
   return useQuery({
-    queryKey: ["dashboard-entidades"],
-    queryFn: fetchDashboardEntidades,
+    queryKey: ["dashboard-entidades", trimestre || calcTrimestreActual()],
+    queryFn: () => fetchDashboardEntidades(trimestre),
     staleTime: 30_000,
   });
 }
