@@ -282,6 +282,57 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
     return { reported, ejecutado, estado, proximo };
   }
 
+  /* ─── Filter logic ─── */
+  function matchesFilters(act: PlanificacionActividad): boolean {
+    const { estado, proximo, reported } = getActStats(act);
+    const f = filters;
+
+    // Estado filter (multi-select)
+    if (f.estados.length > 0) {
+      const estadoGroup =
+        estado === "con_rezago" ? "con_rezago" :
+        estado === "entregable_este_mes" || estado === "en_progreso" || estado === "al_dia" ? "en_proceso" :
+        estado === "completada" ? "completada" :
+        "por_iniciar";
+      if (!f.estados.includes(estadoGroup)) return false;
+    }
+
+    // Próximo entregable filter
+    if (f.proximoEntregable) {
+      if (!proximo) return false;
+      const [cy, cm] = currentYM.split("-").map(Number);
+      const [, pm] = proximo.split("-").map(Number);
+      const py = parseInt(proximo.split("-")[0]);
+      if (f.proximoEntregable === "este_mes" && proximo !== currentYM) return false;
+      if (f.proximoEntregable === "proximo_mes") {
+        const nextM = cm === 12 ? 1 : cm + 1;
+        const nextY = cm === 12 ? cy + 1 : cy;
+        const nextYM = `${nextY}-${String(nextM).padStart(2, "0")}`;
+        if (proximo !== nextYM) return false;
+      }
+      if (f.proximoEntregable === "este_trimestre") {
+        const trimQ = Math.ceil(cm / 3);
+        const trimStart = (trimQ - 1) * 3 + 1;
+        const trimEnd = trimQ * 3;
+        if (py !== cy || pm < trimStart || pm > trimEnd) return false;
+      }
+    }
+
+    // Avance técnico
+    if (f.avanceTecnico === "con_registro" && reported.size === 0) return false;
+    if (f.avanceTecnico === "sin_registro" && reported.size > 0) return false;
+
+    // Avance presupuestario
+    if (f.avancePresupuestario === "con_registro" && !lastFinanciero.has(act.actividad_codigo)) return false;
+    if (f.avancePresupuestario === "sin_registro" && lastFinanciero.has(act.actividad_codigo)) return false;
+
+    return true;
+  }
+
+  const filtersActive = hasActiveFilters(filters);
+  const totalActCount = actividades.length;
+  const filteredActCount = filtersActive ? actividades.filter(matchesFilters).length : totalActCount;
+
   function getRiSemaforo(acts: PlanificacionActividad[]): ActividadEstado {
     let worst: ActividadEstado = "completada";
     const priority: ActividadEstado[] = ["con_rezago", "entregable_este_mes", "en_progreso", "al_dia", "por_iniciar", "completada"];
