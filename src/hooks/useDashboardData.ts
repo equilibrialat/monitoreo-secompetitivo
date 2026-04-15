@@ -38,6 +38,8 @@ export interface DashboardEntidad {
   has_data: boolean;
   // Whether data comes from reportes_trimestrales only (no actividades table)
   solo_reportes_trimestrales: boolean;
+  // Whether entity has planificacion_actividades (Anexo B) loaded
+  sin_planificacion: boolean;
 }
 
 export interface SobregirosDetalle {
