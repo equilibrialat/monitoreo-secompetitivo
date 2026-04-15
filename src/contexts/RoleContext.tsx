@@ -74,8 +74,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     async function fetchEntidades() {
       setLoadingEntidades(true);
 
-      // Fetch entities and active entity IDs in parallel
-      const [entRes, actRes] = await Promise.all([
+      // Fetch entities, active entity IDs from actividades, and entities with reportes_trimestrales
+      const [entRes, actRes, rtRes] = await Promise.all([
         (supabase as any)
           .from("entidades")
           .select("id, nombre_corto, tipo_entidad, cadena_valor, mecanismo, region")
@@ -83,17 +83,48 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         (supabase as any)
           .from("actividades")
           .select("entidad_id"),
+        (supabase as any)
+          .from("reportes_trimestrales")
+          .select("entidad_codigo"),
       ]);
 
       if (!entRes.error && entRes.data) {
         const activeIds = new Set(
           (actRes.data || []).map((a: any) => a.entidad_id)
         );
-        const filtered = (entRes.data as EntidadOption[]).filter((e) =>
-          activeIds.has(e.id)
+        // Also include entities that have reportes_trimestrales data
+        const entCodesWithRT = new Set(
+          (rtRes.data || []).map((r: any) => r.entidad_codigo)
         );
-        setEntidades(filtered);
-        if (!entidadId && filtered.length > 0) setEntidadId(filtered[0].id);
+        // Build a code->id map to check RT entities
+        const codeToId = new Map<string, string>();
+        for (const e of entRes.data as any[]) {
+          codeToId.set(e.nombre_corto, e.id);
+        }
+        
+        const filtered = (entRes.data as EntidadOption[]).filter((e) => {
+          if (activeIds.has(e.id)) return true;
+          // Check if entity code matches any RT entry (nombre_corto used as fallback)
+          // We need the codigo field - fetch it
+          return false;
+        });
+        
+        // Better approach: fetch with codigo included
+        const { data: fullEnts } = await (supabase as any)
+          .from("entidades")
+          .select("id, nombre_corto, tipo_entidad, cadena_valor, mecanismo, region, codigo")
+          .order("nombre_corto");
+        
+        if (fullEnts) {
+          const filteredFull = fullEnts.filter((e: any) =>
+            activeIds.has(e.id) || entCodesWithRT.has(e.codigo)
+          );
+          setEntidades(filteredFull);
+          if (!entidadId && filteredFull.length > 0) setEntidadId(filteredFull[0].id);
+        } else {
+          setEntidades(filtered);
+          if (!entidadId && filtered.length > 0) setEntidadId(filtered[0].id);
+        }
       }
       setLoadingEntidades(false);
     }
