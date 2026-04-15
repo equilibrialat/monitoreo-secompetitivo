@@ -58,7 +58,7 @@ export default function DashboardCadenasValor() {
     },
   });
 
-  const mecB = useMemo(() => (allEntidades || []).filter(e => e.mecanismo === "B" && e.total_actividades > 0), [allEntidades]);
+  const mecB = useMemo(() => (allEntidades || []).filter(e => e.mecanismo === "B" && e.has_data), [allEntidades]);
 
   // Alertas de rezago: actividades con gasto sin avance técnico o viceversa
   const alertasRezago = useMemo(() => {

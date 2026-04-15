@@ -71,7 +71,7 @@ export default function DashboardDireccionNew() {
   });
 
   const entidades = useMemo(() => (allEntidades || []).filter(e => {
-    if (e.total_actividades === 0) return false;
+    if (!e.has_data) return false;
     if (mecFilter === "A") return e.mecanismo === "A";
     if (mecFilter === "B") return e.mecanismo === "B";
     return true;

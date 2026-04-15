@@ -54,7 +54,7 @@ export default function DashboardMonitoreoNew() {
   const [obsTexto, setObsTexto] = useState("");
   const [showNewObs, setShowNewObs] = useState(false);
 
-  const entidades = useMemo(() => (allEntidades || []).filter(e => e.total_actividades > 0), [allEntidades]);
+  const entidades = useMemo(() => (allEntidades || []).filter(e => e.has_data), [allEntidades]);
 
   // Entregas panel data
   const currentMonth = new Date().getMonth() + 1;
