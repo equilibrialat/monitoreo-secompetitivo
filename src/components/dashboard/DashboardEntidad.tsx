@@ -2,32 +2,25 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/contexts/RoleContext";
 import { useDashboardData, type DashboardEntidad as DashboardEntidadType } from "@/hooks/useDashboardData";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, ChevronDown, ChevronRight, CheckCircle2, ArrowRight, DollarSign, FileText } from "lucide-react";
+import {
+  LayoutDashboard, CheckCircle2, AlertTriangle, Target,
+  Activity, TrendingUp, DollarSign, Calendar, ArrowRight, FileText
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { type PlanificacionActividad, getCurrentYearMonth, formatYM } from "@/components/planificacion/MiPlanificacion";
-import NarrativeBlock from "./NarrativeBlock";
-import DocumentUploadBlock from "./DocumentUploadBlock";
+import ModalAvanceTecnico from "@/components/planificacion/ModalAvanceTecnico";
+
+/* ─── Helpers ─── */
 
 const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-function getCurrentTrimestreInfo() {
-  const now = new Date();
-  const month = now.getMonth();
-  const year = now.getFullYear();
-  let t: number, label: string, months: string[];
-  if (month < 3) { t = 1; label = "T1"; months = [`${year}-01`, `${year}-02`, `${year}-03`]; }
-  else if (month < 6) { t = 2; label = "T2"; months = [`${year}-04`, `${year}-05`, `${year}-06`]; }
-  else if (month < 9) { t = 3; label = "T3"; months = [`${year}-07`, `${year}-08`, `${year}-09`]; }
-  else { t = 4; label = "T4"; months = [`${year}-10`, `${year}-11`, `${year}-12`]; }
-  return { t, label, months, year, key: `${year}-${label}` };
-}
-
 type ActivityLifecycle = "completada" | "vencida" | "entregable_este_mes" | "en_curso" | "por_iniciar";
+
+/* ─── Main component ─── */
 
 export default function DashboardEntidad() {
   const { entidadId, entidades: entidadOptions } = useRole();
@@ -41,14 +34,13 @@ export default function DashboardEntidad() {
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
-  const [finSummary, setFinSummary] = useState<{ ejecutadoTotal: number; trimEjecutado: number }>({ ejecutadoTotal: 0, trimEjecutado: 0 });
+  const [actIdMap, setActIdMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [completedOpen, setCompletedOpen] = useState(false);
+  const [modalTecnico, setModalTecnico] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
 
   const currentYM = getCurrentYearMonth();
   const currentMes = parseInt(currentYM.split("-")[1]);
   const currentYear = parseInt(currentYM.split("-")[0]);
-  const trimInfo = getCurrentTrimestreInfo();
 
   const loadData = useCallback(() => {
     if (!entidadCodigo || !entidadId) { setLoading(false); return; }
@@ -56,10 +48,14 @@ export default function DashboardEntidad() {
 
     Promise.all([
       (supabase as any).from("planificacion_actividades").select("*").eq("entidad_codigo", entidadCodigo).order("actividad_codigo"),
-      (supabase as any).from("registros_mensuales").select("id, actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)").eq("entidad_id", entidadId),
-      (supabase as any).from("comprobantes").select("monto_usd, trimestre").eq("entidad_codigo", entidadCodigo),
-    ]).then(([planRes, regRes, compRes]: any[]) => {
+      (supabase as any).from("registros_mensuales").select("actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)").eq("entidad_id", entidadId),
+      (supabase as any).from("actividades").select("id, codigo").eq("entidad_id", entidadId),
+    ]).then(([planRes, regRes, actRes]: any[]) => {
       setActividades(planRes.data || []);
+
+      const idMap = new Map<string, string>();
+      if (actRes.data) for (const a of actRes.data) idMap.set(a.codigo, a.id);
+      setActIdMap(idMap);
 
       const byCode = new Map<string, Set<string>>();
       const avanceMap = new Map<string, number>();
@@ -70,22 +66,20 @@ export default function DashboardEntidad() {
           const ym = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
           if (!byCode.has(code)) byCode.set(code, new Set());
           byCode.get(code)!.add(ym);
-          avanceMap.set(code, (avanceMap.get(code) || 0) + (r.avance_valor || 0));
+          if (r.estado_registro !== "borrador") {
+            avanceMap.set(code, (avanceMap.get(code) || 0) + (r.avance_valor || 0));
+          }
         }
       }
       setReportsByActivity(byCode);
       setAvanceByActivity(avanceMap);
-
-      const comps = compRes.data || [];
-      const ejecutadoTotal = comps.reduce((s: number, c: any) => s + Number(c.monto_usd || 0), 0);
-      const trimEjecutado = comps.filter((c: any) => c.trimestre === trimInfo.key).reduce((s: number, c: any) => s + Number(c.monto_usd || 0), 0);
-      setFinSummary({ ejecutadoTotal, trimEjecutado });
       setLoading(false);
     });
   }, [entidadCodigo, entidadId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  /* ─── Lifecycle classification ─── */
   function getLifecycle(act: PlanificacionActividad): ActivityLifecycle {
     const meses = (act.meses_programados || []) as string[];
     if (!meses.length) return "por_iniciar";
@@ -105,37 +99,52 @@ export default function DashboardEntidad() {
     return "en_curso";
   }
 
-  const { pendientes, vencidas, enCurso, completadas } = useMemo(() => {
-    const pendientes: PlanificacionActividad[] = [];
-    const vencidas: { act: PlanificacionActividad; mesVencido: string }[] = [];
-    const enCurso: { act: PlanificacionActividad; proximoMes: string | null }[] = [];
-    const completadas: PlanificacionActividad[] = [];
+  /* ─── Computed KPIs ─── */
+  const kpis = useMemo(() => {
+    const total = actividades.length;
+    let completadas = 0;
+    let vencidas = 0;
+    let totalAvancePct = 0;
+    let presupuestoTotal = 0;
+    let ejecutadoTotal = 0;
 
     for (const act of actividades) {
       const lifecycle = getLifecycle(act);
-      const meses = (act.meses_programados || []) as string[];
-      const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+      if (lifecycle === "completada") completadas++;
+      if (lifecycle === "vencida") vencidas++;
 
-      if (lifecycle === "completada") {
-        completadas.push(act);
-      } else if (lifecycle === "vencida") {
-        const sorted = [...meses].sort();
-        const firstUnreported = sorted.find(m => m < currentYM && !reported.has(m));
-        vencidas.push({ act, mesVencido: firstUnreported || sorted[0] });
-        if (meses.includes(currentYM) && !reported.has(currentYM)) pendientes.push(act);
-      } else if (lifecycle === "entregable_este_mes") {
-        pendientes.push(act);
-      } else {
-        const sorted = [...meses].sort();
-        const nextMonth = sorted.find(m => m >= currentYM && !reported.has(m));
-        enCurso.push({ act, proximoMes: nextMonth || null });
-      }
+      const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
+      const meta = act.meta_total || 0;
+      if (meta > 0) totalAvancePct += Math.min((ejecutado / meta) * 100, 100);
+
+      presupuestoTotal += (act.presupuesto_seco_usd || 0);
     }
-    vencidas.sort((a, b) => a.mesVencido.localeCompare(b.mesVencido));
-    return { pendientes, vencidas, enCurso, completadas };
+
+    // Use ent data for financial if available
+    ejecutadoTotal = ent?.ejecutado_seco_total || 0;
+    presupuestoTotal = ent?.presupuesto_seco_total || presupuestoTotal;
+
+    const avanceProducto = total > 0 ? Math.round(totalAvancePct / total) : 0;
+    const nivelCumplimiento = total > 0 ? Math.round((completadas / total) * 100) : 0;
+    const contribucionProducto = presupuestoTotal > 0 ? Math.round((ejecutadoTotal / presupuestoTotal) * 100) : 0;
+
+    return { total, completadas, vencidas, avanceProducto, nivelCumplimiento, contribucionProducto };
+  }, [actividades, reportsByActivity, avanceByActivity, ent, currentYM]);
+
+  /* ─── Tasks this month (max 3) ─── */
+  const tareasDelMes = useMemo(() => {
+    const tasks: PlanificacionActividad[] = [];
+    for (const act of actividades) {
+      const lifecycle = getLifecycle(act);
+      if (lifecycle === "entregable_este_mes" || lifecycle === "vencida") {
+        tasks.push(act);
+      }
+      if (tasks.length >= 3) break;
+    }
+    return tasks;
   }, [actividades, reportsByActivity, avanceByActivity, currentYM]);
 
-  const presupuestoTotal = ent?.presupuesto_seco_total || 0;
+  /* ─── Render ─── */
 
   if (dashLoading || loading) return <DashboardSkeleton />;
 
@@ -144,134 +153,118 @@ export default function DashboardEntidad() {
     return (
       <div>
         <Header title="Mi Dashboard" subtitle={ent.nombre_corto} />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-          <KpiCard label="Actividades" value={`${ent.actividades_completadas}/${ent.total_actividades}`} sub="completadas" />
-          <KpiCard label="Avance Operativo" value={`${ent.avance_operativo_promedio ?? 0}%`} sub="promedio" />
-          <KpiCard label="Ejecución SECO" value={`${ent.pct_ejecucion_seco}%`} sub={`USD ${fmt(ent.ejecutado_seco_total)} / ${fmt(ent.presupuesto_seco_total)}`} />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+          <KpiCard icon={Activity} label="Actividades" value={`${ent.actividades_completadas}/${ent.total_actividades}`} sub="completadas" />
+          <KpiCard icon={TrendingUp} label="Avance Operativo" value={`${ent.avance_operativo_promedio ?? 0}%`} sub="promedio" />
+          <KpiCard icon={DollarSign} label="Ejecución SECO" value={`${ent.pct_ejecucion_seco}%`} sub={`USD ${fmt(ent.ejecutado_seco_total)} / ${fmt(ent.presupuesto_seco_total)}`} />
         </div>
       </div>
     );
   }
 
   const entidadNombre = entidad?.nombre_corto || entidadCodigo;
-  const actividadesParaUpload = actividades.map(a => ({ codigo: a.actividad_codigo, nombre: a.actividad_descripcion || "" }));
 
   return (
-    <div className="space-y-4">
-      {/* BLOQUE A — Bienvenida contextual */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground mb-1">Hola, {entidadNombre} 👋</h1>
-        <NarrativeBlock
-          tipo="resumen_entidad"
-          params={{ entidad_codigo: entidadCodigo }}
+    <div className="space-y-5">
+      {/* Header */}
+      <Header title={`Hola, ${entidadNombre} 👋`} subtitle={`${MONTH_NAMES[currentMes - 1]} ${currentYear}`} />
+
+      {/* ═══ SECCIÓN A — KPI Cards ═══ */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <KpiCard
+          icon={TrendingUp}
+          label="% Avance del producto"
+          value={`${kpis.avanceProducto}%`}
+          accent={kpis.avanceProducto >= 50 ? "green" : kpis.avanceProducto >= 25 ? "amber" : "red"}
+        />
+        <KpiCard
+          icon={Target}
+          label="Nivel de cumplimiento"
+          value={`${kpis.nivelCumplimiento}%`}
+          accent={kpis.nivelCumplimiento >= 70 ? "green" : kpis.nivelCumplimiento >= 40 ? "amber" : "red"}
+        />
+        <KpiCard
+          icon={Activity}
+          label="Total de actividades"
+          value={String(kpis.total)}
+        />
+        <KpiCard
+          icon={CheckCircle2}
+          label="Actividades completadas"
+          value={String(kpis.completadas)}
+          accent="green"
+        />
+        <KpiCard
+          icon={AlertTriangle}
+          label="Actividades vencidas"
+          value={String(kpis.vencidas)}
+          accent={kpis.vencidas > 0 ? "red" : "green"}
+        />
+        <KpiCard
+          icon={DollarSign}
+          label="Contribución al producto"
+          value={`${kpis.contribucionProducto}%`}
+          accent={kpis.contribucionProducto >= 50 ? "green" : "amber"}
         />
       </div>
 
-      {/* BLOQUE B — Lo que te toca hacer hoy */}
-      {(pendientes.length > 0 || vencidas.length > 0) ? (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Lo que te toca hacer — {MONTH_NAMES[currentMes - 1]} {currentYear}
-          </p>
-          {pendientes.map((act) => (
-            <Card key={act.actividad_codigo} className="border-l-4 border-l-yellow-500">
-              <CardContent className="py-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">● {act.actividad_codigo} — {act.actividad_descripcion}</p>
-                    <NarrativeBlock
-                      tipo="contexto_actividad"
-                      params={{ entidad_codigo: entidadCodigo, actividad_codigo: act.actividad_codigo }}
-                      className="border-0 bg-transparent p-0 mt-1"
-                    />
-                  </div>
-                  <Button size="sm" className="shrink-0 text-xs" onClick={() => navigate("/actividades")}>
-                    Registrar avance →
-                  </Button>
-                </div>
-                <Badge variant="outline" className="mt-2 text-[10px] border-yellow-300 text-yellow-700">Entregable este mes</Badge>
-              </CardContent>
-            </Card>
-          ))}
-          {vencidas.map(({ act, mesVencido }) => (
-            <Card key={`${act.actividad_codigo}_${mesVencido}`} className="border-l-4 border-l-destructive">
-              <CardContent className="py-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">✗ {act.actividad_codigo} — {act.actividad_descripcion}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Pendiente desde {formatYM(mesVencido)}</p>
-                  </div>
-                  <Button variant="outline" size="sm" className="shrink-0 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => navigate("/actividades")}>
-                    Reportar rezago →
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="py-4">
-            <p className="text-sm text-foreground">
-              ✓ Estás al día este mes.
-              {enCurso.length > 0 && enCurso[0].proximoMes && (
-                <span className="text-muted-foreground"> Próximo entregable: {enCurso[0].act.actividad_codigo} en {formatYM(enCurso[0].proximoMes)}.</span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* ═══ SECCIÓN B — Lo que toca hacer este mes (máx 3) ═══ */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <Calendar className="h-3.5 w-3.5" />
+          Lo que toca hacer este mes
+        </p>
 
-      {/* BLOQUE C — Cómo va tu proyecto */}
-      <div className="grid gap-3 grid-cols-3">
-        <Card>
-          <CardContent className="pt-4 pb-3 text-center">
-            <p className="text-3xl font-bold">{pendientes.length} de {pendientes.length + completadas.length + vencidas.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">entregables este mes</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 text-center">
-            <p className="text-3xl font-bold">USD {fmt(finSummary.trimEjecutado)}</p>
-            <p className="text-xs text-muted-foreground mt-1">ejecutado este trimestre</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 text-center">
-            <p className="text-3xl font-bold">{actividades.length - completadas.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">actividades en progreso de {actividades.length}</p>
-          </CardContent>
-        </Card>
+        {tareasDelMes.length === 0 ? (
+          <Card className="border-l-4 border-l-green-500">
+            <CardContent className="py-4">
+              <p className="text-sm text-foreground">✓ Estás al día. No tienes entregables pendientes este mes.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          tareasDelMes.map((act) => {
+            const lifecycle = getLifecycle(act);
+            const isVencida = lifecycle === "vencida";
+            return (
+              <Card key={act.actividad_codigo} className={`border-l-4 ${isVencida ? "border-l-red-500" : "border-l-yellow-500"}`}>
+                <CardContent className="py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">
+                        {isVencida ? "✗" : "●"} {act.actividad_codigo} — {act.actividad_descripcion}
+                      </p>
+                      {isVencida && (
+                        <p className="text-xs text-red-600 mt-0.5">Tiene meses vencidos sin reporte</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0 text-xs"
+                      onClick={() => setModalTecnico({ open: true, act })}
+                    >
+                      Registrar avance <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                  <Badge variant="outline" className={`mt-2 text-[10px] ${isVencida ? "border-red-300 text-red-700" : "border-yellow-300 text-yellow-700"}`}>
+                    {isVencida ? "Con rezago" : "Entregable este mes"}
+                  </Badge>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
       </div>
 
-      {/* BLOQUE D — Documentos de sustento */}
-      <DocumentUploadBlock entidadCodigo={entidadCodigo} actividades={actividadesParaUpload} />
-
-      {/* Completadas (collapsed) */}
-      {completadas.length > 0 && (
-        <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
-          <Card>
-            <CollapsibleTrigger asChild>
-              <div className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
-                {completedOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actividades completadas</span>
-                <Badge variant="outline" className="text-[10px]">{completadas.length}</Badge>
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0 pb-3">
-                <div className="flex flex-wrap gap-2">
-                  {completadas.map((act) => (
-                    <Badge key={act.actividad_codigo} variant="outline" className="text-xs gap-1 text-green-700 border-green-200">
-                      <CheckCircle2 className="h-3 w-3" /> {act.actividad_codigo} ✓
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
+      {/* ═══ SECCIÓN C — Badge de alerta ═══ */}
+      {kpis.vencidas > 0 && (
+        <button
+          onClick={() => navigate("/mi-planificacion")}
+          className="inline-flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+        >
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
+          🔴 {kpis.vencidas} actividad{kpis.vencidas > 1 ? "es" : ""} vencida{kpis.vencidas > 1 ? "s" : ""}
+          <ArrowRight className="h-3.5 w-3.5 ml-1" />
+        </button>
       )}
 
       {/* Quick links */}
@@ -279,21 +272,32 @@ export default function DashboardEntidad() {
         <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/mi-planificacion")}>
           Ver planificación completa
         </Button>
-        <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/gestion-contratos-fin")}>
-          <DollarSign className="h-3 w-3 mr-1" /> Contratos
-        </Button>
-        <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/avance-proyecto")}>
-          <FileText className="h-3 w-3 mr-1" /> Reporte trimestral
+        <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/generar-reportes")}>
+          <FileText className="h-3 w-3 mr-1" /> Generar Reportes
         </Button>
       </div>
+
+      {/* Modal avance técnico */}
+      {modalTecnico.act && (
+        <ModalAvanceTecnico
+          open={modalTecnico.open}
+          onOpenChange={(o) => setModalTecnico({ open: o, act: o ? modalTecnico.act : null })}
+          actividadCodigo={modalTecnico.act.actividad_codigo}
+          actividadDescripcion={modalTecnico.act.actividad_descripcion}
+          actividadId={actIdMap.get(modalTecnico.act.actividad_codigo)}
+          entidadId={entidadId || ""}
+          onSaved={loadData}
+        />
+      )}
     </div>
   );
 }
 
-// --- Shared sub-components ---
+/* ─── Sub-components ─── */
+
 export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="flex items-center gap-3 mb-4 md:mb-6">
+    <div className="flex items-center gap-3">
       <div className="flex items-center justify-center h-9 w-9 md:h-10 md:w-10 rounded-lg bg-primary/10 shrink-0">
         <LayoutDashboard className="h-4 w-4 md:h-5 md:w-5 text-primary" />
       </div>
@@ -305,13 +309,25 @@ export function Header({ title, subtitle }: { title: string; subtitle?: string }
   );
 }
 
-export function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+type AccentColor = "green" | "amber" | "red" | undefined;
+
+export function KpiCard({ icon: Icon, label, value, sub, accent }: { icon: typeof Activity; label: string; value: string; sub?: string; accent?: AccentColor }) {
+  const accentBorder = accent === "green" ? "border-green-200 dark:border-green-800" :
+                       accent === "amber" ? "border-amber-200 dark:border-amber-800" :
+                       accent === "red" ? "border-red-200 dark:border-red-800" : "";
+  const accentIcon = accent === "green" ? "text-green-600" :
+                     accent === "amber" ? "text-amber-600" :
+                     accent === "red" ? "text-red-600" : "text-primary";
+
   return (
-    <Card>
-      <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
-        <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-        <p className="text-xl md:text-2xl font-bold text-foreground">{value}</p>
-        {sub && <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
+    <Card className={accentBorder}>
+      <CardContent className="pt-4 pb-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Icon className={`h-4 w-4 ${accentIcon}`} />
+          <p className="text-[11px] font-medium text-muted-foreground leading-tight">{label}</p>
+        </div>
+        <p className="text-2xl font-bold text-foreground">{value}</p>
+        {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
       </CardContent>
     </Card>
   );
@@ -357,15 +373,13 @@ export function DashboardSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-8 w-48" />
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[1, 2, 3].map(i => (
-          <Card key={i}><CardContent className="pt-5 pb-4"><Skeleton className="h-8 w-16" /></CardContent></Card>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {[1, 2, 3, 4, 5, 6].map(i => (
+          <Card key={i}><CardContent className="pt-5 pb-4"><Skeleton className="h-10 w-16" /></CardContent></Card>
         ))}
+      </div>
+      <div className="space-y-2">
+        {[1, 2].map(i => <Skeleton key={i} className="h-20 w-full" />)}
       </div>
     </div>
   );
