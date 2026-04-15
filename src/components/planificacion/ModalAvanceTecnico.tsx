@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import MesReportarSelect, { parseMesReportar } from "./MesReportarSelect";
 
 interface ModalAvanceTecnicoProps {
   open: boolean;
@@ -21,6 +22,8 @@ interface ModalAvanceTecnicoProps {
   actividadId?: string;
   entidadId: string;
   onSaved?: () => void;
+  mesesProgramados?: string[];
+  mesesReportados?: Set<string>;
 }
 
 export default function ModalAvanceTecnico({
@@ -31,11 +34,16 @@ export default function ModalAvanceTecnico({
   actividadId,
   entidadId,
   onSaved,
+  mesesProgramados,
+  mesesReportados,
 }: ModalAvanceTecnicoProps) {
   const [descripcion, setDescripcion] = useState("");
   const [porcentaje, setPorcentaje] = useState<number>(0);
   const [fecha, setFecha] = useState<Date>(new Date());
+  const [mesReportar, setMesReportar] = useState<string>("");
   const [saving, setSaving] = useState(false);
+
+  const hasMesesProps = mesesProgramados && mesesReportados;
 
   const handleSave = async () => {
     if (!descripcion.trim()) {
@@ -46,13 +54,25 @@ export default function ModalAvanceTecnico({
       toast.error("No se encontró el ID de la actividad en la tabla principal");
       return;
     }
+    if (hasMesesProps && !mesReportar) {
+      toast.error("Selecciona el mes a reportar");
+      return;
+    }
 
     setSaving(true);
     try {
-      const mes = fecha.getMonth() + 1;
-      const anio = fecha.getFullYear();
+      let mes: number;
+      let anio: number;
 
-      // Insert registro mensual
+      if (hasMesesProps && mesReportar) {
+        const parsed = parseMesReportar(mesReportar);
+        mes = parsed.mes;
+        anio = parsed.anio;
+      } else {
+        mes = fecha.getMonth() + 1;
+        anio = fecha.getFullYear();
+      }
+
       const { error: regError } = await supabase.from("registros_mensuales").insert({
         actividad_id: actividadId,
         entidad_id: entidadId,
@@ -67,7 +87,6 @@ export default function ModalAvanceTecnico({
 
       if (regError) throw regError;
 
-      // Update avance_operativo_pct on actividades
       await supabase
         .from("actividades")
         .update({ avance_operativo_pct: porcentaje } as any)
@@ -77,6 +96,7 @@ export default function ModalAvanceTecnico({
       setDescripcion("");
       setPorcentaje(0);
       setFecha(new Date());
+      setMesReportar("");
       onOpenChange(false);
       onSaved?.();
     } catch (err: any) {
@@ -97,6 +117,16 @@ export default function ModalAvanceTecnico({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Mes a reportar selector */}
+          {hasMesesProps && (
+            <MesReportarSelect
+              mesesProgramados={mesesProgramados}
+              mesesReportados={mesesReportados}
+              value={mesReportar}
+              onValueChange={setMesReportar}
+            />
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="desc-avance">Descripción del avance</Label>
             <Textarea
