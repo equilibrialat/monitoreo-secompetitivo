@@ -1,35 +1,83 @@
 
-# Plan: Generar Manual Técnico de la Plataforma SeCompetitivo
 
-## Objetivo
-Crear un documento Markdown completo (`/mnt/documents/manual_tecnico_secompetitivo.md`) que sirva como referencia técnica para que otra IA pueda entender la arquitectura, los datos, los flujos y la lógica de negocio de la aplicación.
+# Plan: Filtros reactivos + Vista de indicadores con actividades
 
-## Contenido del Manual
+## Diagnóstico de datos
 
-El documento incluirá las siguientes secciones:
+**Datos actuales en Supabase:**
+- `planificacion_actividades`: solo APPCACAO (17 actividades), agrupadas por RI1, RI2, RI3
+- `indicadores_proyecto`: solo tiene datos de entidades Mec A (COFIDE, JNC). No hay indicadores para APPCACAO/CANATUR/MARKAHUAMACHUCO
+- `reportes_trimestrales`: 3 entidades con datos (APPCACAO, CANATUR, MARKAHUAMACHUCO) para T4 2025
+- No existe vinculación directa entre `indicadores_proyecto` y `planificacion_actividades`
 
-1. **Descripción General** — Qué es SeCompetitivo, su propósito (monitoreo de programa de cooperación SECO-Perú), mecanismos A y B
-2. **Stack Tecnológico** — React 18, Vite 5, Tailwind CSS, TypeScript, Supabase (Lovable Cloud), TanStack Query, docx, xlsx, lucide-react
-3. **Arquitectura de Roles** — Los 8 roles, qué ve cada uno (navegación, dashboards, permisos), sin autenticación real (selector dropdown MVP)
-4. **Esquema de Base de Datos** — Todas las tablas con columnas, tipos, relaciones lógicas (sin FK formales), enums, triggers, funciones SQL
-5. **Flujos de Negocio Principales**:
-   - Registro mensual de avance por actividad (entidad → envío → revisión técnica/financiera → aprobación)
-   - Diferenciación Mec A vs Mec B en flujo financiero
-   - Aprobación trimestral por Dirección
-   - Indicadores de impacto (productividad, empleo, comercial, gobernanza, etc.)
-   - Generación de reportes (trimestral, semestral, anual)
-   - Notificaciones y historial de cambios
-6. **Estructura de Archivos** — Mapa de carpetas src/pages, src/components, src/lib, src/hooks, src/contexts
-7. **Edge Functions y IA** — Función `analyze` con 4 tipos de análisis (ejecutivo, reporte, consistencia, narrativa), prompts del sistema, modelo usado
-8. **Generación de Documentos** — DOCX con librería docx, CSV con BOM UTF-8, Excel con SheetJS
-9. **Componentes Clave** — MapaMarcoLogico (árbol jerárquico), DashboardCadenasValor (agrupación por cadena), ResumenRegional, AprobacionTrimestral
-10. **Diseño Visual** — Tokens de color (#0f2b46 sidebar, #2a9d8f primario, etc.), fuente DM Sans
+**Conclusión**: La tabla `indicadores_proyecto` no es útil para Mec B en esta fase. La vista de indicadores debe construirse desde `planificacion_actividades` agrupando por `resultado_intermedio_codigo`, enriquecida con datos de `reportes_trimestrales`.
 
-## Implementación
+## Arquitectura: 3 elementos compartidos
 
-- Leer los archivos restantes que falten para completar detalles
-- Generar un archivo Markdown extenso y bien estructurado en `/mnt/documents/manual_tecnico_secompetitivo.md`
-- Usar un script Python para escribir el contenido
+### 1. Hook `useIndicadoresActividades(filtros)`
+- Query `planificacion_actividades` agrupando por `resultado_intermedio_codigo`
+- LEFT JOIN con `reportes_trimestrales` para avance por trimestre
+- `queryKey` incluye todos los filtros para refetch automático
+- Retorna estructura: `Map<RI, { descripcion, actividades[], semaforo }>`
+- Fallback cuando no hay `planificacion_actividades`: mostrar solo datos de `reportes_trimestrales`
 
-## Archivos a Modificar
-Ningún archivo del proyecto se modifica. Solo se genera un artifact en `/mnt/documents/`.
+### 2. Componente `<BarraFiltrosIndicadores />`
+- Extiende `CascadingFilters` con filtro de "Nivel" (RI1, RI2, RI3, Todos)
+- Botón [Aplicar filtros] + badges removibles con ×
+- Mensaje "No hay datos para estos filtros" con lista de datos disponibles
+- Props: `rol` determina qué filtros mostrar/ocultar
+
+### 3. Componente `<ArbolIndicadoresActividades />`
+- Agrupa por RI con collapsible (🔴 expandidos por defecto)
+- Cada RI muestra: código, descripción, semáforo agregado, conteo de actividades
+- Tabla de actividades dentro de cada RI: código, descripción, entidad, avance ejecutado/meta, semáforo
+- Clic en actividad → panel lateral con reporte técnico + documentos
+- Empty state descriptivo cuando no hay datos
+
+## Cambios por dashboard
+
+### IndicadoresMonitoreoPage (Fabiola — `/indicadores`)
+- Reemplazar la lógica actual que usa `indicadores_proyecto` + `actividades`
+- Usar `useIndicadoresActividades(filtros)` con los filtros de BarraFiltros
+- Renderizar `<ArbolIndicadoresActividades />`
+- Los filtros disparan refetch automático via queryKey
+
+### DashboardCadenasValor (Iván)
+- Agregar sección colapsable "Ver por indicadores" debajo de "Mis proyectos"
+- Al expandir: renderiza `<ArbolIndicadoresActividades />` con filtros Mec B
+- Conectar el trimestre selector existente al nuevo hook
+
+### DashboardDireccionNew (Paula)
+- En el panel lateral de entidad, agregar pestaña [Por indicadores]
+- Usa `<ArbolIndicadoresActividades />` filtrado por entidad seleccionada
+- El trimestre del CascadingFilters se pasa al hook
+
+### DashboardCoordinadorRegional
+- Misma integración que Iván: sección colapsable con el árbol
+
+## Archivos a crear/modificar
+
+| Archivo | Acción |
+|---------|--------|
+| `src/hooks/useIndicadoresActividades.ts` | Crear — hook compartido |
+| `src/components/dashboard/ArbolIndicadoresActividades.tsx` | Crear — componente compartido |
+| `src/pages/IndicadoresMonitoreoPage.tsx` | Reescribir — usar hook + árbol compartidos |
+| `src/components/dashboard/DashboardCadenasValor.tsx` | Agregar sección colapsable |
+| `src/components/dashboard/DashboardDireccionNew.tsx` | Agregar pestaña en panel lateral |
+| `src/components/dashboard/DashboardCoordinadorRegional.tsx` | Agregar sección colapsable |
+
+## Lógica de datos
+
+```text
+planificacion_actividades (PA)
+  → GROUP BY resultado_intermedio_codigo
+  → Para cada actividad: buscar en reportes_trimestrales
+    WHERE entidad_codigo = PA.entidad_codigo
+    AND actividad_codigo = PA.actividad_codigo
+    AND trimestre = filtro.trimestre
+
+Si PA no tiene datos para una entidad:
+  → Usar reportes_trimestrales directamente
+  → Mostrar badge "Planificación pendiente de carga"
+```
+
