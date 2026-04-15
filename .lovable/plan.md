@@ -1,24 +1,68 @@
 
 
-## Rediseño de "Lo que toca hacer este mes"
+## Plan consolidado: Desglose de entregables en Dashboard + Selector "Mes a reportar" en ambos modales
 
-### Cambio solicitado
-La sección B del dashboard debe mostrar:
-1. **Solo actividades entregables este mes (abril)** — sin mezclar vencidas
-2. **Debajo**, dos enlaces/badges lado a lado:
-   - **Izquierda**: enlace rojo a actividades vencidas (como el badge actual de Sección C)
-   - **Derecha**: enlace verde a actividades completadas
+### Cambio 1 — Dashboard: Cards con desglose por actividad
 
-### Cambios en `src/components/dashboard/DashboardEntidad.tsx`
+**Archivo**: `src/components/dashboard/DashboardEntidad.tsx`
 
-1. **Separar `tareasDelMes`** para que solo filtre `entregable_este_mes` (sin `vencida`)
-2. **Reemplazar la Sección C** (badge de alerta solo vencidas) por una fila con dos badges lado a lado:
-   - 🔴 `N actividad(es) vencida(s)` → navega a `/mi-planificacion`
-   - ✅ `N actividad(es) completada(s)` → navega a `/mi-planificacion`
-3. Ambos badges se muestran siempre (con conteo 0 si aplica), o solo cuando el conteo > 0
+Reemplazar `tareasDelMes` con `actividadesConPendientes` que clasifica cada mes de `meses_programados` por estado:
 
-### Detalle técnico
-- `tareasDelMes`: filtrar solo `lifecycle === "entregable_este_mes"`
-- Mover la lógica de vencidas al bloque de badges junto con completadas
-- Los badges usan `flex gap-2` en una fila horizontal debajo de las cards de tareas del mes
+```ts
+type ActividadDesglose = PlanificacionActividad & {
+  rezagados: number;
+  esteMes: boolean;
+  pendientes: number;
+  reportados: number;
+};
+```
+
+- Filtrar actividades con `rezagados > 0` o `esteMes === true`
+- Cada card muestra la actividad UNA vez con pills de color (rojo=rezagados, amarillo=este mes, gris=pendientes, verde=reportados)
+- Botón "Registrar avance" abre el modal pasando `mesesProgramados` y `mesesReportados`
+- Se mantienen los badges de vencidas/completadas debajo
+
+---
+
+### Cambio 2 — Modal Avance Técnico: Agregar selector "Mes a reportar"
+
+**Archivo**: `src/components/planificacion/ModalAvanceTecnico.tsx`
+
+- Nuevas props opcionales: `mesesProgramados?: string[]`, `mesesReportados?: Set<string>`
+- Cuando se pasan estas props, mostrar un `<Select>` "Mes a reportar" con los meses pendientes (no reportados), cada uno con indicador visual:
+  - 🔴 mes < currentYM (rezagado)
+  - 🟡 mes === currentYM (este mes)
+  - ⚪ mes > currentYM (futuro)
+- El `mes` y `anio` del insert se derivan del mes seleccionado
+- Se mantiene "Fecha de ejecución" como campo separado (cuándo se hizo el trabajo)
+- Si no se pasan las props, el modal funciona como antes (retrocompatible)
+
+---
+
+### Cambio 3 — Modal Avance Presupuestario: Mismo selector "Mes a reportar"
+
+**Archivo**: `src/components/planificacion/ModalAvancePresupuestario.tsx`
+
+- Mismas props opcionales: `mesesProgramados?: string[]`, `mesesReportados?: Set<string>`
+- Mismo `<Select>` de "Mes a reportar" con las mismas reglas de color
+- El `mes` y `anio` del registro mensual se derivan del mes seleccionado
+- Retrocompatible cuando no se pasan las props
+
+---
+
+### Cambio 4 — MiPlanificacion: Pasar props a los modales
+
+**Archivo**: `src/components/planificacion/MiPlanificacion.tsx`
+
+- Al abrir `ModalAvanceTecnico` y `ModalAvancePresupuestario`, pasar:
+  - `mesesProgramados={modalX.act.meses_programados}`
+  - `mesesReportados={reportsByActivity.get(modalX.act.actividad_codigo) || new Set()}`
+
+---
+
+### Archivos a modificar
+1. `src/components/dashboard/DashboardEntidad.tsx` — desglose de entregables + pasar props al modal
+2. `src/components/planificacion/ModalAvanceTecnico.tsx` — selector "Mes a reportar"
+3. `src/components/planificacion/ModalAvancePresupuestario.tsx` — selector "Mes a reportar"
+4. `src/components/planificacion/MiPlanificacion.tsx` — pasar mesesProgramados/mesesReportados a ambos modales
 
