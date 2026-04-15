@@ -85,13 +85,14 @@ async function fetchDashboardEntidades(): Promise<DashboardEntidad[]> {
   if (entidadIds.length === 0) return [];
 
   // Parallel fetches
-  const [actResult, pendResult, regResult, noIniciadaResult, voucherResult, metasResult] = await Promise.all([
+  const [actResult, pendResult, regResult, noIniciadaResult, voucherResult, metasResult, planActResult] = await Promise.all([
     (supabase as any).from("actividades").select("id, entidad_id, avance_operativo_pct").in("entidad_id", entidadIds),
     (supabase as any).from("registros_mensuales").select("entidad_id").in("estado_registro", ["borrador", "en_revision_tecnica", "en_revision_financiera"]),
     (supabase as any).from("registros_mensuales").select("entidad_id, mes, anio, estado_registro, observaciones_revision").eq("anio", 2025).in("mes", [10, 11, 12]),
     (supabase as any).from("actividades").select("entidad_id, estado_actual").in("entidad_id", entidadIds).eq("estado_actual", "no_iniciada"),
     (supabase as any).from("vouchers_gasto").select("entidad_id, monto_usd"),
     (supabase as any).from("plan_trimestral").select("actividad_id, entidad_id, estado").in("entidad_id", entidadIds),
+    (supabase as any).from("planificacion_actividades").select("entidad_codigo"),
   ]);
 
   const approvedMetaActivities = new Set<string>();
