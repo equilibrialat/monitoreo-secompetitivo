@@ -6,11 +6,14 @@ import { NotificationBell } from "./NotificationBell";
 import { StatusLegendFab } from "./StatusLegend";
 import { TrimestreHeader } from "./TrimestreHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRole } from "@/contexts/RoleContext";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { role } = useRole();
   const location = useLocation();
+  const showTrimestre = !["entidad_mec_a", "entidad_mec_b"].includes(role);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -54,7 +57,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className="flex items-center gap-4">
-            <TrimestreHeader />
+            {showTrimestre && <TrimestreHeader />}
             <NotificationBell />
           </div>
         </header>
