@@ -54,6 +54,7 @@ export default function DashboardCadenasValor() {
   const [panel, setPanel] = useState<{ type: string; data?: any } | null>(null);
   const [obsText, setObsText] = useState("");
   const [obsSaving, setObsSaving] = useState(false);
+  const [indicadoresOpen, setIndicadoresOpen] = useState(false);
 
   const { data: trimestresDisp } = useQuery({
     queryKey: ["trimestres-disponibles"],
