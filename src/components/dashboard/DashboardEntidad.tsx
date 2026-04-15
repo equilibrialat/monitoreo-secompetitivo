@@ -11,6 +11,7 @@ import {
   Activity, TrendingUp, DollarSign, Calendar, ArrowRight, FileText
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { type PlanificacionActividad, getCurrentYearMonth, formatYM } from "@/components/planificacion/MiPlanificacion";
 import ModalAvanceTecnico from "@/components/planificacion/ModalAvanceTecnico";
 import ModalAvancePresupuestario from "@/components/planificacion/ModalAvancePresupuestario";
