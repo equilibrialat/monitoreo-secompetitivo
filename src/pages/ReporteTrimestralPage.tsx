@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  ChevronDown, ChevronRight, Loader2, Send, Save, DollarSign, AlertTriangle, CheckCircle2, Eye
+  ChevronDown, ChevronRight, Loader2, Send, Save, DollarSign, AlertTriangle, CheckCircle2, Eye, FileText, Plus, MinusCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -19,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Header } from "@/components/dashboard/DashboardEntidad";
 import { type PlanificacionActividad, formatYM } from "@/components/planificacion/MiPlanificacion";
+import { useNavigate } from "react-router-dom";
 
 const MONTH_NAMES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -85,6 +85,7 @@ export default function ReporteTrimestralPage() {
   const { entidadId, entidades } = useRole();
   const entidad = entidades.find((e) => e.id === entidadId);
   const entidadCodigo = entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null;
+  const navigate = useNavigate();
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
@@ -102,8 +103,6 @@ export default function ReporteTrimestralPage() {
   const [loading, setLoading] = useState(true);
   const [expandedRI, setExpandedRI] = useState<Set<string>>(new Set());
   const [expandedAct, setExpandedAct] = useState<Set<string>>(new Set());
-  const [riResumenes, setRiResumenes] = useState<Record<string, string>>({});
-  const [techOverrides, setTechOverrides] = useState<Record<string, string>>({});
   const [justificaciones, setJustificaciones] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -131,25 +130,15 @@ export default function ReporteTrimestralPage() {
       setFinData(finRes.data || []);
 
       const trimMap = new Map<string, any>();
-      const resRi: Record<string, string> = {};
       const justif: Record<string, string> = {};
-      const techOv: Record<string, string> = {};
-
       if (trimRes.data) {
         for (const r of trimRes.data) {
           trimMap.set(r.actividad_codigo, r);
-          if (r.resumen_tecnico_ri) {
-            const act = (planRes.data || []).find((a: any) => a.actividad_codigo === r.actividad_codigo);
-            if (act?.resultado_intermedio_codigo) resRi[act.resultado_intermedio_codigo] = r.resumen_tecnico_ri;
-          }
           if (r.justificacion_variacion) justif[r.actividad_codigo] = r.justificacion_variacion;
-          if (r.avance_tecnico_trimestre != null) techOv[r.actividad_codigo] = String(r.avance_tecnico_trimestre);
         }
       }
       setExistingTrimReports(trimMap);
-      setRiResumenes(resRi);
       setJustificaciones(justif);
-      setTechOverrides(techOv);
       setLoading(false);
     });
   }, [entidadCodigo, entidadId, selectedYear, selectedTrimestre, trimestreKey]);
@@ -223,13 +212,18 @@ export default function ReporteTrimestralPage() {
     return { color: "text-red-600", icon: "🔴", level: "high" as const, pct };
   }
 
-  // Load comprobantes detail for sheet
+  function getCruceStatus(techAvance: number, numComprobantes: number) {
+    if (techAvance > 0 && numComprobantes > 0) return { icon: "✓", label: "Bien justificado", color: "text-green-600", bg: "bg-green-50 dark:bg-green-900/20" };
+    if (numComprobantes > 0 && techAvance === 0) return { icon: "⚠", label: "Sin justificación técnica — gastó pero no reportó qué hizo", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/10" };
+    if (techAvance > 0 && numComprobantes === 0) return { icon: "◌", label: "Solo avance técnico — sin gasto registrado", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/10" };
+    return { icon: "─", label: "Sin actividad este trimestre", color: "text-muted-foreground", bg: "bg-muted/30" };
+  }
+
   async function loadComprobantesDetail(actCode: string) {
     const { data } = await (supabase as any).from("comprobantes").select("id, fecha_documento, clase_documento, numero_documento, proveedor_nombre, concepto, monto_usd, tipo_gasto, fuente").eq("entidad_codigo", entidadCodigo).eq("actividad_codigo", actCode).eq("trimestre", trimestreKey).order("fecha_documento");
     setDetailComprobantes(data || []);
   }
 
-  // Global summary from view data
   const globalSummary = useMemo(() => {
     let totalProgramado = 0;
     let totalEjecutadoSeco = 0;
@@ -252,19 +246,18 @@ export default function ReporteTrimestralPage() {
     for (const act of trimActivities) {
       const fin = getFinForAct(act.actividad_codigo);
       const tech = getMonthlyTechData(act.actividad_codigo);
-      const avanceTec = parseFloat(techOverrides[act.actividad_codigo]) || tech.totalAvance || 0;
       const presupuestoProg = calcPresupuestoProgramado(act);
       const secoTotal = fin.seco?.ejecutado_total_usd || 0;
-      const riResumen = riResumenes[act.resultado_intermedio_codigo] || getMonthlyRISummary(act.resultado_intermedio_codigo) || "";
+      const riSummary = getMonthlyRISummary(act.resultado_intermedio_codigo) || "";
 
       const record: Record<string, any> = {
         entidad_codigo: entidadCodigo,
         actividad_codigo: act.actividad_codigo,
         trimestre: trimestreKey,
         meses_incluidos: trimestreMonths,
-        resumen_tecnico_ri: riResumen,
-        avance_tecnico_trimestre: avanceTec,
-        avance_tecnico_acumulado: avanceTec,
+        resumen_tecnico_ri: riSummary,
+        avance_tecnico_trimestre: tech.totalAvance,
+        avance_tecnico_acumulado: tech.totalAvance,
         presupuesto_seco_programado: presupuestoProg,
         ejecutado_seco_consultorias: fin.seco?.ejecutado_seco_consultorias || 0,
         ejecutado_seco_terceros: fin.seco?.ejecutado_seco_terceros || 0,
@@ -286,7 +279,7 @@ export default function ReporteTrimestralPage() {
     }
     setSaving(false);
     if (errors === 0) {
-      toast.success(asBorrador ? "Borrador guardado." : "Reporte trimestral enviado.");
+      toast.success(asBorrador ? "Borrador guardado." : "Trimestre cerrado.");
       loadData();
     } else toast.error(`${errors} error(es) al guardar.`);
   }
@@ -294,6 +287,13 @@ export default function ReporteTrimestralPage() {
   const isReadOnly = useMemo(() => {
     return Array.from(existingTrimReports.values()).some((r) => r.estado === "enviado");
   }, [existingTrimReports]);
+
+  // Can only close trimestre if current month >= last month of trimestre
+  const canClose = useMemo(() => {
+    const currentYM = getCurrentYM();
+    const lastMonth = trimestreMonths[trimestreMonths.length - 1];
+    return currentYM >= lastMonth;
+  }, [trimestreMonths]);
 
   if (!entidadCodigo) return null;
 
@@ -313,7 +313,7 @@ export default function ReporteTrimestralPage() {
           <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
           <SelectContent>{yearOptions.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
         </Select>
-        {isReadOnly && <Badge className="bg-green-100 text-green-700 text-xs">✓ Enviado</Badge>}
+        {isReadOnly && <Badge className="bg-green-100 text-green-700 text-xs">✓ Cerrado</Badge>}
       </div>
 
       {loading ? (
@@ -322,6 +322,7 @@ export default function ReporteTrimestralPage() {
         <Card><CardContent className="py-10 text-center"><p className="text-sm text-muted-foreground">No hay actividades programadas para este trimestre.</p></CardContent></Card>
       ) : (
         <div className="space-y-4">
+          {/* Header bar */}
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <p className="font-medium">REPORTE TRIMESTRAL — {selectedTrimestre} {selectedYear} ({trimConfig.months.map(m => MONTH_NAMES_SHORT[parseInt(m) - 1]).join(" · ")})</p>
             <p className="text-xs text-muted-foreground mt-0.5">{entidad?.nombre_corto}</p>
@@ -330,7 +331,7 @@ export default function ReporteTrimestralPage() {
           {/* Monthly status bar */}
           <Card>
             <CardContent className="py-3">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Estado de reportes mensuales del trimestre:</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Reportes mensuales del trimestre:</p>
               <div className="flex flex-wrap gap-3">
                 {trimestreMonths.map((ym) => {
                   const m = parseInt(ym.split("-")[1]);
@@ -340,7 +341,7 @@ export default function ReporteTrimestralPage() {
                   return (
                     <div key={ym} className="flex items-center gap-1.5 text-xs">
                       <span className="font-medium">{MONTH_NAMES_SHORT[m - 1]}-{selectedYear.slice(2)}:</span>
-                      {isFuture ? <span className="text-muted-foreground">◌</span>
+                      {isFuture ? <span className="text-muted-foreground">○</span>
                         : hasEnv ? <span className="text-green-600 font-medium">✓ enviado</span>
                         : hasBor ? <span className="text-amber-600 font-medium">borrador</span>
                         : <span className="text-amber-500 font-medium">⚠ pendiente</span>}
@@ -348,6 +349,7 @@ export default function ReporteTrimestralPage() {
                   );
                 })}
               </div>
+              <p className="text-[10px] text-muted-foreground mt-1.5 italic">El técnico se toma de estos reportes automáticamente</p>
             </CardContent>
           </Card>
 
@@ -371,16 +373,19 @@ export default function ReporteTrimestralPage() {
 
                 {isRIExpanded && (
                   <CardContent className="pt-0 space-y-4">
-                    {/* RI Technical Summary */}
+                    {/* RI Technical Summary — READ ONLY */}
                     <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-                      <Label className="text-xs font-medium text-primary">Resumen técnico del trimestre ({ri.codigo})</Label>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">Pre-cargado desde reportes mensuales. Puede editar y sintetizar.</p>
-                      <Textarea
-                        placeholder="Síntesis técnica del trimestre..."
-                        value={riResumenes[ri.codigo] ?? monthlySummary ?? ""}
-                        onChange={(e) => setRiResumenes(prev => ({ ...prev, [ri.codigo]: e.target.value }))}
-                        rows={4} disabled={isReadOnly}
-                      />
+                      <Label className="text-xs font-medium text-primary">Síntesis técnica del trimestre ({ri.codigo})</Label>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">Pre-cargado automáticamente desde los reportes mensuales — solo lectura</p>
+                      {monthlySummary ? (
+                        <div className="text-sm whitespace-pre-line text-foreground bg-background/50 rounded p-2 border">
+                          {monthlySummary}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground italic bg-background/50 rounded p-2 border">
+                          Sin reportes mensuales este trimestre
+                        </div>
+                      )}
                     </div>
 
                     {/* Activities */}
@@ -393,86 +398,72 @@ export default function ReporteTrimestralPage() {
                       const diff = presupuestoProg - secoTotal;
                       const variance = getVarianceInfo(presupuestoProg, secoTotal);
                       const showJustif = variance.level === "medium" || variance.level === "high";
-                      const actReports = getMonthlyReportsForAct(act.actividad_codigo);
-                      const hasNoReports = actReports.length === 0;
                       const numComprobantes = fin.seco?.numero_comprobantes || 0;
+                      const cruce = getCruceStatus(tech.totalAvance, numComprobantes);
 
                       const monthSourceStatus = trimestreMonths.map(ym => {
                         const m = parseInt(ym.split("-")[1]);
                         const report = monthlyReports.find(r => r.actividad_codigo === act.actividad_codigo && r.mes === m);
-                        const status = !report ? "pendiente" : (report.estado_registro === "enviado" || report.estado_registro === "aprobado") ? "enviado" : "borrador";
-                        return { label: MONTH_NAMES_SHORT[m - 1], status };
+                        const avVal = report?.avance_valor;
+                        if (!report) return { label: MONTH_NAMES_SHORT[m - 1], status: "sin reporte" as const, avance: null };
+                        const st = (report.estado_registro === "enviado" || report.estado_registro === "aprobado") ? "enviado" as const : "borrador" as const;
+                        return { label: MONTH_NAMES_SHORT[m - 1], status: st, avance: avVal };
                       });
 
                       return (
-                        <div key={act.id} className={cn("border rounded-lg", isActExpanded && "ring-1 ring-primary/20", hasNoReports && "border-amber-200")}>
+                        <div key={act.id} className={cn("border rounded-lg", isActExpanded && "ring-1 ring-primary/20")}>
                           <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-muted/30"
                             onClick={() => setExpandedAct(prev => { const n = new Set(prev); n.has(act.actividad_codigo) ? n.delete(act.actividad_codigo) : n.add(act.actividad_codigo); return n; })}>
                             {isActExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                             <span className="text-xs font-mono font-bold text-primary shrink-0">{act.actividad_codigo}</span>
                             <span className="text-sm truncate flex-1">{act.actividad_descripcion}</span>
-                            {numComprobantes > 0 && (
-                              <Badge variant="outline" className="text-[10px] shrink-0">{numComprobantes} comp.</Badge>
-                            )}
-                            {hasNoReports && (
-                              <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600 shrink-0">
-                                <AlertTriangle className="h-3 w-3 mr-0.5" /> Sin rep. mensual
-                              </Badge>
-                            )}
+                            <span className={cn("text-xs shrink-0", cruce.color)}>{cruce.icon}</span>
                           </div>
 
                           {isActExpanded && (
                             <div className="px-3 pb-3 space-y-3">
-                              {/* Source bar */}
-                              <div className="bg-muted/50 rounded p-2 text-xs">
-                                <span className="text-muted-foreground mr-1">Fuente:</span>
-                                {monthSourceStatus.map(({ label, status }, i) => (
-                                  <span key={i} className={cn("mr-2", status === "enviado" ? "text-green-600" : status === "borrador" ? "text-amber-600" : "text-muted-foreground")}>
-                                    {label} {status === "enviado" ? "✓" : status === "borrador" ? "◐" : "⚠"}
-                                  </span>
-                                ))}
-                              </div>
-
-                              {/* TECHNICAL */}
+                              {/* TÉCNICO — READ ONLY from mensuales */}
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Técnico</p>
-                                <div className="bg-muted/50 rounded p-2 text-xs space-y-1">
-                                  <p><span className="text-muted-foreground">Avance desde mensuales:</span> <strong>{tech.totalAvance}</strong> {act.unidad_medida}</p>
-                                  <p><span className="text-muted-foreground">Acumulado:</span> <strong>{tech.totalAvance} de {act.meta_total}</strong> ({act.meta_total ? Math.round((tech.totalAvance / act.meta_total) * 100) : 0}%)</p>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Técnico (desde mensuales — solo lectura)</p>
                                 </div>
-                                <div className="mt-2">
-                                  <Label className="text-xs text-muted-foreground">Avance técnico trimestre (editable)</Label>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Input type="number" min={0} step={1}
-                                      value={techOverrides[act.actividad_codigo] ?? String(tech.totalAvance || "")}
-                                      onChange={(e) => setTechOverrides(prev => ({ ...prev, [act.actividad_codigo]: e.target.value }))}
-                                      className="w-24 h-8 text-sm" disabled={isReadOnly}
-                                    />
-                                    <span className="text-xs text-muted-foreground">{act.unidad_medida}</span>
+                                <div className="bg-muted/50 rounded p-2 text-xs space-y-1">
+                                  <div className="flex flex-wrap gap-2">
+                                    {monthSourceStatus.map(({ label, status, avance }, i) => (
+                                      <span key={i} className={cn(
+                                        status === "enviado" ? "text-green-600" : status === "borrador" ? "text-amber-600" : "text-muted-foreground"
+                                      )}>
+                                        {label}: {status === "enviado" ? `✓ ${avance ?? 0} ${act.unidad_medida}` : status === "borrador" ? "◐ borrador" : "sin reporte"}
+                                      </span>
+                                    ))}
                                   </div>
+                                  <p className="pt-1">
+                                    <span className="text-muted-foreground">Acumulado trimestre:</span>{" "}
+                                    <strong>{tech.totalAvance} {act.unidad_medida}</strong> de {act.meta_total}
+                                  </p>
                                 </div>
                               </div>
 
                               <Separator />
 
-                              {/* FINANCIAL — READ-ONLY from comprobantes */}
+                              {/* FINANCIERO */}
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
                                   <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Financiero (calculado de comprobantes)</p>
+                                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Financiero (ingreso en este formulario)</p>
                                 </div>
 
                                 <div className="bg-muted/50 rounded p-2 text-xs mb-2">
-                                  <p><span className="text-muted-foreground">Presupuesto SECO programado {selectedTrimestre}:</span> <strong>USD {fmt(presupuestoProg)}</strong></p>
+                                  <p><span className="text-muted-foreground">Presupuesto programado {selectedTrimestre}:</span> <strong>USD {fmt(presupuestoProg)}</strong></p>
                                 </div>
 
-                                {numComprobantes === 0 ? (
-                                  <div className="bg-muted/30 rounded p-3 text-xs text-muted-foreground italic">
-                                    Sin comprobantes registrados para este trimestre. Registre comprobantes en Gestión &gt; Contratos.
-                                  </div>
-                                ) : (
-                                  <div className="space-y-1.5 text-xs">
-                                    <p className="text-muted-foreground mb-1">Ejecutado SECO {selectedTrimestre}:</p>
+                                <div className="text-xs mb-2">
+                                  <p className="text-muted-foreground">Comprobantes registrados: <strong>USD {fmt(secoTotal)}</strong> ({numComprobantes} documentos)</p>
+                                </div>
+
+                                {numComprobantes > 0 && (
+                                  <div className="space-y-1 text-xs pl-2 mb-2">
                                     {[
                                       { label: "Consultorías", val: fin.seco?.ejecutado_seco_consultorias || 0 },
                                       { label: "Terceros", val: fin.seco?.ejecutado_seco_terceros || 0 },
@@ -480,57 +471,63 @@ export default function ReporteTrimestralPage() {
                                       { label: "Viáticos/Honorarios", val: fin.seco?.ejecutado_seco_otros || 0 },
                                     ].filter(x => x.val > 0).map(({ label, val }) => (
                                       <div key={label} className="flex items-center gap-2">
-                                        <span className="w-40 shrink-0">{label}</span>
+                                        <span className="w-36 shrink-0 text-muted-foreground">{label}:</span>
                                         <span className="font-mono font-medium">USD {fmt(val)}</span>
                                       </div>
                                     ))}
-                                    <div className="flex items-center gap-2 pt-1 border-t">
-                                      <span className="w-40 shrink-0 font-semibold">Total SECO</span>
-                                      <span className="font-mono font-bold">USD {fmt(secoTotal)}</span>
-                                      <span className="text-muted-foreground">({numComprobantes} comprobantes)</span>
-                                      <Sheet>
-                                        <SheetTrigger asChild>
-                                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => loadComprobantesDetail(act.actividad_codigo)}>
-                                            <Eye className="h-3 w-3 mr-1" /> ver detalle
-                                          </Button>
-                                        </SheetTrigger>
-                                        <SheetContent className="overflow-y-auto">
-                                          <SheetHeader><SheetTitle className="text-sm">Comprobantes — {act.actividad_codigo} — {trimestreKey}</SheetTitle></SheetHeader>
-                                          <div className="mt-4">
-                                            <Table>
-                                              <TableHeader><TableRow>
-                                                <TableHead className="text-xs">Fecha</TableHead>
-                                                <TableHead className="text-xs">Doc</TableHead>
-                                                <TableHead className="text-xs">Concepto</TableHead>
-                                                <TableHead className="text-xs text-right">USD</TableHead>
-                                              </TableRow></TableHeader>
-                                              <TableBody>
-                                                {detailComprobantes.map(c => (
-                                                  <TableRow key={c.id}>
-                                                    <TableCell className="text-xs">{c.fecha_documento}</TableCell>
-                                                    <TableCell className="text-xs">{c.clase_documento}</TableCell>
-                                                    <TableCell className="text-xs max-w-[200px] truncate">{c.concepto}</TableCell>
-                                                    <TableCell className="text-xs text-right font-mono">{fmt(c.monto_usd)}</TableCell>
-                                                  </TableRow>
-                                                ))}
-                                              </TableBody>
-                                            </Table>
-                                          </div>
-                                        </SheetContent>
-                                      </Sheet>
-                                    </div>
+                                  </div>
+                                )}
 
-                                    {(fin.contrapartida?.ejecutado_total_usd || 0) > 0 && (
-                                      <div className="flex items-center gap-2 pt-1">
-                                        <span className="w-40 shrink-0">Contrapartida</span>
-                                        <span className="font-mono font-medium">USD {fmt(fin.contrapartida?.ejecutado_total_usd)}</span>
-                                      </div>
-                                    )}
+                                <div className="flex flex-wrap gap-2">
+                                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate("/gestion-contratos-fin")}>
+                                    <Plus className="h-3 w-3 mr-1" /> Agregar comprobante
+                                  </Button>
+                                  {numComprobantes > 0 && (
+                                    <Sheet>
+                                      <SheetTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => loadComprobantesDetail(act.actividad_codigo)}>
+                                          <Eye className="h-3 w-3 mr-1" /> Ver detalle
+                                        </Button>
+                                      </SheetTrigger>
+                                      <SheetContent className="overflow-y-auto">
+                                        <SheetHeader><SheetTitle className="text-sm">Comprobantes — {act.actividad_codigo} — {trimestreKey}</SheetTitle></SheetHeader>
+                                        <div className="mt-4">
+                                          <Table>
+                                            <TableHeader><TableRow>
+                                              <TableHead className="text-xs">Fecha</TableHead>
+                                              <TableHead className="text-xs">Doc</TableHead>
+                                              <TableHead className="text-xs">Concepto</TableHead>
+                                              <TableHead className="text-xs text-right">USD</TableHead>
+                                            </TableRow></TableHeader>
+                                            <TableBody>
+                                              {detailComprobantes.map(c => (
+                                                <TableRow key={c.id}>
+                                                  <TableCell className="text-xs">{c.fecha_documento}</TableCell>
+                                                  <TableCell className="text-xs">{c.clase_documento}</TableCell>
+                                                  <TableCell className="text-xs max-w-[200px] truncate">{c.concepto}</TableCell>
+                                                  <TableCell className="text-xs text-right font-mono">{fmt(c.monto_usd)}</TableCell>
+                                                </TableRow>
+                                              ))}
+                                            </TableBody>
+                                          </Table>
+                                        </div>
+                                      </SheetContent>
+                                    </Sheet>
+                                  )}
+                                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate("/gestion-contratos-fin")}>
+                                    Ver contratos
+                                  </Button>
+                                </div>
+
+                                {(fin.contrapartida?.ejecutado_total_usd || 0) > 0 && (
+                                  <div className="mt-2 text-xs">
+                                    <span className="text-muted-foreground">Contrapartida:</span>{" "}
+                                    <strong>USD {fmt(fin.contrapartida?.ejecutado_total_usd)}</strong>
                                   </div>
                                 )}
 
                                 {/* Variance */}
-                                {numComprobantes > 0 && (
+                                {presupuestoProg > 0 && (
                                   <div className={cn("mt-3 rounded p-2 text-xs flex items-center gap-2",
                                     variance.level === "high" ? "bg-red-50 dark:bg-red-900/20" :
                                     variance.level === "medium" ? "bg-amber-50 dark:bg-amber-900/10" : "bg-muted/50")}>
@@ -542,18 +539,27 @@ export default function ReporteTrimestralPage() {
                                   </div>
                                 )}
 
-                                {showJustif && (
+                                {showJustif && !isReadOnly && (
                                   <div className="mt-3">
                                     <div className="flex items-center gap-1.5 mb-1">
                                       <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
                                       <Label className="text-xs text-amber-600">Justificación de variación ({variance.level === "high" ? ">20%" : ">10%"}) *</Label>
                                     </div>
-                                    <Textarea placeholder="Explique la razón de la variación..." rows={2} disabled={isReadOnly}
+                                    <Textarea placeholder="Explique la razón de la variación..." rows={2}
                                       value={justificaciones[act.actividad_codigo] || ""}
                                       onChange={(e) => setJustificaciones(prev => ({ ...prev, [act.actividad_codigo]: e.target.value }))}
                                     />
                                   </div>
                                 )}
+                              </div>
+
+                              <Separator />
+
+                              {/* CRUCE TÉCNICO-FINANCIERO */}
+                              <div className={cn("rounded p-2 text-xs flex items-center gap-2", cruce.bg)}>
+                                <span className={cn("font-bold", cruce.color)}>{cruce.icon}</span>
+                                <span className="text-muted-foreground">CRUCE:</span>
+                                <span className={cruce.color}>{cruce.label}</span>
                               </div>
                             </div>
                           )}
@@ -569,7 +575,7 @@ export default function ReporteTrimestralPage() {
           {/* GLOBAL SUMMARY */}
           <Card className="border-2">
             <CardContent className="py-4">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Resumen del trimestre (calculado de comprobantes)</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Resumen del trimestre</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                 <div>
                   <span className="text-muted-foreground">Presupuesto SECO programado:</span>
@@ -610,14 +616,18 @@ export default function ReporteTrimestralPage() {
                 {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 <Save className="h-4 w-4 mr-1" /> Guardar borrador
               </Button>
-              <Button onClick={() => handleSaveAll(false)} disabled={saving}>
+              <Button onClick={() => handleSaveAll(false)} disabled={saving || !canClose}
+                title={!canClose ? "Solo disponible a partir del último mes del trimestre" : ""}>
                 {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                <Send className="h-4 w-4 mr-1" /> Enviar reporte
+                <Send className="h-4 w-4 mr-1" /> Cerrar trimestre
               </Button>
+              {!canClose && (
+                <span className="text-[10px] text-muted-foreground self-center">Disponible a partir de {MONTH_NAMES_SHORT[parseInt(trimConfig.months[2]) - 1]}</span>
+              )}
             </div>
           ) : (
             <div className="flex justify-center pb-6">
-              <Badge className="bg-green-100 text-green-700 text-sm py-1 px-4">✓ Reporte enviado — modo solo lectura</Badge>
+              <Badge className="bg-green-100 text-green-700 text-sm py-1 px-4">✓ Trimestre cerrado — modo solo lectura</Badge>
             </div>
           )}
         </div>
