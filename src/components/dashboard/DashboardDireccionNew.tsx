@@ -11,7 +11,7 @@ import { useRole } from "@/contexts/RoleContext";
 import { AlertTriangle, ArrowRight, Shuffle, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import CascadingFilters, { calcTrimestreActual, type CascadingFilterState } from "./CascadingFilters";
+import CascadingFilters, { buildDefaultFilterState, type CascadingFilterState } from "./CascadingFilters";
 import NarrativeBlock from "./NarrativeBlock";
 import ArbolIndicadoresActividades from "./ArbolIndicadoresActividades";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,24 +53,14 @@ function buildAlertasCriticas(entidades: DashboardEntidad[]): AlertaCritica[] {
 }
 
 export default function DashboardDireccionNew() {
-  const [filters, setFilters] = useState<CascadingFilterState>({
-    trimestre: calcTrimestreActual(), region: null, mecanismo: "B", entidad: null,
-  });
+  const [filters, setFilters] = useState<CascadingFilterState>(
+    buildDefaultFilterState({ mecanismo: "B" })
+  );
 
-  const { data: allEntidades, isLoading } = useDashboardData(filters.trimestre);
+  const { data: allEntidades, isLoading } = useDashboardData(filters.period);
   const navigate = useNavigate();
   const { setEntidadId, setRole } = useRole();
   const [panel, setPanel] = useState<{ type: string; data?: any } | null>(null);
-
-  const { data: trimestresDisp } = useQuery({
-    queryKey: ["trimestres-disponibles"],
-    queryFn: async (): Promise<string[]> => {
-      const { data } = await (supabase as any).from("reportes_trimestrales").select("trimestre");
-      const items: string[] = (data || []).map((r: any) => String(r.trimestre));
-      return Array.from(new Set<string>(items)).sort();
-    },
-    staleTime: 120_000,
-  });
 
   const { data: reasignaciones } = useQuery({
     queryKey: ["reasignaciones-pendientes"],
