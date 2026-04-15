@@ -208,22 +208,22 @@ export default function DashboardCadenasValor() {
       {/* Panels */}
       <DetailPanel open={panel?.type === "tecnico"} onClose={() => setPanel(null)}
         title={`Avance técnico — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityTechPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+        <EntityTechPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "financiero"} onClose={() => setPanel(null)}
         title={`Ejecución financiera — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityFinPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+        <EntityFinPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "cruce"} onClose={() => setPanel(null)}
         title={`Cruce técnico-financiero — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityCrucePanel actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+        <EntityCrucePanel actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "estado-actividades"} onClose={() => setPanel(null)}
         title={`Actividades — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityActividadesPanel actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+        <EntityActividadesPanel actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "ultimo-reporte"} onClose={() => setPanel(null)}
