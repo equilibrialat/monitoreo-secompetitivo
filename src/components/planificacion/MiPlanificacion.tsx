@@ -18,6 +18,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import PlanificacionFilters, {
+  type PlanificacionFilterState,
+  EMPTY_FILTERS,
+  hasActiveFilters,
+} from "./PlanificacionFilters";
 
 /* ─── Types ─── */
 
@@ -151,6 +156,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   // Modal state
   const [modalTecnico, setModalTecnico] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
   const [modalPresup, setModalPresup] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
+  // Filter state
+  const [filters, setFilters] = useState<PlanificacionFilterState>(EMPTY_FILTERS);
 
   const entidad = entidades.find((e) => e.id === entidadId);
   const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
@@ -275,6 +282,57 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
     return { reported, ejecutado, estado, proximo };
   }
 
+  /* ─── Filter logic ─── */
+  function matchesFilters(act: PlanificacionActividad): boolean {
+    const { estado, proximo, reported } = getActStats(act);
+    const f = filters;
+
+    // Estado filter (multi-select)
+    if (f.estados.length > 0) {
+      const estadoGroup =
+        estado === "con_rezago" ? "con_rezago" :
+        estado === "entregable_este_mes" || estado === "en_progreso" || estado === "al_dia" ? "en_proceso" :
+        estado === "completada" ? "completada" :
+        "por_iniciar";
+      if (!f.estados.includes(estadoGroup)) return false;
+    }
+
+    // Próximo entregable filter
+    if (f.proximoEntregable) {
+      if (!proximo) return false;
+      const [cy, cm] = currentYM.split("-").map(Number);
+      const [, pm] = proximo.split("-").map(Number);
+      const py = parseInt(proximo.split("-")[0]);
+      if (f.proximoEntregable === "este_mes" && proximo !== currentYM) return false;
+      if (f.proximoEntregable === "proximo_mes") {
+        const nextM = cm === 12 ? 1 : cm + 1;
+        const nextY = cm === 12 ? cy + 1 : cy;
+        const nextYM = `${nextY}-${String(nextM).padStart(2, "0")}`;
+        if (proximo !== nextYM) return false;
+      }
+      if (f.proximoEntregable === "este_trimestre") {
+        const trimQ = Math.ceil(cm / 3);
+        const trimStart = (trimQ - 1) * 3 + 1;
+        const trimEnd = trimQ * 3;
+        if (py !== cy || pm < trimStart || pm > trimEnd) return false;
+      }
+    }
+
+    // Avance técnico
+    if (f.avanceTecnico === "con_registro" && reported.size === 0) return false;
+    if (f.avanceTecnico === "sin_registro" && reported.size > 0) return false;
+
+    // Avance presupuestario
+    if (f.avancePresupuestario === "con_registro" && !lastFinanciero.has(act.actividad_codigo)) return false;
+    if (f.avancePresupuestario === "sin_registro" && lastFinanciero.has(act.actividad_codigo)) return false;
+
+    return true;
+  }
+
+  const filtersActive = hasActiveFilters(filters);
+  const totalActCount = actividades.length;
+  const filteredActCount = filtersActive ? actividades.filter(matchesFilters).length : totalActCount;
+
   function getRiSemaforo(acts: PlanificacionActividad[]): ActividadEstado {
     let worst: ActividadEstado = "completada";
     const priority: ActividadEstado[] = ["con_rezago", "entregable_este_mes", "en_progreso", "al_dia", "por_iniciar", "completada"];
@@ -346,6 +404,14 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
+        {/* Filter bar */}
+        <PlanificacionFilters
+          filters={filters}
+          onChange={setFilters}
+          totalCount={totalActCount}
+          filteredCount={filteredActCount}
+        />
+
         {/* Level 1: Resultado de Impacto */}
         <div className="text-sm font-semibold text-foreground flex items-center gap-2">
           <span>📌</span> {hierarchy.resultadoImpacto}
@@ -359,6 +425,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         {/* Level 3+: RIs */}
         {hierarchy.ris.map((ri) => {
           const allRiActs = Array.from(ri.productos.values()).flatMap((p) => p.acts);
+          const filteredRiActs = filtersActive ? allRiActs.filter(matchesFilters) : allRiActs;
+          if (filtersActive && filteredRiActs.length === 0) return null;
           const riSemaforo = getRiSemaforo(allRiActs);
           const riCfg = ESTADO_CONFIG[riSemaforo];
           const riPresupuesto = allRiActs.reduce((s, a) => s + (a.presupuesto_seco_usd || 0), 0);
@@ -387,6 +455,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
               {!riCollapsed && (
                 <div className="ml-2">
                   {Array.from(ri.productos.values()).map((prod) => {
+                    const filteredProdActs = filtersActive ? prod.acts.filter(matchesFilters) : prod.acts;
+                    if (filtersActive && filteredProdActs.length === 0) return null;
                     const prodKey = `prod-${prod.codigo}`;
                     const prodCollapsed = collapsedSections.has(prodKey);
 
@@ -421,7 +491,7 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                 </tr>
                               </thead>
                               <tbody>
-                                {prod.acts.map((act) => {
+                                {(filtersActive ? filteredProdActs : prod.acts).map((act) => {
                                   const { reported, ejecutado, estado, proximo } = getActStats(act);
                                   const cfg = ESTADO_CONFIG[estado];
                                   const isExpanded = expandedRow === act.id;
