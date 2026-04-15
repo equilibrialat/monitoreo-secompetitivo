@@ -8,9 +8,10 @@ import { Header, MecanismoBadge, fmt, DashboardSkeleton, ClickableKpiCard } from
 import { DetailPanel } from "./DetailPanel";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
-import { AlertTriangle, ArrowRight, Shuffle } from "lucide-react";
+import { AlertTriangle, ArrowRight, Shuffle, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import CascadingFilters, { calcTrimestreActual, type CascadingFilterState } from "./CascadingFilters";
 
 /* ── Helpers ── */
 const SEMAFORO_COLORS = { verde: "bg-emerald-500", amarillo: "bg-yellow-500", rojo: "bg-red-500", gris: "bg-muted-foreground/40" };
@@ -18,7 +19,6 @@ const SEMAFORO_COLORS = { verde: "bg-emerald-500", amarillo: "bg-yellow-500", ro
 function getEntitySemaforo(e: DashboardEntidad): "verde" | "amarillo" | "rojo" | "gris" {
   if (e.total_actividades === 0 && !e.has_data) return "gris";
   if (e.sin_planificacion) {
-    // Without planificacion, use only financial execution
     if (e.pct_ejecucion_seco > 80) return "verde";
     if (e.pct_ejecucion_seco > 30) return "amarillo";
     if (e.pct_ejecucion_seco > 0) return "rojo";
@@ -34,7 +34,6 @@ interface AlertaCritica {
   severity: "rojo" | "amarillo";
   entidad: string;
   entidadId: string;
-  actividad?: string;
   descripcion: string;
   detalle: string;
 }
@@ -48,9 +47,7 @@ function buildAlertasCriticas(entidades: DashboardEntidad[]): AlertaCritica[] {
     if (e.sobregiros_seco > 0) {
       alertas.push({ severity: "rojo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: `Sobreejecución en ${e.sobregiros_seco} actividad(es)`, detalle: `USD ${fmt(e.ejecutado_seco_total)} vs ${fmt(e.presupuesto_seco_total)}` });
     }
-    const desfase = e.sin_planificacion
-      ? 0
-      : Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
+    const desfase = e.sin_planificacion ? 0 : Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
     if (desfase > 20) {
       alertas.push({ severity: desfase > 30 ? "rojo" : "amarillo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: e.sin_planificacion ? `Sin planificación cargada · Ejecución: ${e.pct_ejecucion_seco}%` : `Desfase técnico-financiero ${desfase}pp`, detalle: e.sin_planificacion ? "Plan pendiente" : `Téc: ${e.avance_operativo_promedio || 0}% · Fin: ${e.pct_ejecucion_seco}%` });
     }
@@ -63,12 +60,26 @@ function buildAlertasCriticas(entidades: DashboardEntidad[]): AlertaCritica[] {
 }
 
 export default function DashboardDireccionNew() {
-  const { data: allEntidades, isLoading } = useDashboardData();
+  const [filters, setFilters] = useState<CascadingFilterState>({
+    trimestre: calcTrimestreActual(),
+    region: null, mecanismo: null, entidad: null,
+  });
+
+  const { data: allEntidades, isLoading } = useDashboardData(filters.trimestre);
   const navigate = useNavigate();
   const { setEntidadId, setRole } = useRole();
-  const [mecFilter, setMecFilter] = useState<"todos" | "A" | "B">("todos");
   const [panel, setPanel] = useState<{ type: string; data?: any } | null>(null);
   const [showAllAlertas, setShowAllAlertas] = useState(false);
+
+  // Available trimestres
+  const { data: trimestresDisp } = useQuery({
+    queryKey: ["trimestres-disponibles"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("reportes_trimestrales").select("trimestre");
+      return [...new Set((data || []).map((r: any) => r.trimestre))].sort();
+    },
+    staleTime: 120_000,
+  });
 
   // Reasignaciones pendientes
   const { data: reasignaciones } = useQuery({
@@ -79,12 +90,24 @@ export default function DashboardDireccionNew() {
     },
   });
 
+  // Build filter info for CascadingFilters
+  const filterEntidades = useMemo(() =>
+    (allEntidades || []).filter(e => e.has_data).map(e => ({
+      codigo: e.codigo, nombre_corto: e.nombre_corto, mecanismo: e.mecanismo, region: e.region,
+    })),
+  [allEntidades]);
+
+  // Check if selected trimestre has data; fallback
+  const hasDataForTrimestre = (allEntidades || []).some(e => e.has_data);
+  const lastTrimestre = (trimestresDisp || []).slice(-1)[0];
+
   const entidades = useMemo(() => (allEntidades || []).filter(e => {
     if (!e.has_data) return false;
-    if (mecFilter === "A") return e.mecanismo === "A";
-    if (mecFilter === "B") return e.mecanismo === "B";
+    if (filters.mecanismo && e.mecanismo !== filters.mecanismo) return false;
+    if (filters.region && e.region !== filters.region) return false;
+    if (filters.entidad && e.codigo !== filters.entidad) return false;
     return true;
-  }), [allEntidades, mecFilter]);
+  }), [allEntidades, filters]);
 
   const alertas = useMemo(() => buildAlertasCriticas(entidades), [entidades]);
   const visibleAlertas = showAllAlertas ? alertas : alertas.slice(0, 8);
@@ -99,12 +122,7 @@ export default function DashboardDireccionNew() {
 
   const handleViewEntity = (entidadId: string) => {
     const ent = entidades.find(e => e.entidad_id === entidadId);
-    if (ent) {
-      setPanel({
-        type: "entidad",
-        data: ent,
-      });
-    }
+    if (ent) setPanel({ type: "entidad", data: ent });
   };
 
   const handleNavigateEntity = (entidadId: string) => {
@@ -120,15 +138,24 @@ export default function DashboardDireccionNew() {
     <div className="space-y-4">
       <Header title="Dashboard Ejecutivo" subtitle="Paula — Dirección del Programa" />
 
-      {/* FILTRO PRINCIPAL */}
-      <div className="flex gap-2">
-        {(["todos", "A", "B"] as const).map(f => (
-          <Button key={f} variant={mecFilter === f ? "default" : "outline"} size="sm" className="text-xs h-8"
-            onClick={() => setMecFilter(f)}>
-            {f === "todos" ? "Todos" : `Mecanismo ${f}`}
+      {/* FILTROS ENCADENADOS */}
+      <CascadingFilters
+        value={filters}
+        onChange={setFilters}
+        entidades={filterEntidades}
+        trimestresDisponibles={trimestresDisp || []}
+      />
+
+      {/* No data warning */}
+      {!hasDataForTrimestre && lastTrimestre && filters.trimestre !== lastTrimestre && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30 text-xs text-yellow-700 dark:text-yellow-400">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          No hay datos cargados para {filters.trimestre}. Último trimestre disponible: {lastTrimestre}
+          <Button variant="outline" size="sm" className="ml-auto h-6 text-[10px]" onClick={() => setFilters({ ...filters, trimestre: lastTrimestre })}>
+            Ir a {lastTrimestre}
           </Button>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* BLOQUE 1 — Mapa de estado */}
       <Card>
@@ -172,7 +199,7 @@ export default function DashboardDireccionNew() {
                   onClick={() => handleViewEntity(a.entidadId)}>
                   <span className={`h-3 w-3 rounded-full shrink-0 mt-0.5 ${a.severity === "rojo" ? "bg-red-500" : "bg-yellow-500"}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold">{a.entidad} {a.actividad && <span className="font-mono text-muted-foreground">({a.actividad})</span>}</p>
+                    <p className="font-semibold">{a.entidad}</p>
                     <p className="text-muted-foreground">{a.descripcion}</p>
                     <p className="text-[10px] text-muted-foreground">{a.detalle}</p>
                   </div>
@@ -313,7 +340,6 @@ function EntitySummaryPanel({ ent, onNavigate }: { ent: DashboardEntidad; onNavi
         {ent.cadena_valor && <Badge variant="outline" className="text-[10px]">{ent.cadena_valor}</Badge>}
         {ent.region && <Badge variant="outline" className="text-[10px]">{ent.region}</Badge>}
       </div>
-
       <div className="grid grid-cols-2 gap-3">
         <div className="border rounded p-2">
           <p className="text-[10px] text-muted-foreground">Actividades</p>
@@ -337,13 +363,11 @@ function EntitySummaryPanel({ ent, onNavigate }: { ent: DashboardEntidad; onNavi
           </p>
         </div>
       </div>
-
       {ent.meses_sin_reporte.length > 0 && (
         <div className="text-xs text-destructive border border-destructive/20 rounded p-2">
           Sin reporte: {ent.meses_sin_reporte.join(", ")}
         </div>
       )}
-
       {ent.observaciones_detalle.length > 0 && (
         <div className="space-y-1">
           <p className="text-xs font-medium">Observaciones:</p>
@@ -352,7 +376,6 @@ function EntitySummaryPanel({ ent, onNavigate }: { ent: DashboardEntidad; onNavi
           ))}
         </div>
       )}
-
       <Button variant="outline" size="sm" className="w-full text-xs" onClick={onNavigate}>
         Ver planificación completa →
       </Button>
