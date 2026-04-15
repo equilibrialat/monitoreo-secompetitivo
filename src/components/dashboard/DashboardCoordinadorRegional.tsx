@@ -193,7 +193,7 @@ export default function DashboardCoordinadorRegional() {
         {panel?.data && (
           <div className="space-y-4">
             <NarrativeBlock tipo="resumen_entidad" params={{ entidad_codigo: panel.data.codigo }} />
-            <SuccinctTreePanel entidadCodigo={panel.data.codigo} trimestre={`${currentYear}-T${Math.ceil(currentMonth / 3)}`} />
+            <SuccinctTreePanel entidad={panel.data} actividades={panel.data.entActs || []} trimestre={`${currentYear}-T${Math.ceil(currentMonth / 3)}`} obsText={obsText} setObsText={setObsText} onSaveObs={handleSaveObs} obsSaving={obsSaving} />
             <div className="border-t pt-3">
               <Textarea
                 placeholder="Escribir observación sobre esta entidad..."
