@@ -48,9 +48,11 @@ function buildAlertasCriticas(entidades: DashboardEntidad[]): AlertaCritica[] {
     if (e.sobregiros_seco > 0) {
       alertas.push({ severity: "rojo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: `Sobreejecución en ${e.sobregiros_seco} actividad(es)`, detalle: `USD ${fmt(e.ejecutado_seco_total)} vs ${fmt(e.presupuesto_seco_total)}` });
     }
-    const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
+    const desfase = e.sin_planificacion
+      ? 0
+      : Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
     if (desfase > 20) {
-      alertas.push({ severity: desfase > 30 ? "rojo" : "amarillo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: `Desfase técnico-financiero ${desfase}pp`, detalle: `Téc: ${e.avance_operativo_promedio || 0}% · Fin: ${e.pct_ejecucion_seco}%` });
+      alertas.push({ severity: desfase > 30 ? "rojo" : "amarillo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: e.sin_planificacion ? `Sin planificación cargada · Ejecución: ${e.pct_ejecucion_seco}%` : `Desfase técnico-financiero ${desfase}pp`, detalle: e.sin_planificacion ? "Plan pendiente" : `Téc: ${e.avance_operativo_promedio || 0}% · Fin: ${e.pct_ejecucion_seco}%` });
     }
     if (e.meses_sin_reporte.length === 1) {
       alertas.push({ severity: "amarillo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: `Sin reporte de ${e.meses_sin_reporte[0]}`, detalle: "Pendiente" });
