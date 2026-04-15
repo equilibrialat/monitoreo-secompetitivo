@@ -52,7 +52,6 @@ const ENTIDAD_NAV: NavSection[] = [
       { label: "Contratos y Comprobantes", path: "/gestion-contratos", icon: FileCheck },
       { label: "Viáticos", path: "/viaticos", icon: Plane },
       { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
-      { label: "Notificaciones", path: "/notificaciones", icon: Bell },
     ],
   },
 ];
