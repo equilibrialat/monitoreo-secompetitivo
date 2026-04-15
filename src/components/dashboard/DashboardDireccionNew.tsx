@@ -62,7 +62,7 @@ function buildAlertasCriticas(entidades: DashboardEntidad[]): AlertaCritica[] {
 export default function DashboardDireccionNew() {
   const [filters, setFilters] = useState<CascadingFilterState>({
     trimestre: calcTrimestreActual(),
-    region: null, mecanismo: null, entidad: null,
+    region: null, mecanismo: "B", entidad: null,
   });
 
   const { data: allEntidades, isLoading } = useDashboardData(filters.trimestre);
@@ -93,7 +93,7 @@ export default function DashboardDireccionNew() {
 
   // Build filter info for CascadingFilters
   const filterEntidades = useMemo(() =>
-    (allEntidades || []).filter(e => e.has_data).map(e => ({
+    (allEntidades || []).filter(e => e.has_data && e.mecanismo === "B").map(e => ({
       codigo: e.codigo, nombre_corto: e.nombre_corto, mecanismo: e.mecanismo, region: e.region,
     })),
   [allEntidades]);
@@ -142,9 +142,11 @@ export default function DashboardDireccionNew() {
       {/* FILTROS ENCADENADOS */}
       <CascadingFilters
         value={filters}
-        onChange={setFilters}
+        onChange={(v) => setFilters({ ...v, mecanismo: "B" })}
         entidades={filterEntidades}
         trimestresDisponibles={trimestresDisp || []}
+        hideMecanismo
+        fixedMecanismo="B"
       />
 
       {/* No data warning */}

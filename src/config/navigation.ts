@@ -208,8 +208,7 @@ const DIRECCION_NAV: NavSection[] = [
   {
     label: "PROGRAMA",
     items: [
-      { label: "Mec B — Cadenas de Valor", path: "/reportes-mec-b", icon: BarChart3 },
-      { label: "Mec A — Políticas Públicas", path: "/reportes-mec-a", icon: ClipboardList },
+      { label: "Cadenas de Valor", path: "/reportes-mec-b", icon: BarChart3 },
     ],
   },
   {
@@ -231,18 +230,6 @@ const ASESORA_POLITICAS_NAV: NavSection[] = [
   {
     items: [
       { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: "MENSUAL",
-    items: [
-      { label: "Avance Mec A", path: "/revision-pendiente", icon: Eye },
-    ],
-  },
-  {
-    label: "TRIMESTRAL",
-    items: [
-      { label: "Reportes Mec A", path: "/reportes-mec-a", icon: BarChart3 },
     ],
   },
   {

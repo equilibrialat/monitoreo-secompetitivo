@@ -62,6 +62,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {children}
         </main>
         <StatusLegendFab />
+        <div className="shrink-0 border-t px-4 py-1.5 text-[10px] text-muted-foreground text-center bg-card">
+          MVP — Mecanismo B · 3 entidades activas
+        </div>
       </div>
     </div>
   );
