@@ -3191,6 +3191,8 @@ export type Database = {
           entidad_codigo: string
           enviado_at: string | null
           estado: string | null
+          fecha_desde: string | null
+          fecha_hasta: string | null
           id: string
           justificacion_variacion: string | null
           meses_incluidos: Json | null
@@ -3214,6 +3216,8 @@ export type Database = {
           entidad_codigo: string
           enviado_at?: string | null
           estado?: string | null
+          fecha_desde?: string | null
+          fecha_hasta?: string | null
           id?: string
           justificacion_variacion?: string | null
           meses_incluidos?: Json | null
@@ -3237,6 +3241,8 @@ export type Database = {
           entidad_codigo?: string
           enviado_at?: string | null
           estado?: string | null
+          fecha_desde?: string | null
+          fecha_hasta?: string | null
           id?: string
           justificacion_variacion?: string | null
           meses_incluidos?: Json | null

@@ -11,7 +11,7 @@ import { useRole } from "@/contexts/RoleContext";
 import { AlertTriangle, ArrowRight, Shuffle, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import CascadingFilters, { calcTrimestreActual, type CascadingFilterState } from "./CascadingFilters";
+import CascadingFilters, { buildDefaultFilterState, type CascadingFilterState } from "./CascadingFilters";
 import NarrativeBlock from "./NarrativeBlock";
 import ArbolIndicadoresActividades from "./ArbolIndicadoresActividades";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,24 +53,14 @@ function buildAlertasCriticas(entidades: DashboardEntidad[]): AlertaCritica[] {
 }
 
 export default function DashboardDireccionNew() {
-  const [filters, setFilters] = useState<CascadingFilterState>({
-    trimestre: calcTrimestreActual(), region: null, mecanismo: "B", entidad: null,
-  });
+  const [filters, setFilters] = useState<CascadingFilterState>(
+    buildDefaultFilterState({ mecanismo: "B" })
+  );
 
-  const { data: allEntidades, isLoading } = useDashboardData(filters.trimestre);
+  const { data: allEntidades, isLoading } = useDashboardData(filters.period);
   const navigate = useNavigate();
   const { setEntidadId, setRole } = useRole();
   const [panel, setPanel] = useState<{ type: string; data?: any } | null>(null);
-
-  const { data: trimestresDisp } = useQuery({
-    queryKey: ["trimestres-disponibles"],
-    queryFn: async (): Promise<string[]> => {
-      const { data } = await (supabase as any).from("reportes_trimestrales").select("trimestre");
-      const items: string[] = (data || []).map((r: any) => String(r.trimestre));
-      return Array.from(new Set<string>(items)).sort();
-    },
-    staleTime: 120_000,
-  });
 
   const { data: reasignaciones } = useQuery({
     queryKey: ["reasignaciones-pendientes"],
@@ -87,7 +77,6 @@ export default function DashboardDireccionNew() {
   [allEntidades]);
 
   const hasDataForTrimestre = (allEntidades || []).some(e => e.has_data);
-  const lastTrimestre = (trimestresDisp || []).slice(-1)[0];
 
   const entidades = useMemo(() => (allEntidades || []).filter(e => {
     if (!e.has_data) return false;
@@ -129,17 +118,13 @@ export default function DashboardDireccionNew() {
         value={filters}
         onChange={(v) => setFilters({ ...v, mecanismo: "B" })}
         entidades={filterEntidades}
-        trimestresDisponibles={trimestresDisp || []}
         hideMecanismo fixedMecanismo="B"
       />
 
-      {!hasDataForTrimestre && lastTrimestre && filters.trimestre !== lastTrimestre && (
+      {!hasDataForTrimestre && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30 text-xs text-yellow-700 dark:text-yellow-400">
           <Info className="h-3.5 w-3.5 shrink-0" />
-          No hay datos para {filters.trimestre}. Último disponible: {lastTrimestre}
-          <Button variant="outline" size="sm" className="ml-auto h-6 text-[10px]" onClick={() => setFilters({ ...filters, trimestre: lastTrimestre })}>
-            Ir a {lastTrimestre}
-          </Button>
+          No hay datos para el período seleccionado. Pruebe con "3 meses" o "6 meses".
         </div>
       )}
 
