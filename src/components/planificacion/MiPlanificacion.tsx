@@ -1,14 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   ChevronRight, ChevronDown, Calendar, Target, DollarSign,
-  CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star
+  CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star,
+  FileEdit, Wallet
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import ModalAvanceTecnico from "./ModalAvanceTecnico";
+import ModalAvancePresupuestario from "./ModalAvancePresupuestario";
 import {
   Tooltip,
   TooltipContent,
