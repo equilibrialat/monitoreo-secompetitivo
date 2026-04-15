@@ -237,101 +237,99 @@ export default function DashboardEntidad() {
         />
       </div>
 
-      {/* ═══ SECCIÓN B — Actividades con entregas pendientes ═══ */}
+      {/* ═══ SECCIÓN B — Lo que toca entregar este mes ═══ */}
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
           <Calendar className="h-3.5 w-3.5" />
-          Actividades con entregas pendientes
+          Lo que toca entregar este mes
         </p>
 
-        {actividadesConPendientes.length === 0 ? (
-          <Card className="border-l-4 border-l-green-500">
-            <CardContent className="py-4">
-              <p className="text-sm text-foreground">✓ Estás al día. No tienes entregables pendientes.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          actividadesConPendientes.map((act) => (
-            <Card key={act.actividad_codigo} className={cn(
-              "border-l-4",
-              act.rezagados > 0 ? "border-l-red-500" : "border-l-yellow-500"
-            )}>
-              <CardContent className="py-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 space-y-1.5">
-                    <p className="text-sm font-semibold">
-                      {act.actividad_codigo} — {act.actividad_descripcion}
-                    </p>
-                    {/* Status pills */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {act.rezagados > 0 && (
-                        <Badge variant="outline" className="text-[10px] border-red-300 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20">
-                          🔴 {act.rezagados} rezagado{act.rezagados > 1 ? "s" : ""}
-                        </Badge>
-                      )}
-                      {act.esteMes && (
-                        <Badge variant="outline" className="text-[10px] border-yellow-300 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
-                          🟡 Este mes
-                        </Badge>
-                      )}
-                      {act.pendientes > 0 && (
-                        <Badge variant="outline" className="text-[10px] border-muted-foreground/30 text-muted-foreground">
-                          ⚪ {act.pendientes} pendiente{act.pendientes > 1 ? "s" : ""}
-                        </Badge>
-                      )}
-                      {act.reportados > 0 && (
-                        <Badge variant="outline" className="text-[10px] border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20">
-                          🟢 {act.reportados} reportado{act.reportados > 1 ? "s" : ""}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1 shrink-0">
-                    <Button
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => setModalTecnico({ open: true, act })}
-                    >
-                      Av. Técnico <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs"
-                      onClick={() => setModalPresup({ open: true, act })}
-                    >
-                      Av. Presup. <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+        {(() => {
+          const tareasEsteMes = actividadesConPendientes.filter((a) => a.esteMes);
+          const totalRezagados = actividadesConPendientes.reduce((s, a) => s + a.rezagados, 0);
+          const totalPendientes = actividadesConPendientes.reduce((s, a) => s + a.pendientes, 0);
+          const totalReportados = actividadesConPendientes.reduce((s, a) => s + a.reportados, 0);
 
-        {/* ─── Status badges ─── */}
-        <div className="flex flex-wrap gap-2 mt-1">
-          {kpis.vencidas > 0 && (
-            <button
-              onClick={() => navigate("/mi-planificacion")}
-              className="inline-flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-            >
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
-              🔴 {kpis.vencidas} actividad{kpis.vencidas > 1 ? "es" : ""} vencida{kpis.vencidas > 1 ? "s" : ""}
-              <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </button>
-          )}
-          {kpis.completadas > 0 && (
-            <button
-              onClick={() => navigate("/mi-planificacion")}
-              className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              ✅ {kpis.completadas} actividad{kpis.completadas > 1 ? "es" : ""} completada{kpis.completadas > 1 ? "s" : ""}
-              <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </button>
-          )}
-        </div>
+          return (
+            <>
+              {tareasEsteMes.length === 0 ? (
+                <Card className="border-l-4 border-l-green-500">
+                  <CardContent className="py-4">
+                    <p className="text-sm text-foreground">✓ No tienes entregables programados para este mes.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                tareasEsteMes.map((act) => (
+                  <Card key={act.actividad_codigo} className="border-l-4 border-l-yellow-500">
+                    <CardContent className="py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-sm font-semibold">
+                            {act.actividad_codigo} — {act.actividad_descripcion}
+                          </p>
+                          <Badge variant="outline" className="text-[10px] border-yellow-300 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
+                            🟡 Entregable este mes
+                          </Badge>
+                        </div>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <Button size="sm" className="text-xs" onClick={() => setModalTecnico({ open: true, act })}>
+                            Av. Técnico <ArrowRight className="h-3 w-3 ml-1" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs" onClick={() => setModalPresup({ open: true, act })}>
+                            Av. Presup. <ArrowRight className="h-3 w-3 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+
+              {/* ─── Summary badges → link to /mi-planificacion ─── */}
+              <div className="flex flex-wrap gap-2 mt-1">
+                {totalRezagados > 0 && (
+                  <button
+                    onClick={() => navigate("/mi-planificacion")}
+                    className="inline-flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                  >
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
+                    🔴 {totalRezagados} entregable{totalRezagados > 1 ? "s" : ""} rezagado{totalRezagados > 1 ? "s" : ""}
+                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </button>
+                )}
+                {totalReportados > 0 && (
+                  <button
+                    onClick={() => navigate("/mi-planificacion")}
+                    className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    🟢 {totalReportados} reportado{totalReportados > 1 ? "s" : ""}
+                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </button>
+                )}
+                {totalPendientes > 0 && (
+                  <button
+                    onClick={() => navigate("/mi-planificacion")}
+                    className="inline-flex items-center gap-2 bg-muted text-muted-foreground px-3 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    ⚪ {totalPendientes} pendiente{totalPendientes > 1 ? "s" : ""} futuro{totalPendientes > 1 ? "s" : ""}
+                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </button>
+                )}
+                {kpis.completadas > 0 && (
+                  <button
+                    onClick={() => navigate("/mi-planificacion")}
+                    className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    ✅ {kpis.completadas} actividad{kpis.completadas > 1 ? "es" : ""} completada{kpis.completadas > 1 ? "s" : ""}
+                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </button>
+                )}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Quick links */}
