@@ -1066,6 +1066,36 @@ export type Database = {
           },
         ]
       }
+      observaciones_coordinador: {
+        Row: {
+          actividad_codigo: string
+          autor: string
+          created_at: string | null
+          entidad_codigo: string
+          id: string
+          mes: string
+          texto: string
+        }
+        Insert: {
+          actividad_codigo: string
+          autor?: string
+          created_at?: string | null
+          entidad_codigo: string
+          id?: string
+          mes: string
+          texto: string
+        }
+        Update: {
+          actividad_codigo?: string
+          autor?: string
+          created_at?: string | null
+          entidad_codigo?: string
+          id?: string
+          mes?: string
+          texto?: string
+        }
+        Relationships: []
+      }
       participantes_capacitacion: {
         Row: {
           apellidos: string
