@@ -35,6 +35,7 @@ import GestionContratosFinPage from "./pages/GestionContratosFinPage";
 import PlanificacionTrimestralPage from "./pages/PlanificacionTrimestralPage";
 import MiPlanificacionPage from "./pages/MiPlanificacionPage";
 import EjecucionTecnicaPage from "./pages/EjecucionTecnicaPage";
+import EjecucionPresupuestariaPage from "./pages/EjecucionPresupuestariaPage";
 import RegistrarAvancePage from "./pages/RegistrarAvancePage";
 import ReporteTrimestralPage from "./pages/ReporteTrimestralPage";
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/actividades" element={<Navigate to="/mi-planificacion" replace />} />
               <Route path="/mi-planificacion" element={<MiPlanificacionPage />} />
               <Route path="/ejecucion-tecnica" element={<EjecucionTecnicaPage />} />
+              <Route path="/ejecucion-presupuestaria" element={<EjecucionPresupuestariaPage />} />
               <Route path="/registro-mensual" element={<RegistroMensualPage />} />
               <Route path="/registro-rapido" element={<RegistroRapidoPage />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
