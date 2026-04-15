@@ -334,6 +334,7 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   }
 
   return (
+    <>
     <Card className="mb-6">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
