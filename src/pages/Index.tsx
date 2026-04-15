@@ -5,6 +5,7 @@ import DashboardAdministracion from "@/components/dashboard/DashboardAdministrac
 import DashboardCadenasValor from "@/components/dashboard/DashboardCadenasValor";
 import DashboardMonitoreoNew from "@/components/dashboard/DashboardMonitoreoNew";
 import DashboardDireccionNew from "@/components/dashboard/DashboardDireccionNew";
+import DashboardCoordinadorRegional from "@/components/dashboard/DashboardCoordinadorRegional";
 
 export default function Index() {
   const { role } = useRole();
@@ -20,18 +21,7 @@ export default function Index() {
       return <DashboardDireccionNew />;
 
     case "coordinador_regional":
-      return (
-        <DashboardMonitoreoOld
-          title="Dashboard Regional"
-          subtitle="Coordinador Regional"
-          filterFn={(e) => e.region !== "Nacional"}
-          reviewEstado="enviado"
-          reviewNextEstado="en_revision_tecnica"
-          reviewTitle="Revisión Pendiente"
-          reviewLabel="Aprobar (→ Rev. Técnica)"
-          reviewFilterFn={(r) => r.region !== "Nacional"}
-        />
-      );
+      return <DashboardCoordinadorRegional />;
 
     case "coordinador_cadenas":
       return <DashboardCadenasValor />;
