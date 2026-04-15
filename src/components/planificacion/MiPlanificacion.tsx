@@ -143,6 +143,14 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   const [loading, setLoading] = useState(true);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  // Map actividad_codigo -> actividad UUID from actividades table
+  const [actIdMap, setActIdMap] = useState<Map<string, string>>(new Map());
+  // Last update timestamps
+  const [lastTecnico, setLastTecnico] = useState<Map<string, string>>(new Map());
+  const [lastFinanciero, setLastFinanciero] = useState<Map<string, string>>(new Map());
+  // Modal state
+  const [modalTecnico, setModalTecnico] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
+  const [modalPresup, setModalPresup] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
 
   const entidad = entidades.find((e) => e.id === entidadId);
   const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
