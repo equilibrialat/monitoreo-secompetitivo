@@ -1,425 +1,338 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertTriangle, Clock, Activity, DollarSign, CheckCircle2, AlertCircle, Loader2, Bot, Copy, Check,
-} from "lucide-react";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useDashboardData, type DashboardEntidad } from "@/hooks/useDashboardData";
-import { Header, MecanismoBadge, Semaforo, fmt, DashboardSkeleton, ClickableKpiCard } from "./DashboardEntidad";
-import { SeccionRevision } from "./SeccionRevision";
-import { supabase } from "@/integrations/supabase/client";
+import { useDashboardActividades } from "@/hooks/useDashboardActividades";
+import { Header, MecanismoBadge, fmt, DashboardSkeleton, ClickableKpiCard } from "./DashboardEntidad";
+import { DetailPanel } from "./DetailPanel";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
-import DashboardFilters from "@/components/DashboardFilters";
-import { invokeAnalysis } from "@/lib/aiAnalysis";
-import ReactMarkdown from "react-markdown";
-import { toast } from "sonner";
-import PeriodSelector, { type Frecuencia } from "./PeriodSelector";
-import {
-  KpiDetailSheet, EntidadesActivasPanel, EjecucionFinancieraPanel,
-  ActividadesRetrasoPanel, AlertasPanel, type AlertItem,
-} from "./KpiDetailSheet";
+import { AlertTriangle, ArrowRight, Calendar, FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
-type ViewMode = "cadena" | "region" | "lista";
+const MONTH_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-const BENCHMARKS: Record<string, number> = { CANATUR: 38, Markahuamachuco: 43, "App Cacao": 56 };
-
-function GaugeCircle({ value, label, color = "hsl(var(--primary))" }: { value: number; label: string; color?: string }) {
-  const pct = Math.min(100, Math.max(0, value));
-  const r = 30;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (pct / 100) * circ;
-  return (
-    <div className="flex flex-col items-center">
-      <svg width="68" height="68" viewBox="0 0 68 68">
-        <circle cx="34" cy="34" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-        <circle cx="34" cy="34" r={r} fill="none" stroke={color} strokeWidth="6"
-          strokeDasharray={circ} strokeDashoffset={offset}
-          strokeLinecap="round" transform="rotate(-90 34 34)" className="transition-all duration-700" />
-        <text x="34" y="34" textAnchor="middle" dominantBaseline="central"
-          className="text-sm font-bold fill-foreground">{pct}%</text>
-      </svg>
-      <span className="text-[10px] text-muted-foreground mt-0.5 text-center">{label}</span>
-    </div>
-  );
+function semaforoEmoji(sem: "verde" | "amarillo" | "rojo") {
+  return sem === "verde" ? "🟢" : sem === "amarillo" ? "🟡" : "🔴";
 }
 
-function hasSobregigoEntidad(e: DashboardEntidad): boolean {
-  return e.ejecutado_seco_total > e.presupuesto_seco_total && e.presupuesto_seco_total > 0;
-}
-
-function entityAlertCount(e: DashboardEntidad): number {
-  let count = 0;
-  if (hasSobregigoEntidad(e)) count++;
-  if (e.tiene_observado) count++;
-  if (e.actividades_sin_iniciar > 0) count++;
-  if (e.meses_sin_reporte.length > 0) count++;
-  if (e.registros_borrador > 0) count++;
-  if (e.registros_en_revision > 0) count++;
+function cruceLabel(e: DashboardEntidad) {
   const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
-  if (desfase > 15) count++;
-  return count;
+  if (desfase < 15) return { label: "✓", color: "text-emerald-600" };
+  if (desfase < 30) return { label: "⚠", color: "text-yellow-600" };
+  return { label: "✗", color: "text-destructive" };
 }
 
-function entityStatusLabel(e: DashboardEntidad): { label: string; className: string } {
-  const alerts = entityAlertCount(e);
-  if (alerts === 0) return { label: "Al día", className: "text-emerald-600" };
-  return { label: `${alerts} alerta${alerts > 1 ? "s" : ""}`, className: "text-destructive" };
-}
-
-function semaforoIcon(pctEjec: number): string {
-  if (pctEjec >= 60) return "🟢";
-  if (pctEjec >= 30) return "🟡";
-  return "🔴";
-}
-
-function getEntityAlertSummary(e: DashboardEntidad): string | null {
-  const bench = BENCHMARKS[e.nombre_corto] || 0;
-  if (bench > 0 && e.pct_ejecucion_seco < bench - 10)
-    return `Ejecución ${bench - e.pct_ejecucion_seco}pp por debajo del ritmo esperado`;
-  if (e.meses_sin_reporte.length > 0)
-    return `Sin reporte mensual de ${e.meses_sin_reporte[0]}`;
-  if (hasSobregigoEntidad(e))
-    return `Sobreejecución presupuestal detectada`;
-  if (e.sobregiros_seco > 0)
-    return `Sobreejecución en ${e.sobregiros_seco} actividad(es)`;
-  return null;
-}
-
-function buildAlerts(entidades: DashboardEntidad[]): AlertItem[] {
-  const a: AlertItem[] = [];
-  entidades.forEach((e) => {
-    const bench = BENCHMARKS[e.nombre_corto] || 0;
-    if (bench > 0 && e.pct_ejecucion_seco < bench - 10) {
-      a.push({
-        entidad: e.nombre_corto, entidadId: e.entidad_id, tipo: "Financiero",
-        descripcion: `Ejecutó solo ${e.pct_ejecucion_seco}% del presupuesto SECO cuando se esperaba ${bench}%. Ritmo insuficiente.`,
-        fecha: new Date().toISOString().slice(0, 10),
-      });
-    }
-    if (e.meses_sin_reporte.length > 0) {
-      a.push({
-        entidad: e.nombre_corto, entidadId: e.entidad_id, tipo: "Reporte",
-        descripcion: `No se registró reporte mensual de ${e.meses_sin_reporte.join(", ")}.`,
-        fecha: "2026-01-08",
-      });
-    }
-    if (hasSobregigoEntidad(e)) {
-      a.push({
-        entidad: e.nombre_corto, entidadId: e.entidad_id, tipo: "Operativo",
-        descripcion: `Sobregiro presupuestal: ejecutado ${fmt(e.ejecutado_seco_total)} vs presupuesto ${fmt(e.presupuesto_seco_total)}.`,
-        fecha: new Date().toISOString().slice(0, 10),
-      });
-    }
-  });
-  return a;
-}
-
-interface GroupData {
-  key: string;
-  label: string;
-  entidades: DashboardEntidad[];
-  avgAvance: number;
-  avgEjecucion: number;
-}
-
-function groupEntidades(entidades: DashboardEntidad[], mode: ViewMode): GroupData[] {
-  if (mode === "lista") {
-    return [{ key: "all", label: "Todas las Entidades", entidades, avgAvance: 0, avgEjecucion: 0 }];
-  }
-  const keyFn = mode === "cadena" ? (e: DashboardEntidad) => e.cadena_valor || "Sin cadena" : (e: DashboardEntidad) => e.region || "Sin región";
-  const map = new Map<string, DashboardEntidad[]>();
-  for (const e of entidades) {
-    const k = keyFn(e);
-    const arr = map.get(k) || [];
-    arr.push(e);
-    map.set(k, arr);
-  }
-  return Array.from(map.entries()).map(([key, ents]) => {
-    const avg = (field: keyof DashboardEntidad) =>
-      ents.length > 0 ? Math.round(ents.reduce((s, e) => s + Number(e[field] || 0), 0) / ents.length) : 0;
-    return { key, label: key, entidades: ents, avgAvance: avg("avance_operativo_promedio"), avgEjecucion: avg("pct_ejecucion_seco") };
-  }).sort((a, b) => b.avgAvance - a.avgAvance);
+function entitySemaforo(e: DashboardEntidad): "verde" | "amarillo" | "rojo" {
+  const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
+  if (desfase > 30 || e.meses_sin_reporte.length >= 2) return "rojo";
+  if (desfase > 15 || e.meses_sin_reporte.length > 0) return "amarillo";
+  return "verde";
 }
 
 export default function DashboardCadenasValor() {
   const { data: allEntidades, isLoading } = useDashboardData();
-  const [viewMode, setViewMode] = useState<ViewMode>("cadena");
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [period, setPeriod] = useState<{ frecuencia: Frecuencia; periodo: string }>({ frecuencia: "trimestral", periodo: "2026-T1" });
-  const [sheetOpen, setSheetOpen] = useState<string | null>(null);
-  const [sheetEntityFilter, setSheetEntityFilter] = useState<string | undefined>();
+  const { data: actividades } = useDashboardActividades();
   const navigate = useNavigate();
-  const { setEntidadId, setRole, filters } = useRole();
+  const { setEntidadId, setRole } = useRole();
+  const [panel, setPanel] = useState<{ type: string; data?: any } | null>(null);
 
-  const entidades = useMemo(() => (allEntidades || []).filter((e) => {
-    if (e.mecanismo !== "B") return false;
-    if (e.total_actividades === 0) return false;
-    if (filters.entidadFiltro && e.entidad_id !== filters.entidadFiltro) return false;
-    if (filters.region && e.region !== filters.region) return false;
-    return true;
-  }), [allEntidades, filters]);
-
-  const groups = useMemo(() => groupEntidades(entidades, viewMode), [entidades, viewMode]);
-  const alerts = useMemo(() => buildAlerts(entidades), [entidades]);
-
-  const avgAvance = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + (e.avance_operativo_promedio || 0), 0) / entidades.length) : 0;
-  const avgEjecucion = entidades.length > 0 ? Math.round(entidades.reduce((s, e) => s + e.pct_ejecucion_seco, 0) / entidades.length) : 0;
-
-  const [pendientesIvan, setPendientesIvan] = useState(0);
-  useEffect(() => {
-    if (entidades.length === 0) { setPendientesIvan(0); return; }
-    (async () => {
-      const { count } = await (supabase as any)
-        .from("registros_mensuales")
-        .select("id", { count: "exact", head: true })
-        .eq("estado_registro", "enviado")
-        .in("entidad_id", entidades.map((e) => e.entidad_id));
-      setPendientesIvan(count || 0);
-    })();
-  }, [entidades]);
-
-  const EXPECTED_EXEC: Record<string, number> = { CANATUR: 38, MARKAHUAMACHUCO: 43, APPCACAO: 56 };
-  const sobregiros = entidades.filter((e) => hasSobregigoEntidad(e));
-  const financialWarnings = entidades.filter((e) => {
-    if (hasSobregigoEntidad(e)) return false;
-    const expected = EXPECTED_EXEC[e.codigo] ?? EXPECTED_EXEC[e.nombre_corto?.toUpperCase().replace(/\s+/g, "")] ?? null;
-    if (expected === null) return false;
-    return (expected - e.pct_ejecucion_seco) > 15;
+  // Latest reports per entity
+  const { data: ultimosReportes } = useQuery({
+    queryKey: ["ultimos-reportes-mecb"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("registros_mensuales")
+        .select("entidad_id, anio, mes")
+        .order("anio", { ascending: false })
+        .order("mes", { ascending: false });
+      const map = new Map<string, string>();
+      for (const r of data || []) {
+        if (!map.has(r.entidad_id)) {
+          map.set(r.entidad_id, `${MONTH_SHORT[r.mes - 1]}-${String(r.anio).slice(2)}`);
+        }
+      }
+      return map;
+    },
   });
-  const totalAlertasFinancieras = sobregiros.length + financialWarnings.length;
 
-  const handleEntityClick = (entidadId: string) => {
+  const mecB = useMemo(() => (allEntidades || []).filter(e => e.mecanismo === "B" && e.total_actividades > 0), [allEntidades]);
+
+  // Alertas de rezago: actividades con gasto sin avance técnico o viceversa
+  const alertasRezago = useMemo(() => {
+    if (!actividades) return [];
+    return actividades.filter(a => {
+      const ent = mecB.find(e => e.codigo === a.entidad_codigo || e.nombre_corto === a.entidad_nombre);
+      if (!ent) return false;
+      return a.semaforo_global === "rojo";
+    }).slice(0, 10);
+  }, [actividades, mecB]);
+
+  // Entregas del mes
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const { data: entregasMes } = useQuery({
+    queryKey: ["entregas-mes-mecb", currentYear, currentMonth],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("registros_mensuales")
+        .select("entidad_id")
+        .eq("anio", currentYear)
+        .eq("mes", currentMonth);
+      return new Set((data || []).map((r: any) => r.entidad_id));
+    },
+  });
+
+  const handleNavigateEntity = (entidadId: string) => {
     setRole("entidad_mec_b");
     setEntidadId(entidadId);
-    navigate("/actividades");
-  };
-
-  const handleBadgeClick = (e: React.MouseEvent, entidadId: string, route: string) => {
-    e.stopPropagation();
-    setRole("entidad_mec_b");
-    setEntidadId(entidadId);
-    navigate(route);
-  };
-
-  const handleAIAnalysis = async () => {
-    setAiLoading(true);
-    setAiResult(null);
-    const cadenaData = groups.filter((g) => g.key !== "all").map((g) => ({
-      cadena_valor: g.label, num_entidades: g.entidades.length,
-      avance_operativo_promedio: g.avgAvance, ejecucion_financiera_promedio: g.avgEjecucion,
-      entidades: g.entidades.map((e) => ({
-        nombre: e.nombre_corto, avance_operativo: e.avance_operativo_promedio,
-        ejecucion_seco: e.pct_ejecucion_seco, actividades_sin_iniciar: e.actividades_sin_iniciar,
-        sobregiros: e.sobregiros_seco, presupuesto: e.presupuesto_seco_total, ejecutado: e.ejecutado_seco_total,
-      })),
-    }));
-    const { resultado, error } = await invokeAnalysis("ejecutivo", {
-      entidad: { codigo: "MEC-B", nombre: "Cadenas de Valor" },
-      instrucciones: "Compara el desempeño entre cadenas de valor. Identifica la cadena con mejor y peor desempeño.",
-      cadenas_valor: cadenaData,
-      financiero: { avance_promedio: avgAvance, ejecucion_promedio: avgEjecucion, total_entidades: entidades.length },
-    });
-    setAiLoading(false);
-    if (error) toast.error(error);
-    else setAiResult(resultado ?? null);
-  };
-
-  const handleCopy = () => {
-    if (aiResult) {
-      navigator.clipboard.writeText(aiResult);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const openSheet = (type: string, entityId?: string) => {
-    setSheetEntityFilter(entityId);
-    setSheetOpen(type);
+    navigate("/mi-planificacion");
   };
 
   if (isLoading) return <DashboardSkeleton />;
 
   return (
-    <div className="space-y-6">
-      <Header title="Dashboard Cadenas de Valor (Mec B)" subtitle="Coordinador Cadenas de Valor — Vista agrupada" />
+    <div className="space-y-4">
+      <Header title="Dashboard Cadenas de Valor" subtitle="Iván — Coordinador Mecanismo B" />
 
-      <PeriodSelector value={period} onChange={setPeriod} />
-
-      <DashboardFilters showMecanismo={false} showEntidad showRegion showPeriodo />
-
-      <SeccionRevision
-        title="Revisión Pendiente"
-        estadoFiltro="enviado"
-        estadoAprobar="en_revision_tecnica"
-        labelAprobar="Aprobar (→ Rev. Técnica)"
-        filterFn={(r: any) => r.mecanismo === "B"}
-      />
-
-      {/* KPIs — all clickable */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
-        <ClickableKpiCard label="Entidades Mec B" value={String(entidades.length)} onClick={() => openSheet("entidades")} />
-        <ClickableKpiCard label="Avance Operativo (prom.)" value={`${avgAvance}%`} onClick={() => openSheet("retraso")} />
-        <ClickableKpiCard label="Ejec. Financiera SECO (prom.)" value={`${avgEjecucion}%`} onClick={() => openSheet("ejecucion")} />
-        <ClickableKpiCard
-          label="Pendientes Revisión" value={String(pendientesIvan)}
-          sub={pendientesIvan === 0 ? "No hay registros pendientes" : "registros"}
-          onClick={() => navigate("/revision-pendiente")}
-          className={pendientesIvan > 0 ? "border-yellow-500/50" : ""}
-        />
-        <ClickableKpiCard
-          label="Alertas financieras" value={String(totalAlertasFinancieras)}
-          sub={totalAlertasFinancieras === 0 ? "sin alertas" : "alertas"}
-          onClick={() => openSheet("alertas")}
-          className={totalAlertasFinancieras > 0 ? "border-yellow-500/50" : ""}
-        />
-      </div>
-
-      {/* View mode */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground font-medium">Vista:</span>
-        {([
-          { value: "cadena" as ViewMode, label: "Por Cadena de Valor" },
-          { value: "region" as ViewMode, label: "Por Región" },
-          { value: "lista" as ViewMode, label: "Lista completa" },
-        ]).map((opt) => (
-          <Button key={opt.value} variant={viewMode === opt.value ? "default" : "outline"} size="sm" className="text-xs h-7" onClick={() => setViewMode(opt.value)}>
-            {opt.label}
-          </Button>
-        ))}
-      </div>
-
-      {/* Grouped entities with alert summaries */}
-      <div className="space-y-5">
-        {groups.map((group) => (
-          <Card key={group.key} className="overflow-hidden">
-            {viewMode !== "lista" && (
-              <CardHeader className="pb-2 bg-muted/30 border-b">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <CardTitle className="text-sm font-bold uppercase tracking-wide">{group.label}</CardTitle>
-                    <Badge variant="secondary" className="text-[10px]">{group.entidades.length} entidad{group.entidades.length !== 1 ? "es" : ""}</Badge>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>Avance: <strong className="text-foreground">{group.avgAvance}%</strong></span>
-                    <span>Ejecución: <strong className="text-foreground">{group.avgEjecucion}%</strong></span>
-                  </div>
-                </div>
-                <Progress value={group.avgAvance} className="h-1.5 mt-2" />
-              </CardHeader>
-            )}
-            <CardContent className="pt-3 pb-3">
-              <div className="divide-y">
-                {group.entidades.map((ent) => {
-                  const status = entityStatusLabel(ent);
-                  const disponible = ent.presupuesto_seco_total - ent.ejecutado_seco_total;
-                  const alertSummary = getEntityAlertSummary(ent);
+      {/* BLOQUE 1 — Mis proyectos */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Mis proyectos</CardTitle></CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Entidad</TableHead>
+                  <TableHead className="text-xs text-right">Téc. %</TableHead>
+                  <TableHead className="text-xs text-right">Fin. %</TableHead>
+                  <TableHead className="text-xs text-center">Cruce</TableHead>
+                  <TableHead className="text-xs">Último</TableHead>
+                  <TableHead className="text-xs text-center">Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mecB.map(e => {
+                  const cruce = cruceLabel(e);
+                  const sem = entitySemaforo(e);
+                  const ultimo = ultimosReportes?.get(e.entidad_id) || "—";
                   return (
-                    <div key={ent.entidad_id} className="flex items-center gap-3 py-3 px-2 cursor-pointer hover:bg-muted/40 rounded transition-colors" onClick={() => handleEntityClick(ent.entidad_id)}>
-                      <span className="text-base shrink-0">{semaforoIcon(ent.pct_ejecucion_seco)}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold truncate">{ent.nombre_corto}</span>
-                          {ent.region && <Badge variant="outline" className="text-[9px] px-1">{ent.region}</Badge>}
-                          {hasSobregigoEntidad(ent) && (
-                            <Badge variant="destructive" className="text-[9px] px-1 cursor-pointer hover:bg-destructive/90" onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/gestion-financiera")}>Sobregiro</Badge>
-                          )}
-                          {ent.tiene_observado && (
-                            <Badge className="text-[9px] px-1 bg-orange-500/15 text-orange-600 cursor-pointer hover:bg-orange-500/25" onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/revision-pendiente")}>Observado</Badge>
-                          )}
-                          {ent.meses_sin_reporte.length > 0 && (
-                            <Badge className="text-[9px] px-1 bg-destructive/10 text-destructive cursor-pointer hover:bg-destructive/20" onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/registro-mensual")}>Sin reporte: {ent.meses_sin_reporte.join(", ")}</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <Activity className="h-3 w-3" />
-                            <span>Op: <strong className="text-foreground">{ent.avance_operativo_promedio != null && ent.avance_operativo_promedio > 0 ? `${ent.avance_operativo_promedio}%` : ent.avance_operativo_promedio === null ? "En planificación" : "Sin datos"}</strong></span>
-                          </div>
-                          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <DollarSign className="h-3 w-3" />
-                            <span>Fin: <strong className="text-foreground">{ent.pct_ejecucion_seco}%</strong></span>
-                          </div>
-                          {entityAlertCount(ent) > 0 && (
-                            <span className={`text-[11px] font-medium ${status.className} cursor-pointer hover:underline`} onClick={(e) => handleBadgeClick(e, ent.entidad_id, "/actividades")}>{status.label}</span>
-                          )}
-                          {entityAlertCount(ent) === 0 && (
-                            <span className={`text-[11px] font-medium ${status.className}`}>{status.label}</span>
-                          )}
-                        </div>
-                        {/* Alert summary text */}
-                        {alertSummary && (
-                          <p className="text-[10px] text-destructive mt-0.5 cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); openSheet("alertas", ent.entidad_id); }}>
-                            {alertSummary}
-                          </p>
-                        )}
-                      </div>
-                      <div className="hidden sm:flex items-center gap-3 shrink-0">
-                        <div className="text-right text-[10px]">
-                          <p className="text-muted-foreground">Presup.</p>
-                          <p className="font-mono font-semibold">{fmt(ent.presupuesto_seco_total)}</p>
-                        </div>
-                        <div className="text-right text-[10px]">
-                          <p className="text-muted-foreground">Ejecutado</p>
-                          <p className="font-mono font-semibold">{fmt(ent.ejecutado_seco_total)}</p>
-                        </div>
-                        <div className="text-right text-[10px]">
-                          <p className="text-muted-foreground">Disp.</p>
-                          <p className={`font-mono font-semibold ${disponible < 0 ? "text-destructive" : ""}`}>{fmt(disponible)}</p>
-                        </div>
-                      </div>
-                    </div>
+                    <TableRow key={e.entidad_id}>
+                      <TableCell className="text-xs font-medium cursor-pointer hover:underline text-primary"
+                        onClick={() => handleNavigateEntity(e.entidad_id)}>
+                        {e.nombre_corto}
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-mono cursor-pointer hover:underline"
+                        onClick={() => setPanel({ type: "tecnico", data: e })}>
+                        {e.avance_operativo_promedio ?? 0}%
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-mono cursor-pointer hover:underline"
+                        onClick={() => setPanel({ type: "financiero", data: e })}>
+                        {e.pct_ejecucion_seco}%
+                      </TableCell>
+                      <TableCell className={`text-center cursor-pointer hover:underline ${cruce.color}`}
+                        onClick={() => setPanel({ type: "cruce", data: e })}>
+                        {cruce.label}
+                      </TableCell>
+                      <TableCell className="text-xs cursor-pointer hover:underline text-muted-foreground"
+                        onClick={() => setPanel({ type: "ultimo-reporte", data: e })}>
+                        {ultimo}
+                      </TableCell>
+                      <TableCell className="text-center cursor-pointer"
+                        onClick={() => setPanel({ type: "estado-actividades", data: e })}>
+                        {semaforoEmoji(sem)}
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* AI Analysis */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-sm font-semibold">🤖 Análisis Comparativo por Cadena de Valor</CardTitle>
-            <div className="flex gap-2">
-              {aiResult && (
-                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={handleCopy}>
-                  {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                  {copied ? "Copiado" : "Copiar"}
-                </Button>
-              )}
-              <Button variant="outline" size="sm" className="text-xs h-7" onClick={handleAIAnalysis} disabled={aiLoading}>
-                {aiLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Bot className="h-3 w-3 mr-1" />}
-                Generar análisis
-              </Button>
-            </div>
+              </TableBody>
+            </Table>
           </div>
-        </CardHeader>
-        <CardContent>
-          {aiLoading && (<div className="flex items-center gap-2 text-sm text-muted-foreground py-4"><Loader2 className="h-4 w-4 animate-spin" /> Analizando cadenas de valor...</div>)}
-          {aiResult && (<div className="prose prose-sm max-w-none text-foreground [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-semibold [&_ul]:my-1 [&_li]:my-0.5 [&_p]:my-1.5"><ReactMarkdown>{aiResult}</ReactMarkdown></div>)}
-          {!aiLoading && !aiResult && (<p className="text-xs text-muted-foreground py-2">Haz clic en "Generar análisis" para obtener una comparativa entre cadenas de valor con IA.</p>)}
         </CardContent>
       </Card>
 
-      {/* Slide-over panels */}
-      <KpiDetailSheet open={sheetOpen === "entidades"} onOpenChange={(v) => !v && setSheetOpen(null)} title="Entidades Mec B">
-        <EntidadesActivasPanel entidades={entidades} onViewEntity={handleEntityClick} />
-      </KpiDetailSheet>
-      <KpiDetailSheet open={sheetOpen === "ejecucion"} onOpenChange={(v) => !v && setSheetOpen(null)} title="Ejecución Financiera SECO">
-        <EjecucionFinancieraPanel entidades={entidades} benchmarks={BENCHMARKS} />
-      </KpiDetailSheet>
-      <KpiDetailSheet open={sheetOpen === "retraso"} onOpenChange={(v) => !v && setSheetOpen(null)} title="Actividades con Retraso">
-        <ActividadesRetrasoPanel entidades={entidades} onViewEntity={handleEntityClick} />
-      </KpiDetailSheet>
-      <KpiDetailSheet open={sheetOpen === "alertas"} onOpenChange={(v) => !v && setSheetOpen(null)} title="Alertas">
-        <AlertasPanel alerts={alerts} filterEntidad={sheetEntityFilter} />
-      </KpiDetailSheet>
+      {/* BLOQUE 3 — Alertas de rezago */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-500" /> Alertas de rezago ({alertasRezago.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {alertasRezago.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Sin alertas de rezago ✓</p>
+          ) : (
+            <div className="space-y-2">
+              {alertasRezago.map((a, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs p-2 border rounded cursor-pointer hover:bg-muted/40"
+                  onClick={() => setPanel({ type: "actividad-detalle", data: a })}>
+                  <span className="text-destructive mt-0.5">🔴</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">{a.entidad_nombre} — <span className="font-mono">{a.actividad_codigo}</span></p>
+                    <p className="text-muted-foreground truncate">{a.actividad_descripcion}</p>
+                    <p className="text-[10px] text-muted-foreground">Téc: {a.pct_tecnico}% · Fin: {a.pct_seco}%</p>
+                  </div>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* BLOQUE 4 — Entregas del mes */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Calendar className="h-4 w-4" /> Entregas del mes — {MONTH_SHORT[currentMonth - 1]} {currentYear}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1.5">
+            {mecB.map(e => {
+              const entrego = entregasMes?.has(e.entidad_id);
+              return (
+                <div key={e.entidad_id} className="flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-muted/40 cursor-pointer"
+                  onClick={() => setPanel({ type: "ultimo-reporte", data: e })}>
+                  <span>{entrego ? "✅" : "⬜"}</span>
+                  <span className={`flex-1 ${entrego ? "" : "text-muted-foreground"}`}>{e.nombre_corto}</span>
+                  <span className="text-muted-foreground">{entrego ? "Reportado ✓" : "Pendiente ○"}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Panels */}
+      <DetailPanel open={panel?.type === "tecnico"} onClose={() => setPanel(null)}
+        title={`Avance técnico — ${panel?.data?.nombre_corto || ""}`}>
+        <EntityTechPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+      </DetailPanel>
+
+      <DetailPanel open={panel?.type === "financiero"} onClose={() => setPanel(null)}
+        title={`Ejecución financiera — ${panel?.data?.nombre_corto || ""}`}>
+        <EntityFinPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+      </DetailPanel>
+
+      <DetailPanel open={panel?.type === "cruce"} onClose={() => setPanel(null)}
+        title={`Cruce técnico-financiero — ${panel?.data?.nombre_corto || ""}`}>
+        <EntityCrucePanel actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+      </DetailPanel>
+
+      <DetailPanel open={panel?.type === "estado-actividades"} onClose={() => setPanel(null)}
+        title={`Actividades — ${panel?.data?.nombre_corto || ""}`}>
+        <EntityActividadesPanel actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+      </DetailPanel>
+
+      <DetailPanel open={panel?.type === "ultimo-reporte"} onClose={() => setPanel(null)}
+        title={`Último reporte — ${panel?.data?.nombre_corto || ""}`}>
+        <p className="text-xs text-muted-foreground">
+          Último reporte: {ultimosReportes?.get(panel?.data?.entidad_id) || "Sin reportes"}
+        </p>
+        <Button variant="outline" size="sm" className="mt-3 text-xs" onClick={() => { setPanel(null); handleNavigateEntity(panel?.data?.entidad_id); }}>
+          Ver planificación completa →
+        </Button>
+      </DetailPanel>
+
+      <DetailPanel open={panel?.type === "actividad-detalle"} onClose={() => setPanel(null)}
+        title={`${panel?.data?.actividad_codigo || ""} — Detalle`}>
+        {panel?.data && <ActividadDetallePanel act={panel.data} />}
+      </DetailPanel>
+    </div>
+  );
+}
+
+function EntityTechPanel({ ent, actividades }: { ent: any; actividades: any[] }) {
+  if (!ent) return null;
+  return (
+    <div className="space-y-2">
+      {actividades.map(a => (
+        <div key={a.actividad_codigo} className="border rounded p-2 text-xs">
+          <p className="font-medium"><span className="font-mono text-primary">{a.actividad_codigo}</span> — {a.actividad_descripcion}</p>
+          <p className="text-muted-foreground mt-1">Avance: {a.avance_tecnico} de {a.meta_total} {a.unidad_medida} ({a.pct_tecnico}%)</p>
+        </div>
+      ))}
+      {actividades.length === 0 && <p className="text-xs text-muted-foreground">Sin actividades registradas</p>}
+    </div>
+  );
+}
+
+function EntityFinPanel({ ent, actividades }: { ent: any; actividades: any[] }) {
+  if (!ent) return null;
+  return (
+    <div className="space-y-2">
+      {actividades.filter(a => a.presupuesto_seco_usd > 0 || a.ejecutado_seco > 0).map(a => (
+        <div key={a.actividad_codigo} className="border rounded p-2 text-xs">
+          <p className="font-medium"><span className="font-mono text-primary">{a.actividad_codigo}</span></p>
+          <p className="text-muted-foreground">SECO: USD {fmt(a.ejecutado_seco)} / {fmt(a.presupuesto_seco_usd)} ({a.pct_seco}%)</p>
+          {a.presupuesto_contrapartida_usd > 0 && (
+            <p className="text-muted-foreground">Contrap: USD {fmt(a.ejecutado_contrapartida)} / {fmt(a.presupuesto_contrapartida_usd)}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EntityCrucePanel({ actividades }: { actividades: any[] }) {
+  return (
+    <div className="space-y-2">
+      {actividades.map(a => {
+        const icon = a.semaforo_global === "verde" ? "✓" : a.semaforo_global === "amarillo" ? "⚠" : "✗";
+        const color = a.semaforo_global === "verde" ? "text-emerald-600" : a.semaforo_global === "amarillo" ? "text-yellow-600" : "text-destructive";
+        return (
+          <div key={a.actividad_codigo} className="border rounded p-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className={`font-bold ${color}`}>{icon}</span>
+              <span className="font-mono text-primary">{a.actividad_codigo}</span>
+              <span className="flex-1 truncate text-muted-foreground">{a.actividad_descripcion}</span>
+            </div>
+            <p className="text-muted-foreground mt-1">Téc: {a.pct_tecnico}% · Fin: {a.pct_seco}% · Δ {Math.abs(a.pct_tecnico - a.pct_seco)}pp</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EntityActividadesPanel({ actividades }: { actividades: any[] }) {
+  return (
+    <div className="space-y-2">
+      {actividades.map(a => (
+        <div key={a.actividad_codigo} className="flex items-center gap-2 text-xs border rounded p-2">
+          <span>{semaforoEmoji(a.semaforo_global)}</span>
+          <span className="font-mono text-primary">{a.actividad_codigo}</span>
+          <span className="flex-1 truncate">{a.actividad_descripcion}</span>
+          <span className="text-muted-foreground shrink-0">{a.pct_tecnico}% téc · {a.pct_seco}% fin</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ActividadDetallePanel({ act }: { act: any }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-medium">{act.actividad_descripcion}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="border rounded p-2 text-xs">
+          <p className="text-muted-foreground">Avance técnico</p>
+          <p className="font-bold">{act.avance_tecnico} / {act.meta_total} {act.unidad_medida}</p>
+          <p className="text-muted-foreground">{act.pct_tecnico}%</p>
+        </div>
+        <div className="border rounded p-2 text-xs">
+          <p className="text-muted-foreground">Ejecutado SECO</p>
+          <p className="font-bold">USD {fmt(act.ejecutado_seco)}</p>
+          <p className="text-muted-foreground">{act.pct_seco}% del presupuesto</p>
+        </div>
+      </div>
+      <div className="text-xs">
+        <p className="font-medium">Semáforo temporal: {semaforoEmoji(act.semaforo_temporal)} {act.semaforo_temporal}</p>
+        <p className="font-medium">Semáforo global: {semaforoEmoji(act.semaforo_global)} {act.semaforo_global}</p>
+      </div>
+      {act.ultimo_reporte_mes && <p className="text-xs text-muted-foreground">Último reporte: {act.ultimo_reporte_mes}</p>}
     </div>
   );
 }
