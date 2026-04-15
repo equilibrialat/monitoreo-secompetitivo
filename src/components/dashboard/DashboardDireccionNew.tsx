@@ -1,345 +1,350 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertTriangle, Copy, Check, Eye, ChevronRight, Calendar, BarChart3,
-} from "lucide-react";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, Cell,
-} from "recharts";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useDashboardData, type DashboardEntidad } from "@/hooks/useDashboardData";
 import { Header, MecanismoBadge, fmt, DashboardSkeleton, ClickableKpiCard } from "./DashboardEntidad";
-import { useTrimestreSeleccionado, getTrimestreLabel } from "@/hooks/useTrimestreActivo";
+import { DetailPanel } from "./DetailPanel";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
-import { toast } from "sonner";
-import PeriodSelector, { type Frecuencia } from "./PeriodSelector";
-import {
-  KpiDetailSheet, EntidadesActivasPanel, EjecucionFinancieraPanel,
-  ActividadesRetrasoPanel, AlertasPanel, type AlertItem,
-} from "./KpiDetailSheet";
+import { AlertTriangle, ArrowRight, Shuffle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
-const BENCHMARKS: Record<string, number> = { CANATUR: 38, Markahuamachuco: 43, "App Cacao": 56 };
-const MEC_A_ENTITIES = ["COFIDE", "SENASA", "MINCETUR", "MTPE", "MIDAGRI"];
+/* ── Helpers ── */
+const SEMAFORO_COLORS = { verde: "bg-emerald-500", amarillo: "bg-yellow-500", rojo: "bg-red-500", gris: "bg-muted-foreground/40" };
 
-function StatusDot({ pct }: { pct: number }) {
-  const color = pct >= 60 ? "bg-emerald-500" : pct >= 30 ? "bg-yellow-500" : "bg-red-500";
-  return <span className={`inline-block h-3 w-3 rounded-full ${color}`} />;
+function getEntitySemaforo(e: DashboardEntidad): "verde" | "amarillo" | "rojo" | "gris" {
+  if (e.total_actividades === 0) return "gris";
+  const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
+  if (e.meses_sin_reporte.length >= 2 || desfase > 30) return "rojo";
+  if (desfase > 15 || e.meses_sin_reporte.length > 0) return "amarillo";
+  return "verde";
 }
 
-function getEntityAlertSummary(e: DashboardEntidad): string | null {
-  const bench = BENCHMARKS[e.nombre_corto] || 0;
-  if (bench > 0 && e.pct_ejecucion_seco < bench - 10)
-    return `Ejecución ${bench - e.pct_ejecucion_seco}pp por debajo del ritmo esperado`;
-  if (e.meses_sin_reporte.length > 0)
-    return `Sin reporte mensual de ${e.meses_sin_reporte[0]}`;
-  if (e.sobregiros_seco > 0)
-    return `Sobreejecución en ${e.sobregiros_seco} actividad(es)`;
-  return null;
+interface AlertaCritica {
+  severity: "rojo" | "amarillo";
+  entidad: string;
+  entidadId: string;
+  actividad?: string;
+  descripcion: string;
+  detalle: string;
 }
 
-function buildAlerts(mecB: DashboardEntidad[]): AlertItem[] {
-  const a: AlertItem[] = [];
-  mecB.forEach((e) => {
-    const bench = BENCHMARKS[e.nombre_corto] || 0;
-    if (bench > 0 && e.pct_ejecucion_seco < bench - 10) {
-      a.push({
-        entidad: e.nombre_corto, entidadId: e.entidad_id, tipo: "Financiero",
-        descripcion: `Ejecutó solo ${e.pct_ejecucion_seco}% del presupuesto SECO cuando se esperaba ${bench}% a esta altura del proyecto. Ritmo de gasto insuficiente para completar el proyecto en el plazo.`,
-        fecha: new Date().toISOString().slice(0, 10),
-      });
-    }
-    if (e.meses_sin_reporte.length > 0) {
-      a.push({
-        entidad: e.nombre_corto, entidadId: e.entidad_id, tipo: "Reporte",
-        descripcion: `No se registró reporte mensual de ${e.meses_sin_reporte.join(", ")}. El último reporte disponible es el trimestral Oct-Dic 2025.`,
-        fecha: "2026-01-08",
-      });
+function buildAlertasCriticas(entidades: DashboardEntidad[]): AlertaCritica[] {
+  const alertas: AlertaCritica[] = [];
+  for (const e of entidades) {
+    if (e.meses_sin_reporte.length >= 2) {
+      alertas.push({ severity: "rojo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: `Sin reporte de ${e.meses_sin_reporte.join(", ")}`, detalle: "Sin reportar" });
     }
     if (e.sobregiros_seco > 0) {
-      a.push({
-        entidad: e.nombre_corto, entidadId: e.entidad_id, tipo: "Operativo",
-        descripcion: `${e.sobregiros_seco} sobregiro(s) financiero(s) detectado(s) en actividades de esta entidad.`,
-        fecha: new Date().toISOString().slice(0, 10),
-      });
+      alertas.push({ severity: "rojo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: `Sobreejecución en ${e.sobregiros_seco} actividad(es)`, detalle: `USD ${fmt(e.ejecutado_seco_total)} vs ${fmt(e.presupuesto_seco_total)}` });
     }
-  });
-  return a;
-}
-
-function SummaryText({ entidades, trimestreLabel }: { entidades: DashboardEntidad[]; trimestreLabel: string }) {
-  const [copied, setCopied] = useState(false);
-  const mecB = entidades.filter((e) => e.mecanismo === "B");
-  const avgEjec = mecB.length > 0 ? (mecB.reduce((s, e) => s + e.pct_ejecucion_seco, 0) / mecB.length).toFixed(1) : "0";
-  const worst = [...mecB].sort((a, b) => a.pct_ejecucion_seco - b.pct_ejecucion_seco)[0];
-  const worstBench = worst ? BENCHMARKS[worst.nombre_corto] || 0 : 0;
-  const retraso = entidades.filter((e) => (e.avance_operativo_promedio || 0) < 80).length;
-
-  const text = `Resumen ejecutivo del programa — ${trimestreLabel}\n\nMec B cuenta con ${mecB.length} entidades activas. La ejecución financiera promedio es ${avgEjec}%${worst ? `, con ${worst.nombre_corto} mostrando el mayor retraso (${worst.pct_ejecucion_seco}% ejecutado vs ${worstBench}% esperado)` : ""}.\n\n${retraso} actividades presentan retraso operativo.`;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success("Resumen copiado al portapapeles");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">📝 Resumen Ejecutivo</CardTitle>
-          <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-xs">
-            {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-            {copied ? "Copiado" : "Copiar resumen"}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">{text}</pre>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ComparisonChart({ entidades }: { entidades: DashboardEntidad[] }) {
-  const data = [...entidades]
-    .sort((a, b) => b.pct_ejecucion_seco - a.pct_ejecucion_seco)
-    .map((e) => ({ name: e.nombre_corto, ejec: e.pct_ejecucion_seco, benchmark: BENCHMARKS[e.nombre_corto] || 0, mec: e.mecanismo }));
-  return (
-    <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Ejecución Financiera SECO por Entidad</CardTitle></CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={Math.max(180, data.length * 48)}>
-          <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-            <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
-            <ReTooltip content={({ payload, label }) => {
-              if (!payload?.length) return null;
-              const d = payload[0]?.payload;
-              return (<div className="bg-popover border rounded p-2 text-xs shadow"><p className="font-semibold">{label}</p><p>Ejecución: {d?.ejec}%</p>{d?.benchmark > 0 && <p>Esperado: {d?.benchmark}%</p>}</div>);
-            }} />
-            <Bar dataKey="ejec" radius={[0, 4, 4, 0]}>
-              {data.map((d, i) => (<Cell key={i} fill={d.mec === "A" ? "hsl(var(--muted))" : d.ejec >= 60 ? "hsl(142,76%,36%)" : d.ejec >= 30 ? "hsl(48,96%,53%)" : "hsl(0,72%,51%)"} />))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  );
-}
-
-function MecAPlaceholder() {
-  return (
-    <Card className="bg-muted/30">
-      <CardContent className="py-8 text-center">
-        <p className="text-sm text-muted-foreground mb-4">Datos de Mec A en proceso de carga.</p>
-        <p className="text-xs text-muted-foreground mb-6">Entidades: {MEC_A_ENTITIES.join(", ")}</p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 max-w-3xl mx-auto">
-          {MEC_A_ENTITIES.map((name) => (
-            <Card key={name} className="opacity-50">
-              <CardContent className="py-4 text-center">
-                <p className="text-sm font-medium text-muted-foreground">{name}</p>
-                <Badge variant="outline" className="mt-1 text-[10px]">Sin datos</Badge>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
+    const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
+    if (desfase > 20) {
+      alertas.push({ severity: desfase > 30 ? "rojo" : "amarillo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: `Desfase técnico-financiero ${desfase}pp`, detalle: `Téc: ${e.avance_operativo_promedio || 0}% · Fin: ${e.pct_ejecucion_seco}%` });
+    }
+    if (e.meses_sin_reporte.length === 1) {
+      alertas.push({ severity: "amarillo", entidad: e.nombre_corto, entidadId: e.entidad_id, descripcion: `Sin reporte de ${e.meses_sin_reporte[0]}`, detalle: "Pendiente" });
+    }
+  }
+  alertas.sort((a, b) => (a.severity === "rojo" ? 0 : 1) - (b.severity === "rojo" ? 0 : 1));
+  return alertas;
 }
 
 export default function DashboardDireccionNew() {
   const { data: allEntidades, isLoading } = useDashboardData();
-  const { seleccionado } = useTrimestreSeleccionado();
   const navigate = useNavigate();
   const { setEntidadId, setRole } = useRole();
-  const [period, setPeriod] = useState<{ frecuencia: Frecuencia; periodo: string }>({ frecuencia: "trimestral", periodo: "2026-T1" });
-  const [sheetOpen, setSheetOpen] = useState<string | null>(null);
-  const [sheetEntityFilter, setSheetEntityFilter] = useState<string | undefined>();
+  const [mecFilter, setMecFilter] = useState<"todos" | "A" | "B">("todos");
+  const [panel, setPanel] = useState<{ type: string; data?: any } | null>(null);
+  const [showAllAlertas, setShowAllAlertas] = useState(false);
 
-  const entidades = useMemo(() => (allEntidades || []).filter((e) => e.total_actividades > 0), [allEntidades]);
-  const mecB = useMemo(() => entidades.filter((e) => e.mecanismo === "B"), [entidades]);
-  const mecA = useMemo(() => entidades.filter((e) => e.mecanismo === "A"), [entidades]);
-  const trimestreLabel = seleccionado ? getTrimestreLabel(seleccionado) : "Periodo actual";
+  // Reasignaciones pendientes
+  const { data: reasignaciones } = useQuery({
+    queryKey: ["reasignaciones-pendientes"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("reasignaciones").select("id, entidad_id, motivo, fecha_solicitud, estado, entidades!inner(nombre_corto)").eq("estado", "solicitado");
+      return data || [];
+    },
+  });
 
-  const alerts = useMemo(() => buildAlerts(mecB), [mecB]);
+  const entidades = useMemo(() => (allEntidades || []).filter(e => {
+    if (e.total_actividades === 0) return false;
+    if (mecFilter === "A") return e.mecanismo === "A";
+    if (mecFilter === "B") return e.mecanismo === "B";
+    return true;
+  }), [allEntidades, mecFilter]);
+
+  const alertas = useMemo(() => buildAlertasCriticas(entidades), [entidades]);
+  const visibleAlertas = showAllAlertas ? alertas : alertas.slice(0, 8);
+
+  const totals = useMemo(() => {
+    const presupTotal = entidades.reduce((s, e) => s + e.presupuesto_seco_total, 0);
+    const ejecutTotal = entidades.reduce((s, e) => s + e.ejecutado_seco_total, 0);
+    const saldo = presupTotal - ejecutTotal;
+    const pct = presupTotal > 0 ? ((ejecutTotal / presupTotal) * 100).toFixed(1) : "0";
+    return { presupTotal, ejecutTotal, saldo, pct };
+  }, [entidades]);
 
   const handleViewEntity = (entidadId: string) => {
-    const ent = entidades.find((e) => e.entidad_id === entidadId);
+    const ent = entidades.find(e => e.entidad_id === entidadId);
+    if (ent) {
+      setPanel({
+        type: "entidad",
+        data: ent,
+      });
+    }
+  };
+
+  const handleNavigateEntity = (entidadId: string) => {
+    const ent = entidades.find(e => e.entidad_id === entidadId);
     if (ent) setRole(ent.mecanismo === "B" ? "entidad_mec_b" : "entidad_mec_a");
     setEntidadId(entidadId);
-    navigate("/actividades?readonly=direccion");
+    navigate("/mi-planificacion");
   };
 
   if (isLoading) return <DashboardSkeleton />;
-
-  const avgEjecMecB = mecB.length > 0 ? (mecB.reduce((s, e) => s + e.pct_ejecucion_seco, 0) / mecB.length).toFixed(1) : "0";
-  const actConRetraso = entidades.filter((e) => (e.avance_operativo_promedio || 0) < 80).length;
-
-  const openSheet = (type: string, entityId?: string) => {
-    setSheetEntityFilter(entityId);
-    setSheetOpen(type);
-  };
 
   return (
     <div className="space-y-4">
       <Header title="Dashboard Ejecutivo" subtitle="Paula — Dirección del Programa" />
 
-      <PeriodSelector value={period} onChange={setPeriod} />
+      {/* FILTRO PRINCIPAL */}
+      <div className="flex gap-2">
+        {(["todos", "A", "B"] as const).map(f => (
+          <Button key={f} variant={mecFilter === f ? "default" : "outline"} size="sm" className="text-xs h-8"
+            onClick={() => setMecFilter(f)}>
+            {f === "todos" ? "Todos" : `Mecanismo ${f}`}
+          </Button>
+        ))}
+      </div>
 
-      <Tabs defaultValue="programa" className="w-full">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="programa" className="text-xs sm:text-sm">Programa</TabsTrigger>
-          <TabsTrigger value="mec_a" className="text-xs sm:text-sm">Mec A — Políticas Públicas</TabsTrigger>
-          <TabsTrigger value="mec_b" className="text-xs sm:text-sm">Mec B — Cadenas de Valor</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="programa" className="space-y-4 mt-4">
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-            <ClickableKpiCard label="Entidades activas" value={String(entidades.length)} sub={`Mec A: ${mecA.length} · Mec B: ${mecB.length}`} onClick={() => openSheet("entidades")} />
-            <ClickableKpiCard label="Ejec. financiera SECO" value={mecB.length > 0 ? `${avgEjecMecB}%` : "—"} sub="Promedio Mec B" onClick={() => openSheet("ejecucion")} />
-            <ClickableKpiCard label="Actividades con retraso" value={String(actConRetraso)} sub="< 80% de meta trimestral" onClick={() => openSheet("retraso")} />
-            <ClickableKpiCard label="Alertas activas" value={String(alerts.length)} onClick={() => openSheet("alertas")} className={alerts.length > 0 ? "border-destructive/30" : ""} />
+      {/* BLOQUE 1 — Mapa de estado */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Mapa de estado del programa</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            {entidades.map(e => {
+              const sem = getEntitySemaforo(e);
+              return (
+                <div key={e.entidad_id} className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => handleViewEntity(e.entidad_id)}>
+                  <span className={`h-5 w-5 rounded-full ${SEMAFORO_COLORS[sem]}`} />
+                  <span className="text-[10px] mt-1 text-muted-foreground text-center max-w-[60px] truncate">{e.nombre_corto}</span>
+                </div>
+              );
+            })}
           </div>
+          <div className="flex gap-4 mt-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Al día</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-yellow-500" /> Rezago leve</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> Rezago crítico</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-muted-foreground/40" /> Sin actividad</span>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Quick access — Paula only */}
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">🔗 Accesos rápidos</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <Button variant="outline" className="justify-start text-xs h-9" onClick={() => { setRole("coordinador_cadenas"); navigate("/dashboard"); }}>
-                  <Eye className="h-3.5 w-3.5 mr-2" /> Ver coordinación Mec B
-                </Button>
-                <Button variant="outline" className="justify-start text-xs h-9" onClick={() => { setRole("administracion"); navigate("/dashboard"); }}>
-                  <BarChart3 className="h-3.5 w-3.5 mr-2" /> Ver gestión financiera
-                </Button>
-                <Button variant="outline" className="justify-start text-xs h-9" onClick={() => { setRole("monitoreo"); navigate("/dashboard"); }}>
-                  <Eye className="h-3.5 w-3.5 mr-2" /> Ver monitoreo
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <ComparisonChart entidades={entidades} />
-          <SummaryText entidades={entidades} trimestreLabel={trimestreLabel} />
-
-          {/* Próximos hitos */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Calendar className="h-4 w-4" /> Próximos hitos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {[
-                  { hito: "Entrega Trim 1 2026 (Ene-Mar)", fecha: "Abril 2026", estado: "pendiente" },
-                  { hito: "Incorporación entidades pendientes", fecha: "En proceso", estado: "en_proceso" },
-                  { hito: "Informe semestral a SECO", fecha: "Agosto 2026", estado: "pendiente" },
-                ].map((h, i) => (
-                  <div key={i} className="flex items-center gap-3 text-xs rounded border p-2">
-                    <span className={`h-2 w-2 rounded-full shrink-0 ${h.estado === "en_proceso" ? "bg-yellow-500" : "bg-muted-foreground/30"}`} />
-                    <span className="flex-1">{h.hito}</span>
-                    <span className="text-muted-foreground">{h.fecha}</span>
+      {/* BLOQUE 2 — Alertas críticas */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-500" /> Alertas críticas ({alertas.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {alertas.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Sin alertas activas ✓</p>
+          ) : (
+            <div className="space-y-2">
+              {visibleAlertas.map((a, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs rounded border p-2 cursor-pointer hover:bg-muted/40 transition-colors"
+                  onClick={() => handleViewEntity(a.entidadId)}>
+                  <span className={`h-3 w-3 rounded-full shrink-0 mt-0.5 ${a.severity === "rojo" ? "bg-red-500" : "bg-yellow-500"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold">{a.entidad} {a.actividad && <span className="font-mono text-muted-foreground">({a.actividad})</span>}</p>
+                    <p className="text-muted-foreground">{a.descripcion}</p>
+                    <p className="text-[10px] text-muted-foreground">{a.detalle}</p>
                   </div>
-                ))}
+                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0 mt-1" />
+                </div>
+              ))}
+              {alertas.length > 8 && !showAllAlertas && (
+                <Button variant="ghost" size="sm" className="text-xs w-full" onClick={() => setShowAllAlertas(true)}>
+                  Ver todas ({alertas.length})
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* BLOQUE 3 — Acciones del programa (reasignaciones) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Shuffle className="h-4 w-4" /> Acciones del programa
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(!reasignaciones || reasignaciones.length === 0) ? (
+            <p className="text-xs text-muted-foreground">No hay solicitudes de reasignación pendientes.</p>
+          ) : (
+            <div className="space-y-2">
+              {reasignaciones.map((r: any) => (
+                <div key={r.id} className="flex items-center gap-2 text-xs p-2 border rounded cursor-pointer hover:bg-muted/40"
+                  onClick={() => navigate("/reasignaciones")}>
+                  <Badge variant="outline" className="text-[10px] shrink-0">Reasignación</Badge>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">{r.entidades?.nombre_corto}</p>
+                    <p className="text-muted-foreground truncate">{r.motivo}</p>
+                  </div>
+                  <span className="text-muted-foreground">{r.fecha_solicitud}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* BLOQUE 4 — Estado financiero */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <ClickableKpiCard label="Ejecutado total" value={`USD ${fmt(totals.ejecutTotal)}`}
+          onClick={() => setPanel({ type: "financiero-desglose" })} />
+        <ClickableKpiCard label="Del convenio" value={`${totals.pct}%`}
+          sub={`USD ${fmt(totals.presupTotal)} total`}
+          onClick={() => setPanel({ type: "financiero-pct" })} />
+        <ClickableKpiCard label="Saldo disponible" value={`USD ${fmt(totals.saldo)}`}
+          onClick={() => setPanel({ type: "financiero-saldo" })}
+          className={totals.saldo < 0 ? "border-destructive/30" : ""} />
+      </div>
+
+      {/* PANEL LATERAL */}
+      <DetailPanel open={panel?.type === "entidad"} onClose={() => setPanel(null)}
+        title={panel?.data?.nombre_corto || "Entidad"}>
+        {panel?.data && <EntitySummaryPanel ent={panel.data} onNavigate={() => { setPanel(null); handleNavigateEntity(panel.data.entidad_id); }} />}
+      </DetailPanel>
+
+      <DetailPanel open={panel?.type === "financiero-desglose"} onClose={() => setPanel(null)} title="Desglose financiero por entidad">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead className="text-xs">Entidad</TableHead>
+              <TableHead className="text-xs">Mec.</TableHead>
+              <TableHead className="text-xs text-right">Presupuesto</TableHead>
+              <TableHead className="text-xs text-right">Ejecutado</TableHead>
+              <TableHead className="text-xs text-right">%</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {entidades.map(e => (
+                <TableRow key={e.entidad_id} className="cursor-pointer hover:bg-muted/40" onClick={() => handleViewEntity(e.entidad_id)}>
+                  <TableCell className="text-xs font-medium">{e.nombre_corto}</TableCell>
+                  <TableCell><MecanismoBadge mec={e.mecanismo} /></TableCell>
+                  <TableCell className="text-xs text-right font-mono">{fmt(e.presupuesto_seco_total)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono">{fmt(e.ejecutado_seco_total)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono">{e.pct_ejecucion_seco}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </DetailPanel>
+
+      <DetailPanel open={panel?.type === "financiero-pct"} onClose={() => setPanel(null)} title="Ejecución del convenio">
+        <div className="space-y-3">
+          {entidades.sort((a, b) => b.pct_ejecucion_seco - a.pct_ejecucion_seco).map(e => (
+            <div key={e.entidad_id} className="cursor-pointer hover:bg-muted/40 p-2 rounded border" onClick={() => handleViewEntity(e.entidad_id)}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium">{e.nombre_corto}</span>
+                <span className="text-xs font-mono">{e.pct_ejecucion_seco}%</span>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="mec_a" className="mt-4"><MecAPlaceholder /></TabsContent>
-
-        <TabsContent value="mec_b" className="space-y-4 mt-4">
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-            <ClickableKpiCard label="Entidades Mec B" value={String(mecB.length)} onClick={() => openSheet("entidades")} />
-            <ClickableKpiCard label="Ejec. SECO promedio" value={`${avgEjecMecB}%`} onClick={() => openSheet("ejecucion")} />
-            <ClickableKpiCard label="Avance operativo" value={`${mecB.length > 0 ? Math.round(mecB.reduce((s, e) => s + (e.avance_operativo_promedio || 0), 0) / mecB.length) : 0}%`} onClick={() => openSheet("retraso")} />
-            <ClickableKpiCard label="Alertas Mec B" value={String(alerts.length)} onClick={() => openSheet("alertas")} className={alerts.length > 0 ? "border-destructive/30" : ""} />
-          </div>
-
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Entidades Mec B</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Entidad</TableHead>
-                      <TableHead className="text-xs">Cadena</TableHead>
-                      <TableHead className="text-xs text-right">% Ejec.</TableHead>
-                      <TableHead className="text-xs text-right">% Op.</TableHead>
-                      <TableHead className="text-xs text-center">Estado</TableHead>
-                      <TableHead className="text-xs text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mecB.map((e) => {
-                      const alertSummary = getEntityAlertSummary(e);
-                      return (
-                        <TableRow key={e.entidad_id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewEntity(e.entidad_id)}>
-                          <TableCell>
-                            <span className="text-sm font-medium">{e.nombre_corto}</span>
-                            {alertSummary && (
-                              <p className="text-[10px] text-destructive cursor-pointer hover:underline mt-0.5"
-                                onClick={(ev) => { ev.stopPropagation(); openSheet("alertas", e.entidad_id); }}>
-                                {alertSummary}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{e.cadena_valor || "—"}</TableCell>
-                          <TableCell className="text-sm text-right font-mono">{e.pct_ejecucion_seco}%</TableCell>
-                          <TableCell className="text-sm text-right font-mono">{e.avance_operativo_promedio ?? 0}%</TableCell>
-                          <TableCell className="text-center"><StatusDot pct={e.pct_ejecucion_seco} /></TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={(ev) => { ev.stopPropagation(); handleViewEntity(e.entidad_id); }}>
-                              Ver <ChevronRight className="h-3 w-3 ml-0.5" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, e.pct_ejecucion_seco)}%` }} />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          ))}
+        </div>
+      </DetailPanel>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-yellow-500" /> Alertas Activas ({alerts.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AlertasPanel alerts={alerts} />
-            </CardContent>
-          </Card>
+      <DetailPanel open={panel?.type === "financiero-saldo"} onClose={() => setPanel(null)} title="Saldo disponible por entidad">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead className="text-xs">Entidad</TableHead>
+              <TableHead className="text-xs text-right">Presupuesto</TableHead>
+              <TableHead className="text-xs text-right">Ejecutado</TableHead>
+              <TableHead className="text-xs text-right">Saldo</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {entidades.map(e => {
+                const saldo = e.presupuesto_seco_total - e.ejecutado_seco_total;
+                return (
+                  <TableRow key={e.entidad_id} className="cursor-pointer hover:bg-muted/40" onClick={() => handleViewEntity(e.entidad_id)}>
+                    <TableCell className="text-xs font-medium">{e.nombre_corto}</TableCell>
+                    <TableCell className="text-xs text-right font-mono">{fmt(e.presupuesto_seco_total)}</TableCell>
+                    <TableCell className="text-xs text-right font-mono">{fmt(e.ejecutado_seco_total)}</TableCell>
+                    <TableCell className={`text-xs text-right font-mono ${saldo < 0 ? "text-destructive" : ""}`}>{fmt(saldo)}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </DetailPanel>
+    </div>
+  );
+}
 
-          <SummaryText entidades={mecB} trimestreLabel={trimestreLabel} />
-        </TabsContent>
-      </Tabs>
+function EntitySummaryPanel({ ent, onNavigate }: { ent: DashboardEntidad; onNavigate: () => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <MecanismoBadge mec={ent.mecanismo} />
+        {ent.cadena_valor && <Badge variant="outline" className="text-[10px]">{ent.cadena_valor}</Badge>}
+        {ent.region && <Badge variant="outline" className="text-[10px]">{ent.region}</Badge>}
+      </div>
 
-      {/* Slide-over panels */}
-      <KpiDetailSheet open={sheetOpen === "entidades"} onOpenChange={(v) => !v && setSheetOpen(null)} title="Entidades Activas">
-        <EntidadesActivasPanel entidades={entidades} onViewEntity={handleViewEntity} />
-      </KpiDetailSheet>
-      <KpiDetailSheet open={sheetOpen === "ejecucion"} onOpenChange={(v) => !v && setSheetOpen(null)} title="Ejecución Financiera SECO">
-        <EjecucionFinancieraPanel entidades={entidades} benchmarks={BENCHMARKS} />
-      </KpiDetailSheet>
-      <KpiDetailSheet open={sheetOpen === "retraso"} onOpenChange={(v) => !v && setSheetOpen(null)} title="Actividades con Retraso">
-        <ActividadesRetrasoPanel entidades={entidades} onViewEntity={handleViewEntity} />
-      </KpiDetailSheet>
-      <KpiDetailSheet open={sheetOpen === "alertas"} onOpenChange={(v) => !v && setSheetOpen(null)} title="Alertas Activas">
-        <AlertasPanel alerts={alerts} filterEntidad={sheetEntityFilter} />
-      </KpiDetailSheet>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="border rounded p-2">
+          <p className="text-[10px] text-muted-foreground">Actividades</p>
+          <p className="text-lg font-bold">{ent.actividades_completadas}/{ent.total_actividades}</p>
+        </div>
+        <div className="border rounded p-2">
+          <p className="text-[10px] text-muted-foreground">Avance Operativo</p>
+          <p className="text-lg font-bold">{ent.avance_operativo_promedio ?? 0}%</p>
+        </div>
+        <div className="border rounded p-2">
+          <p className="text-[10px] text-muted-foreground">Ejecutado SECO</p>
+          <p className="text-lg font-bold">USD {fmt(ent.ejecutado_seco_total)}</p>
+          <p className="text-[10px] text-muted-foreground">{ent.pct_ejecucion_seco}% del presupuesto</p>
+        </div>
+        <div className="border rounded p-2">
+          <p className="text-[10px] text-muted-foreground">Saldo</p>
+          <p className={`text-lg font-bold ${ent.presupuesto_seco_total - ent.ejecutado_seco_total < 0 ? "text-destructive" : ""}`}>
+            USD {fmt(ent.presupuesto_seco_total - ent.ejecutado_seco_total)}
+          </p>
+        </div>
+      </div>
+
+      {ent.meses_sin_reporte.length > 0 && (
+        <div className="text-xs text-destructive border border-destructive/20 rounded p-2">
+          Sin reporte: {ent.meses_sin_reporte.join(", ")}
+        </div>
+      )}
+
+      {ent.observaciones_detalle.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Observaciones:</p>
+          {ent.observaciones_detalle.map((o, i) => (
+            <p key={i} className="text-xs text-muted-foreground">{o}</p>
+          ))}
+        </div>
+      )}
+
+      <Button variant="outline" size="sm" className="w-full text-xs" onClick={onNavigate}>
+        Ver planificación completa →
+      </Button>
     </div>
   );
 }
