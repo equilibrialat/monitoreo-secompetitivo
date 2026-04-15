@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { PeriodRange } from "@/components/dashboard/PeriodSelector";
+import { periodToTrimestre } from "@/components/dashboard/PeriodSelector";
 
 const MESES_NOMBRE: Record<number, string> = {
   1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
@@ -48,25 +50,51 @@ export interface SobregirosDetalle {
   pct: number;
 }
 
-/** Parse trimestre key like "2025-T4" → { anio: 2025, t: 4, meses: [10,11,12] } */
-function parseTrimestre(trimKey: string) {
-  const match = trimKey.match(/^(\d{4})-T(\d)$/);
-  if (!match) return { anio: new Date().getFullYear(), t: 4, meses: [10, 11, 12] };
-  const anio = parseInt(match[1]);
-  const t = parseInt(match[2]);
-  const mesInicio = (t - 1) * 3 + 1;
-  return { anio, t, meses: [mesInicio, mesInicio + 1, mesInicio + 2] };
+/** Parse a period into meses for registros_mensuales queries */
+function periodToMesesRange(period: PeriodRange) {
+  const desde = new Date(period.desde);
+  const hasta = new Date(period.hasta);
+  const meses: { anio: number; mes: number }[] = [];
+  const cur = new Date(desde.getFullYear(), desde.getMonth(), 1);
+  while (cur <= hasta) {
+    meses.push({ anio: cur.getFullYear(), mes: cur.getMonth() + 1 });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return meses;
 }
 
-async function fetchDashboardEntidades(trimestre?: string): Promise<DashboardEntidad[]> {
-  const trimInfo = trimestre ? parseTrimestre(trimestre) : parseTrimestre(calcTrimestreActual());
-  const trimestreKey = trimestre || calcTrimestreActual();
+function calcTrimestreActual(): string {
+  const mes = new Date().getMonth() + 1;
+  const año = new Date().getFullYear();
+  const t = mes <= 3 ? "T1" : mes <= 6 ? "T2" : mes <= 9 ? "T3" : "T4";
+  return `${año}-${t}`;
+}
 
-  // Fetch view data and reportes_trimestrales aggregation in parallel
+export { calcTrimestreActual };
+
+async function fetchDashboardEntidades(period?: PeriodRange): Promise<DashboardEntidad[]> {
+  // Determine trimestre for backward-compat RT query
+  const trimestreKey = period ? periodToTrimestre(period) : calcTrimestreActual();
+  // Determine meses for registros_mensuales
+  const mesesRange = period ? periodToMesesRange(period) : (() => {
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const y = now.getFullYear();
+    return [{ anio: y, mes: m }];
+  })();
+
+  // Unique anios and meses for query
+  const anios = [...new Set(mesesRange.map(m => m.anio))];
+  const mesesNums = [...new Set(mesesRange.map(m => m.mes))];
+
   const [viewRes, rtRes] = await Promise.all([
     (supabase as any).from("v_dashboard_entidad").select("*"),
-    (supabase as any).from("reportes_trimestrales").select("entidad_codigo, ejecutado_seco_total, presupuesto_seco_programado, avance_tecnico_trimestre, resumen_tecnico_ri, trimestre")
-      .eq("trimestre", trimestreKey),
+    (supabase as any).from("reportes_trimestrales")
+      .select("entidad_codigo, ejecutado_seco_total, presupuesto_seco_programado, avance_tecnico_trimestre, resumen_tecnico_ri, trimestre, fecha_desde, fecha_hasta")
+      .or(period
+        ? `and(fecha_desde.lte.${period.hasta},fecha_hasta.gte.${period.desde}),trimestre.eq.${trimestreKey}`
+        : `trimestre.eq.${trimestreKey}`
+      ),
   ]);
 
   if (viewRes.error) {
@@ -77,7 +105,6 @@ async function fetchDashboardEntidades(trimestre?: string): Promise<DashboardEnt
   const rows = viewRes.data || [];
   const rtData = rtRes.data || [];
 
-  // Aggregate reportes_trimestrales by entidad_codigo
   const rtAgg = new Map<string, { ejecutado: number; presupuesto: number; count: number; avanceTec: number; avanceCount: number }>();
   for (const r of rtData) {
     const key = r.entidad_codigo;
@@ -95,18 +122,25 @@ async function fetchDashboardEntidades(trimestre?: string): Promise<DashboardEnt
   const entidadIds = rows.map((d: any) => d.entidad_id).filter(Boolean);
   if (entidadIds.length === 0) return [];
 
-  // Parallel fetches
+  // Build registros_mensuales filter: query all relevant anio+mes combos
+  const regFilters = anios.length === 1
+    ? (supabase as any).from("registros_mensuales")
+        .select("entidad_id, mes, anio, estado_registro, observaciones_revision")
+        .eq("anio", anios[0]).in("mes", mesesNums)
+    : (supabase as any).from("registros_mensuales")
+        .select("entidad_id, mes, anio, estado_registro, observaciones_revision")
+        .in("anio", anios);
+
   const [actResult, pendResult, regResult, noIniciadaResult, voucherResult, metasResult, planActResult] = await Promise.all([
     (supabase as any).from("actividades").select("id, entidad_id, avance_operativo_pct").in("entidad_id", entidadIds),
     (supabase as any).from("registros_mensuales").select("entidad_id").in("estado_registro", ["borrador", "en_revision_tecnica", "en_revision_financiera"]),
-    (supabase as any).from("registros_mensuales").select("entidad_id, mes, anio, estado_registro, observaciones_revision").eq("anio", trimInfo.anio).in("mes", trimInfo.meses),
+    regFilters,
     (supabase as any).from("actividades").select("entidad_id, estado_actual").in("entidad_id", entidadIds).eq("estado_actual", "no_iniciada"),
     (supabase as any).from("vouchers_gasto").select("entidad_id, monto_usd"),
     (supabase as any).from("plan_trimestral").select("actividad_id, entidad_id, estado").in("entidad_id", entidadIds),
     (supabase as any).from("planificacion_actividades").select("entidad_codigo"),
   ]);
 
-  // Track which entidad_codigo has planificacion_actividades (Anexo B)
   const entidadesConPlanificacion = new Set<string>();
   for (const pa of planActResult.data || []) {
     entidadesConPlanificacion.add(pa.entidad_codigo);
@@ -136,8 +170,12 @@ async function fetchDashboardEntidades(trimestre?: string): Promise<DashboardEnt
   const pendMap = new Map<string, number>();
   for (const p of pendResult.data || []) { pendMap.set(p.entidad_id, (pendMap.get(p.entidad_id) || 0) + 1); }
 
+  // Filter registros to only those in the period's meses
+  const mesesSet = new Set(mesesRange.map(m => `${m.anio}-${m.mes}`));
+  const filteredRegs = (regResult.data || []).filter((r: any) => mesesSet.has(`${r.anio}-${r.mes}`));
+
   const regByEntity = new Map<string, any[]>();
-  for (const r of regResult.data || []) {
+  for (const r of filteredRegs) {
     const arr = regByEntity.get(r.entidad_id) || [];
     arr.push(r);
     regByEntity.set(r.entidad_id, arr);
@@ -160,10 +198,12 @@ async function fetchDashboardEntidades(trimestre?: string): Promise<DashboardEnt
     const hasRtData = rt != null && rt.count > 0;
     const soloRT = !hasActData && hasRtData;
 
-    const mesesConRegistro = new Set(regs.map((r: any) => r.mes));
+    const mesesConRegistro = new Set(regs.map((r: any) => `${r.anio}-${r.mes}`));
     const mesesFaltantes: string[] = [];
-    for (const m of trimInfo.meses) {
-      if (!mesesConRegistro.has(m)) mesesFaltantes.push(`${MESES_NOMBRE[m]} ${trimInfo.anio}`);
+    for (const m of mesesRange) {
+      if (!mesesConRegistro.has(`${m.anio}-${m.mes}`)) {
+        mesesFaltantes.push(`${MESES_NOMBRE[m.mes]} ${m.anio}`);
+      }
     }
 
     const observados = regs.filter((r: any) => r.estado_registro === "observado");
@@ -176,7 +216,6 @@ async function fetchDashboardEntidades(trimestre?: string): Promise<DashboardEnt
       if (o.observaciones_revision) obsDetalle.push(`${MESES_NOMBRE[o.mes]}: ${o.observaciones_revision}`);
     }
 
-    // For entities with only RT data, use RT financials
     let presupuestoSeco = Number(d.presupuesto_seco_total || 0);
     let ejecutadoSeco = voucherMap.get(d.entidad_id) ?? Number(d.ejecutado_seco_total || 0);
 
@@ -236,19 +275,11 @@ async function fetchDashboardEntidades(trimestre?: string): Promise<DashboardEnt
   });
 }
 
-function calcTrimestreActual(): string {
-  const mes = new Date().getMonth() + 1;
-  const año = new Date().getFullYear();
-  const t = mes <= 3 ? "T1" : mes <= 6 ? "T2" : mes <= 9 ? "T3" : "T4";
-  return `${año}-${t}`;
-}
-
-export { calcTrimestreActual };
-
-export function useDashboardData(trimestre?: string) {
+export function useDashboardData(period?: PeriodRange) {
+  const key = period ? `${period.desde}_${period.hasta}` : "default";
   return useQuery({
-    queryKey: ["dashboard-entidades", trimestre || calcTrimestreActual()],
-    queryFn: () => fetchDashboardEntidades(trimestre),
+    queryKey: ["dashboard-entidades", key],
+    queryFn: () => fetchDashboardEntidades(period),
     staleTime: 30_000,
   });
 }
