@@ -1,14 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   ChevronRight, ChevronDown, Calendar, Target, DollarSign,
-  CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star
+  CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star,
+  FileEdit, Wallet
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import ModalAvanceTecnico from "./ModalAvanceTecnico";
+import ModalAvancePresupuestario from "./ModalAvancePresupuestario";
 import {
   Tooltip,
   TooltipContent,
@@ -139,6 +143,14 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   const [loading, setLoading] = useState(true);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  // Map actividad_codigo -> actividad UUID from actividades table
+  const [actIdMap, setActIdMap] = useState<Map<string, string>>(new Map());
+  // Last update timestamps
+  const [lastTecnico, setLastTecnico] = useState<Map<string, string>>(new Map());
+  const [lastFinanciero, setLastFinanciero] = useState<Map<string, string>>(new Map());
+  // Modal state
+  const [modalTecnico, setModalTecnico] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
+  const [modalPresup, setModalPresup] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
 
   const entidad = entidades.find((e) => e.id === entidadId);
   const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
@@ -156,12 +168,32 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         .order("actividad_codigo"),
       (supabase as any)
         .from("registros_mensuales")
-        .select("actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)")
+        .select("actividad_id, anio, mes, avance_valor, estado_registro, fecha_registro, actividades!inner(codigo)")
         .eq("entidad_id", entidadId),
-    ]).then(([planRes, regRes]: any[]) => {
+      // Fetch activity UUIDs
+      (supabase as any)
+        .from("actividades")
+        .select("id, codigo")
+        .eq("entidad_id", entidadId),
+      // Fetch last financial entries
+      (supabase as any)
+        .from("ejecucion_financiera")
+        .select("actividad_id, created_at, actividades!inner(codigo)")
+        .eq("entidad_id", entidadId)
+        .order("created_at", { ascending: false }),
+    ]).then(([planRes, regRes, actRes, efRes]: any[]) => {
       setActividades(planRes.data || []);
+
+      // Activity ID map
+      const idMap = new Map<string, string>();
+      if (actRes.data) {
+        for (const a of actRes.data) idMap.set(a.codigo, a.id);
+      }
+      setActIdMap(idMap);
+
       const byCode = new Map<string, Set<string>>();
       const avanceMap = new Map<string, number>();
+      const lastTecMap = new Map<string, string>();
       if (regRes.data) {
         for (const r of regRes.data) {
           const code = r.actividades?.codigo;
@@ -169,15 +201,32 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
           const ym = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
           if (!byCode.has(code)) byCode.set(code, new Set());
           byCode.get(code)!.add(ym);
-          // Only count avance from non-draft reports
           if (r.estado_registro !== "borrador") {
             const prev = avanceMap.get(code) || 0;
             avanceMap.set(code, prev + (r.avance_valor || 0));
+          }
+          // Track latest registro date
+          if (r.fecha_registro) {
+            const prev = lastTecMap.get(code);
+            if (!prev || r.fecha_registro > prev) lastTecMap.set(code, r.fecha_registro);
           }
         }
       }
       setReportsByActivity(byCode);
       setAvanceByActivity(avanceMap);
+      setLastTecnico(lastTecMap);
+
+      // Last financial update per activity code
+      const lastFinMap = new Map<string, string>();
+      if (efRes.data) {
+        for (const ef of efRes.data) {
+          const code = ef.actividades?.codigo;
+          if (!code || lastFinMap.has(code)) continue;
+          lastFinMap.set(code, ef.created_at);
+        }
+      }
+      setLastFinanciero(lastFinMap);
+
       setLoading(false);
     });
   }
@@ -285,6 +334,7 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   }
 
   return (
+    <>
     <Card className="mb-6">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
@@ -361,11 +411,13 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                 <tr className="border-b text-[11px] text-muted-foreground">
                                   <th className="py-1.5 px-2 text-center w-[60px]">Cód.</th>
                                   <th className="py-1.5 px-2 text-left">Actividad</th>
-                                  <th className="py-1.5 px-2 text-left w-[100px]">Unidad</th>
+                                  <th className="py-1.5 px-2 text-left w-[80px]">Unidad</th>
                                   <th className="py-1.5 px-2 text-center w-[50px]">Meta</th>
-                                  <th className="py-1.5 px-2 text-center w-[80px]">Ejecutado</th>
-                                  <th className="py-1.5 px-2 text-center w-[90px]">Próximo</th>
+                                  <th className="py-1.5 px-2 text-center w-[70px]">Ejecutado</th>
+                                  <th className="py-1.5 px-2 text-center w-[80px]">Próximo</th>
                                   <th className="py-1.5 px-2 text-center w-[40px]">Estado</th>
+                                  {!readOnly && <th className="py-1.5 px-2 text-center w-[110px]">Av. Técnico</th>}
+                                  {!readOnly && <th className="py-1.5 px-2 text-center w-[110px]">Av. Presup.</th>}
                                 </tr>
                               </thead>
                               <tbody>
@@ -379,21 +431,26 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                     proximoLabel === "Este mes" ? "text-yellow-600 font-semibold" :
                                     proximoLabel === "Completada" ? "text-emerald-600" : "";
 
-                                  return (
-                                    <ActividadRow
-                                      key={act.id}
-                                      act={act}
-                                      ejecutado={ejecutado}
-                                      estado={estado}
-                                      cfg={cfg}
-                                      proximo={proximoLabel}
-                                      proximoClass={proximoClass}
-                                      isExpanded={isExpanded}
-                                      reported={reported}
-                                      currentYM={currentYM}
-                                      onToggle={() => setExpandedRow(isExpanded ? null : act.id)}
-                                    />
-                                  );
+                                    return (
+                                      <ActividadRow
+                                        key={act.id}
+                                        act={act}
+                                        ejecutado={ejecutado}
+                                        estado={estado}
+                                        cfg={cfg}
+                                        proximo={proximoLabel}
+                                        proximoClass={proximoClass}
+                                        isExpanded={isExpanded}
+                                        reported={reported}
+                                        currentYM={currentYM}
+                                        readOnly={readOnly}
+                                        lastTecnicoDate={lastTecnico.get(act.actividad_codigo)}
+                                        lastFinancieroDate={lastFinanciero.get(act.actividad_codigo)}
+                                        onToggle={() => setExpandedRow(isExpanded ? null : act.id)}
+                                        onOpenTecnico={() => setModalTecnico({ open: true, act })}
+                                        onOpenPresup={() => setModalPresup({ open: true, act })}
+                                      />
+                                    );
                                 })}
                               </tbody>
                             </table>
@@ -409,13 +466,39 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         })}
       </CardContent>
     </Card>
+
+    {/* Modals */}
+    {modalTecnico.act && (
+      <ModalAvanceTecnico
+        open={modalTecnico.open}
+        onOpenChange={(o) => setModalTecnico({ open: o, act: o ? modalTecnico.act : null })}
+        actividadCodigo={modalTecnico.act.actividad_codigo}
+        actividadDescripcion={modalTecnico.act.actividad_descripcion}
+        actividadId={actIdMap.get(modalTecnico.act.actividad_codigo)}
+        entidadId={entidadId || ""}
+        onSaved={loadData}
+      />
+    )}
+    {modalPresup.act && (
+      <ModalAvancePresupuestario
+        open={modalPresup.open}
+        onOpenChange={(o) => setModalPresup({ open: o, act: o ? modalPresup.act : null })}
+        actividadCodigo={modalPresup.act.actividad_codigo}
+        actividadDescripcion={modalPresup.act.actividad_descripcion}
+        actividadId={actIdMap.get(modalPresup.act.actividad_codigo)}
+        entidadId={entidadId || ""}
+        onSaved={loadData}
+      />
+    )}
+    </>
   );
 }
 
 /* ─── Activity row + expandable detail ─── */
 
 function ActividadRow({
-  act, ejecutado, estado, cfg, proximo, proximoClass, isExpanded, reported, currentYM, onToggle,
+  act, ejecutado, estado, cfg, proximo, proximoClass, isExpanded, reported, currentYM, readOnly,
+  lastTecnicoDate, lastFinancieroDate, onToggle, onOpenTecnico, onOpenPresup,
 }: {
   act: PlanificacionActividad;
   ejecutado: number;
@@ -426,7 +509,12 @@ function ActividadRow({
   isExpanded: boolean;
   reported: Set<string>;
   currentYM: string;
+  readOnly: boolean;
+  lastTecnicoDate?: string;
+  lastFinancieroDate?: string;
   onToggle: () => void;
+  onOpenTecnico: () => void;
+  onOpenPresup: () => void;
 }) {
   const meses = (act.meses_programados || []).sort();
 
@@ -465,12 +553,38 @@ function ActividadRow({
             <TooltipContent side="top" className="text-xs">{cfg.label}</TooltipContent>
           </Tooltip>
         </td>
+        {!readOnly && (
+          <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={onOpenTecnico}>
+              <FileEdit className="h-3 w-3" />
+              Registrar
+            </Button>
+            {lastTecnicoDate && (
+              <div className="text-[9px] text-muted-foreground mt-0.5">
+                {new Date(lastTecnicoDate).toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}
+              </div>
+            )}
+          </td>
+        )}
+        {!readOnly && (
+          <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={onOpenPresup}>
+              <Wallet className="h-3 w-3" />
+              Registrar
+            </Button>
+            {lastFinancieroDate && (
+              <div className="text-[9px] text-muted-foreground mt-0.5">
+                {new Date(lastFinancieroDate).toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}
+              </div>
+            )}
+          </td>
+        )}
       </tr>
 
       {/* Expanded detail panel */}
       {isExpanded && (
         <tr>
-          <td colSpan={7} className="p-0">
+          <td colSpan={readOnly ? 7 : 9} className="p-0">
             <div className="bg-muted/30 border-t border-b px-4 py-3 space-y-2 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
