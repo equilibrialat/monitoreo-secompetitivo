@@ -35,7 +35,7 @@ export default function DashboardMonitoreoNew() {
   const navigate = useNavigate();
   const { setEntidadId, setRole, entidades: entidadOptions } = useRole();
 
-  const [mecFilter, setMecFilter] = useState<"todas" | "A" | "B">("todas");
+  const mecFilter = "B" as const;
   const [semaforoFilter, setSemaforoFilter] = useState<"todos" | "rojo" | "amarillo" | "verde">("todos");
   const [entidadFilter, setEntidadFilter] = useState<string>("todas");
   const [riFilter, setRiFilter] = useState<string>("todos");
@@ -200,15 +200,7 @@ export default function DashboardMonitoreoNew() {
         </Button>
       </div>
 
-      {/* FILTRO PRINCIPAL */}
-      <div className="flex gap-2">
-        {(["todas", "A", "B"] as const).map(f => (
-          <Button key={f} variant={mecFilter === f ? "default" : "outline"} size="sm" className="text-xs h-8"
-            onClick={() => setMecFilter(f)}>
-            {f === "todas" ? "Todas" : `Mec ${f}`}
-          </Button>
-        ))}
-      </div>
+      {/* Mecanismo fijo B para MVP */}
 
       {/* BLOQUE 1 — Panel de entregas */}
       <Card>

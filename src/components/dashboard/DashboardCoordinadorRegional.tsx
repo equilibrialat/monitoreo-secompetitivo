@@ -66,7 +66,7 @@ export default function DashboardCoordinadorRegional() {
     if (!allEntidades) return [];
     return allEntidades.filter(e => {
       if (!e.has_data) return false;
-      // Region filter: coordinador only sees non-Nacional
+      if (e.mecanismo !== "B") return false;
       if (e.region === "Nacional" || !e.region) return false;
       if (selectedRegion && e.region !== selectedRegion) return false;
       return true;
