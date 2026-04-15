@@ -532,6 +532,39 @@ export type Database = {
           },
         ]
       }
+      documentos: {
+        Row: {
+          actividad_codigo: string
+          entidad_codigo: string
+          id: string
+          nombre_archivo: string
+          subido_at: string
+          subido_por: string | null
+          tipo_documento: string
+          url_storage: string
+        }
+        Insert: {
+          actividad_codigo: string
+          entidad_codigo: string
+          id?: string
+          nombre_archivo: string
+          subido_at?: string
+          subido_por?: string | null
+          tipo_documento?: string
+          url_storage: string
+        }
+        Update: {
+          actividad_codigo?: string
+          entidad_codigo?: string
+          id?: string
+          nombre_archivo?: string
+          subido_at?: string
+          subido_por?: string | null
+          tipo_documento?: string
+          url_storage?: string
+        }
+        Relationships: []
+      }
       ejecucion_financiera: {
         Row: {
           actividad_id: string
