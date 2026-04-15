@@ -1,26 +1,29 @@
 
 
-## Plan: Default a Entidad Mecanismo B (App Cacao)
+## Plan: Ocultar selector de trimestres para entidades + quitar Notificaciones del menú de entidad
 
-### Cambio en `src/contexts/RoleContext.tsx`
+### Cambio 1 — Ocultar `TrimestreHeader` para roles de entidad
 
-**Línea 67**: Cambiar el estado inicial del rol de `"entidad_mec_a"` a `"entidad_mec_b"`.
+**Archivo**: `src/components/AppLayout.tsx`
 
-**Lógica de selección de entidad inicial** (~línea 103): Después de cargar las entidades, en vez de tomar `filteredFull[0]`, buscar primero la entidad cuyo `nombre_corto` contenga "Cacao" (o código equivalente). Si no se encuentra, usar la primera disponible como fallback.
+Importar `useRole` del contexto y condicionar la renderización de `<TrimestreHeader />` para que NO se muestre cuando el rol sea `entidad_mec_a` o `entidad_mec_b`. Los demás roles lo siguen viendo.
 
-```ts
-// Línea 67
-const [role, setRole] = useState<AppRole>("entidad_mec_b");
-
-// Línea ~103 (selección inicial)
-const defaultEntity = filteredFull.find(e => 
-  e.nombre_corto?.toLowerCase().includes("cacao")
-) || filteredFull[0];
-if (!entidadId && defaultEntity) setEntidadId(defaultEntity.id);
+```tsx
+const { role } = useRole();
+const showTrimestre = !["entidad_mec_a", "entidad_mec_b"].includes(role);
+// ...
+{showTrimestre && <TrimestreHeader />}
 ```
 
-Todo lo demás sigue igual: el usuario puede cambiar rol y entidad libremente.
+### Cambio 2 — Quitar "Notificaciones" del menú lateral de entidades
 
-### Archivo a modificar
-- `src/contexts/RoleContext.tsx`
+**Archivo**: `src/config/navigation.ts`
+
+En `ENTIDAD_NAV` (líneas 36-58), eliminar el item `{ label: "Notificaciones", path: "/notificaciones", icon: Bell }` de la sección GESTIÓN. Si la sección queda vacía, eliminarla por completo.
+
+Las entidades seguirán viendo la campanita (`NotificationBell`) en el header para recibir actualizaciones, pero no tendrán acceso a la página de envío de notificaciones.
+
+### Archivos a modificar
+1. `src/components/AppLayout.tsx` — condicionar `TrimestreHeader`
+2. `src/config/navigation.ts` — quitar Notificaciones de `ENTIDAD_NAV`
 
