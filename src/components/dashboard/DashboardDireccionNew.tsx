@@ -76,7 +76,8 @@ export default function DashboardDireccionNew() {
     queryKey: ["trimestres-disponibles"],
     queryFn: async (): Promise<string[]> => {
       const { data } = await (supabase as any).from("reportes_trimestrales").select("trimestre");
-      return [...new Set((data || []).map((r: any) => String(r.trimestre)))].sort();
+      const items = (data || []).map((r: any) => String(r.trimestre));
+      return Array.from(new Set(items)).sort();
     },
     staleTime: 120_000,
   });
