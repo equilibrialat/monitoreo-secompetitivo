@@ -491,7 +491,7 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                 </tr>
                               </thead>
                               <tbody>
-                                {prod.acts.map((act) => {
+                                {(filtersActive ? filteredProdActs : prod.acts).map((act) => {
                                   const { reported, ejecutado, estado, proximo } = getActStats(act);
                                   const cfg = ESTADO_CONFIG[estado];
                                   const isExpanded = expandedRow === act.id;
