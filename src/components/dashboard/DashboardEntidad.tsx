@@ -8,8 +8,9 @@ import { useDashboardData, type DashboardEntidad as DashboardEntidadType } from 
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, CheckCircle2, AlertTriangle, Target,
-  Activity, TrendingUp, DollarSign, Calendar, ArrowRight, FileText
+  Activity, TrendingUp, DollarSign, Calendar, ArrowRight, FileText, Info
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { type PlanificacionActividad, getCurrentYearMonth, formatYM } from "@/components/planificacion/MiPlanificacion";
