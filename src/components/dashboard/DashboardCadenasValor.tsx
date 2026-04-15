@@ -54,9 +54,9 @@ export default function DashboardCadenasValor() {
   const [obsText, setObsText] = useState("");
   const [obsSaving, setObsSaving] = useState(false);
 
-  const { data: trimestresDisp } = useQuery<string[]>({
+  const { data: trimestresDisp } = useQuery({
     queryKey: ["trimestres-disponibles"],
-    queryFn: async () => {
+    queryFn: async (): Promise<string[]> => {
       const { data } = await (supabase as any).from("reportes_trimestrales").select("trimestre");
       return [...new Set((data || []).map((r: any) => r.trimestre as string))].sort();
     },
