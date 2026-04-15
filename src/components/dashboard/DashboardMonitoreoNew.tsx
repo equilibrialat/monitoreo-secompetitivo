@@ -88,15 +88,14 @@ export default function DashboardMonitoreoNew() {
   const filteredActividades = useMemo(() => {
     if (!actividades) return [];
     return actividades.filter(a => {
-      if (mecFilter === "A" && a.mecanismo !== "A") return false;
-      if (mecFilter === "B" && a.mecanismo !== "B") return false;
+      if (a.mecanismo !== "B") return false;
       if (semaforoFilter !== "todos" && a.semaforo_global !== semaforoFilter) return false;
       if (entidadFilter !== "todas" && a.entidad_codigo !== entidadFilter) return false;
       if (riFilter !== "todos" && a.resultado_intermedio_codigo !== riFilter) return false;
       if (soloActivas && !a.meses_programados.includes(currentYM)) return false;
       return true;
     });
-  }, [actividades, mecFilter, semaforoFilter, entidadFilter, riFilter, soloActivas, currentYM]);
+  }, [actividades, semaforoFilter, entidadFilter, riFilter, soloActivas, currentYM]);
 
   const uniqueEntidades = useMemo(() => [...new Set(actividades?.map(a => a.entidad_codigo) || [])].sort(), [actividades]);
   const uniqueRIs = useMemo(() => [...new Set(actividades?.map(a => a.resultado_intermedio_codigo).filter(Boolean) || [])].sort(), [actividades]);
@@ -113,10 +112,8 @@ export default function DashboardMonitoreoNew() {
 
   // Filtered entidades for entregas panel
   const entregaEntidades = useMemo(() => entidades.filter(e => {
-    if (mecFilter === "A" && e.mecanismo !== "A") return false;
-    if (mecFilter === "B" && e.mecanismo !== "B") return false;
-    return true;
-  }), [entidades, mecFilter]);
+    return e.mecanismo === "B";
+  }), [entidades]);
 
   const handleAISynthesis = async () => {
     if (!aiEntidad) { toast.error("Selecciona una entidad"); return; }
