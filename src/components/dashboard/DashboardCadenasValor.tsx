@@ -270,6 +270,27 @@ export default function DashboardCadenasValor() {
         </CardContent>
       </Card>
 
+      {/* BLOQUE 4 — Ver por indicadores (colapsable) */}
+      <Card>
+        <CardHeader className="pb-0 cursor-pointer" onClick={() => setIndicadoresOpen(!indicadoresOpen)}>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${indicadoresOpen ? "" : "-rotate-90"}`} />
+            Ver por indicadores y resultados intermedios
+          </CardTitle>
+        </CardHeader>
+        {indicadoresOpen && (
+          <CardContent className="pt-3">
+            <ArbolIndicadoresActividades
+              filtros={{
+                trimestre: filters.trimestre,
+                entidad_codigo: filters.entidad || null,
+                mecanismo: "B",
+              }}
+            />
+          </CardContent>
+        )}
+      </Card>
+
       {/* PANEL — Árbol sucinto */}
       <DetailPanel open={panel?.type === "arbol-sucinto"} onClose={() => { setPanel(null); setObsText(""); }}
         title={`${panel?.data?.nombre_corto || ""} — ${filters.trimestre}`}>
