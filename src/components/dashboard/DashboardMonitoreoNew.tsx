@@ -308,10 +308,13 @@ export default function DashboardMonitoreoNew() {
                       onClick={() => { const ent = entidades.find(e => e.codigo === a.entidad_codigo); if (ent) handleNavigateEntity(ent.entidad_id); }}>
                       {a.entidad_nombre}
                     </TableCell>
-                    <TableCell className="text-xs max-w-[200px] truncate">{a.actividad_descripcion}</TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate">
+                      {a.solo_reporte_trimestral && <Badge variant="outline" className="text-[9px] mr-1 bg-muted">RT</Badge>}
+                      {a.actividad_descripcion}
+                    </TableCell>
                     <TableCell className="text-xs text-right font-mono cursor-pointer hover:underline"
                       onClick={() => setPanel({ type: "tech-detalle", data: a })}>
-                      {a.pct_tecnico}%
+                      {a.solo_reporte_trimestral ? "—" : `${a.pct_tecnico}%`}
                     </TableCell>
                     <TableCell className="text-center cursor-pointer hover:opacity-80"
                       onClick={() => setPanel({ type: "temporal-detalle", data: a })}>

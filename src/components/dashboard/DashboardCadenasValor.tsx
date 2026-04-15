@@ -27,6 +27,11 @@ function cruceLabel(e: DashboardEntidad) {
 }
 
 function entitySemaforo(e: DashboardEntidad): "verde" | "amarillo" | "rojo" {
+  if (e.sin_planificacion) {
+    if (e.pct_ejecucion_seco > 80) return "verde";
+    if (e.pct_ejecucion_seco > 30) return "amarillo";
+    return e.pct_ejecucion_seco > 0 ? "rojo" : "verde";
+  }
   const desfase = Math.abs((e.avance_operativo_promedio || 0) - e.pct_ejecucion_seco);
   if (desfase > 30 || e.meses_sin_reporte.length >= 2) return "rojo";
   if (desfase > 15 || e.meses_sin_reporte.length > 0) return "amarillo";
@@ -58,7 +63,14 @@ export default function DashboardCadenasValor() {
     },
   });
 
-  const mecB = useMemo(() => (allEntidades || []).filter(e => e.mecanismo === "B" && e.has_data), [allEntidades]);
+  const mecB = useMemo(() => {
+    const filtered = (allEntidades || []).filter(e => e.mecanismo === "B" && e.has_data);
+    // Sort by criticality: rojo first, then amarillo, then verde
+    return filtered.sort((a, b) => {
+      const semOrder = { rojo: 0, amarillo: 1, verde: 2 };
+      return semOrder[entitySemaforo(a)] - semOrder[entitySemaforo(b)];
+    });
+  }, [allEntidades]);
 
   // Alertas de rezago: actividades con gasto sin avance técnico o viceversa
   const alertasRezago = useMemo(() => {
@@ -125,7 +137,9 @@ export default function DashboardCadenasValor() {
                       </TableCell>
                       <TableCell className="text-xs text-right font-mono cursor-pointer hover:underline"
                         onClick={() => setPanel({ type: "tecnico", data: e })}>
-                        {e.avance_operativo_promedio ?? 0}%
+                        {e.sin_planificacion
+                          ? <Badge variant="outline" className="text-[10px] bg-muted">Plan pendiente</Badge>
+                          : `${e.avance_operativo_promedio ?? 0}%`}
                       </TableCell>
                       <TableCell className="text-xs text-right font-mono cursor-pointer hover:underline"
                         onClick={() => setPanel({ type: "financiero", data: e })}>
