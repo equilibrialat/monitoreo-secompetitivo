@@ -523,7 +523,9 @@ function ActividadRow({
       <tr
         className={cn(
           "border-b last:border-0 cursor-pointer hover:bg-muted/30 transition-colors",
-          isExpanded && "bg-muted/20"
+          isExpanded && "bg-muted/20",
+          estado === "con_rezago" && "bg-red-50/60 dark:bg-red-950/20",
+          estado === "entregable_este_mes" && "bg-amber-50/60 dark:bg-amber-950/20",
         )}
         onClick={onToggle}
       >
