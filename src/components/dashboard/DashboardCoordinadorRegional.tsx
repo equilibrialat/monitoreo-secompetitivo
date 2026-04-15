@@ -11,10 +11,11 @@ import { useRole } from "@/contexts/RoleContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ChevronRight, ArrowRight, Save } from "lucide-react";
+import { AlertTriangle, ChevronRight, ArrowRight, Save, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import NarrativeBlock from "./NarrativeBlock";
 import SuccinctTreePanel from "./SuccinctTreePanel";
+import ArbolIndicadoresActividades from "./ArbolIndicadoresActividades";
 
 const MONTH_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
