@@ -199,7 +199,7 @@ export default function GenerarReportesPage() {
           <div className="mt-3 flex items-center gap-3">
             <span className="text-xs text-muted-foreground">Mostrando: <span className="font-medium text-foreground">{rangeLabel}</span></span>
             {tipoReporte === "semestral" && (
-              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Este período corresponde al informe semestral a SECO</span>
+              <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded">Este período corresponde al informe semestral a SECO</span>
             )}
           </div>
         </CardContent>
