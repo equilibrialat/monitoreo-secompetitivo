@@ -236,43 +236,76 @@ export default function DashboardEntidad() {
         />
       </div>
 
-      {/* ═══ SECCIÓN B — Lo que toca hacer este mes (máx 3) ═══ */}
+      {/* ═══ SECCIÓN B — Actividades con entregas pendientes ═══ */}
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
           <Calendar className="h-3.5 w-3.5" />
-          Lo que toca hacer este mes
+          Actividades con entregas pendientes
         </p>
 
-        {tareasDelMes.length === 0 ? (
+        {actividadesConPendientes.length === 0 ? (
           <Card className="border-l-4 border-l-green-500">
             <CardContent className="py-4">
-              <p className="text-sm text-foreground">✓ Estás al día. No tienes entregables pendientes este mes.</p>
+              <p className="text-sm text-foreground">✓ Estás al día. No tienes entregables pendientes.</p>
             </CardContent>
           </Card>
         ) : (
-          tareasDelMes.map((act) => (
-              <Card key={act.actividad_codigo} className="border-l-4 border-l-yellow-500">
-                <CardContent className="py-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">
-                        ● {act.actividad_codigo} — {act.actividad_descripcion}
-                      </p>
+          actividadesConPendientes.map((act) => (
+            <Card key={act.actividad_codigo} className={cn(
+              "border-l-4",
+              act.rezagados > 0 ? "border-l-red-500" : "border-l-yellow-500"
+            )}>
+              <CardContent className="py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 space-y-1.5">
+                    <p className="text-sm font-semibold">
+                      {act.actividad_codigo} — {act.actividad_descripcion}
+                    </p>
+                    {/* Status pills */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {act.rezagados > 0 && (
+                        <Badge variant="outline" className="text-[10px] border-red-300 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20">
+                          🔴 {act.rezagados} rezagado{act.rezagados > 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                      {act.esteMes && (
+                        <Badge variant="outline" className="text-[10px] border-yellow-300 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
+                          🟡 Este mes
+                        </Badge>
+                      )}
+                      {act.pendientes > 0 && (
+                        <Badge variant="outline" className="text-[10px] border-muted-foreground/30 text-muted-foreground">
+                          ⚪ {act.pendientes} pendiente{act.pendientes > 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                      {act.reportados > 0 && (
+                        <Badge variant="outline" className="text-[10px] border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20">
+                          🟢 {act.reportados} reportado{act.reportados > 1 ? "s" : ""}
+                        </Badge>
+                      )}
                     </div>
+                  </div>
+                  <div className="flex flex-col gap-1 shrink-0">
                     <Button
                       size="sm"
-                      className="shrink-0 text-xs"
+                      className="text-xs"
                       onClick={() => setModalTecnico({ open: true, act })}
                     >
-                      Registrar avance <ArrowRight className="h-3 w-3 ml-1" />
+                      Av. Técnico <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      onClick={() => setModalPresup({ open: true, act })}
+                    >
+                      Av. Presup. <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
-                  <Badge variant="outline" className="mt-2 text-[10px] border-yellow-300 text-yellow-700">
-                    Entregable este mes
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))
+                </div>
+              </CardContent>
+            </Card>
+          ))
         )}
 
         {/* ─── Status badges ─── */}
@@ -320,6 +353,22 @@ export default function DashboardEntidad() {
           actividadId={actIdMap.get(modalTecnico.act.actividad_codigo)}
           entidadId={entidadId || ""}
           onSaved={loadData}
+          mesesProgramados={(modalTecnico.act.meses_programados || []) as string[]}
+          mesesReportados={reportsByActivity.get(modalTecnico.act.actividad_codigo) || new Set()}
+        />
+      )}
+      {/* Modal avance presupuestario */}
+      {modalPresup.act && (
+        <ModalAvancePresupuestario
+          open={modalPresup.open}
+          onOpenChange={(o) => setModalPresup({ open: o, act: o ? modalPresup.act : null })}
+          actividadCodigo={modalPresup.act.actividad_codigo}
+          actividadDescripcion={modalPresup.act.actividad_descripcion}
+          actividadId={actIdMap.get(modalPresup.act.actividad_codigo)}
+          entidadId={entidadId || ""}
+          onSaved={loadData}
+          mesesProgramados={(modalPresup.act.meses_programados || []) as string[]}
+          mesesReportados={reportsByActivity.get(modalPresup.act.actividad_codigo) || new Set()}
         />
       )}
     </div>
