@@ -38,6 +38,7 @@ const ENTIDAD_NAV: NavSection[] = [
     items: [
       { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
       { label: "Mi Planificación", path: "/mi-planificacion", icon: ClipboardList },
+      { label: "Mi Ejecución Técnica", path: "/ejecucion-tecnica", icon: BarChart3 },
     ],
   },
   {
