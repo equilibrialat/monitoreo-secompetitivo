@@ -111,7 +111,7 @@ export default function DashboardDireccion() {
       <DashboardFilters showMecanismo showEntidad showRegion showPeriodo />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <KpiCard label="Avance Operativo Global" value={`${avOpGlobal}%`} />
+        <KpiCard icon={RefreshCw} label="Avance Operativo Global" value={`${avOpGlobal}%`} />
         <ClickableKpiCard label="Avance Financiero SECO" value={`${avFinGlobal}%`} sub={`USD ${fmt(totalEjec)} / ${fmt(totalPpto)}`} onClick={() => navigate("/desembolsos")} />
         <ClickableKpiCard label="Entidades Activas" value={String(all.length)} onClick={() => navigate("/verificacion")} />
         <ClickableKpiCard label="Actividades Completadas" value={`${completadas}/${totalAct}`} onClick={() => navigate("/mis-actividades")} />
