@@ -9,9 +9,11 @@ import { Header, MecanismoBadge, fmt, DashboardSkeleton, ClickableKpiCard } from
 import { DetailPanel } from "./DetailPanel";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
-import { AlertTriangle, ArrowRight, Calendar, FileText } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import CascadingFilters, { calcTrimestreActual, type CascadingFilterState } from "./CascadingFilters";
+import SuccinctTreePanel from "./SuccinctTreePanel";
 
 const MONTH_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -39,11 +41,27 @@ function entitySemaforo(e: DashboardEntidad): "verde" | "amarillo" | "rojo" {
 }
 
 export default function DashboardCadenasValor() {
-  const { data: allEntidades, isLoading } = useDashboardData();
-  const { data: actividades } = useDashboardActividades();
+  const [filters, setFilters] = useState<CascadingFilterState>({
+    trimestre: calcTrimestreActual(),
+    region: null, mecanismo: "B", entidad: null,
+  });
+
+  const { data: allEntidades, isLoading } = useDashboardData(filters.trimestre);
+  const { data: actividades } = useDashboardActividades(filters.trimestre);
   const navigate = useNavigate();
   const { setEntidadId, setRole } = useRole();
   const [panel, setPanel] = useState<{ type: string; data?: any } | null>(null);
+  const [obsText, setObsText] = useState("");
+  const [obsSaving, setObsSaving] = useState(false);
+
+  const { data: trimestresDisp } = useQuery<string[]>({
+    queryKey: ["trimestres-disponibles"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("reportes_trimestrales").select("trimestre");
+      return [...new Set((data || []).map((r: any) => r.trimestre as string))].sort();
+    },
+    staleTime: 120_000,
+  });
 
   // Latest reports per entity
   const { data: ultimosReportes } = useQuery({
@@ -55,31 +73,37 @@ export default function DashboardCadenasValor() {
         .order("mes", { ascending: false });
       const map = new Map<string, string>();
       for (const r of data || []) {
-        if (!map.has(r.entidad_id)) {
-          map.set(r.entidad_id, `${MONTH_SHORT[r.mes - 1]}-${String(r.anio).slice(2)}`);
-        }
+        if (!map.has(r.entidad_id)) map.set(r.entidad_id, `${MONTH_SHORT[r.mes - 1]}-${String(r.anio).slice(2)}`);
       }
       return map;
     },
   });
 
+  // Build filter info — ONLY Mec B
+  const filterEntidades = useMemo(() =>
+    (allEntidades || []).filter(e => e.has_data && e.mecanismo === "B").map(e => ({
+      codigo: e.codigo, nombre_corto: e.nombre_corto, mecanismo: e.mecanismo, region: e.region,
+    })),
+  [allEntidades]);
+
   const mecB = useMemo(() => {
     const filtered = (allEntidades || []).filter(e => e.mecanismo === "B" && e.has_data);
-    // Sort by criticality: rojo first, then amarillo, then verde
-    return filtered.sort((a, b) => {
-      const semOrder = { rojo: 0, amarillo: 1, verde: 2 };
-      return semOrder[entitySemaforo(a)] - semOrder[entitySemaforo(b)];
+    // Apply additional filters
+    const result = filtered.filter(e => {
+      if (filters.region && e.region !== filters.region) return false;
+      if (filters.entidad && e.codigo !== filters.entidad) return false;
+      return true;
     });
-  }, [allEntidades]);
+    // Sort by criticality
+    const semOrder = { rojo: 0, amarillo: 1, verde: 2 };
+    return result.sort((a, b) => semOrder[entitySemaforo(a)] - semOrder[entitySemaforo(b)]);
+  }, [allEntidades, filters]);
 
-  // Alertas de rezago: actividades con gasto sin avance técnico o viceversa
+  // Alertas de rezago
   const alertasRezago = useMemo(() => {
     if (!actividades) return [];
     const mecBCodes = new Set(mecB.map(e => e.codigo));
-    return actividades.filter(a => {
-      if (!mecBCodes.has(a.entidad_codigo)) return false;
-      return a.semaforo_global === "rojo";
-    }).slice(0, 10);
+    return actividades.filter(a => mecBCodes.has(a.entidad_codigo) && a.semaforo_global === "rojo").slice(0, 10);
   }, [actividades, mecB]);
 
   // Entregas del mes
@@ -102,11 +126,36 @@ export default function DashboardCadenasValor() {
     navigate("/mi-planificacion");
   };
 
+  const handleSaveObs = async (entCodigo: string, actCodigo: string) => {
+    if (!obsText.trim()) return;
+    setObsSaving(true);
+    const mesKey = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+    await (supabase as any).from("observaciones_coordinador").insert({
+      entidad_codigo: entCodigo,
+      actividad_codigo: actCodigo,
+      mes: mesKey,
+      texto: obsText,
+      autor: "Coordinador Cadenas de Valor",
+    });
+    setObsText("");
+    setObsSaving(false);
+  };
+
   if (isLoading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-4">
       <Header title="Dashboard Cadenas de Valor" subtitle="Iván — Coordinador Mecanismo B" />
+
+      {/* FILTROS — No mecanismo selector (fixed to B) */}
+      <CascadingFilters
+        value={filters}
+        onChange={(v) => setFilters({ ...v, mecanismo: "B" })}
+        entidades={filterEntidades}
+        trimestresDisponibles={trimestresDisp || []}
+        hideMecanismo
+        fixedMecanismo="B"
+      />
 
       {/* BLOQUE 1 — Mis proyectos */}
       <Card>
@@ -132,7 +181,7 @@ export default function DashboardCadenasValor() {
                   return (
                     <TableRow key={e.entidad_id}>
                       <TableCell className="text-xs font-medium cursor-pointer hover:underline text-primary"
-                        onClick={() => handleNavigateEntity(e.entidad_id)}>
+                        onClick={() => setPanel({ type: "arbol-sucinto", data: e })}>
                         {e.nombre_corto}
                       </TableCell>
                       <TableCell className="text-xs text-right font-mono cursor-pointer hover:underline"
@@ -154,7 +203,7 @@ export default function DashboardCadenasValor() {
                         {ultimo}
                       </TableCell>
                       <TableCell className="text-center cursor-pointer"
-                        onClick={() => setPanel({ type: "estado-actividades", data: e })}>
+                        onClick={() => setPanel({ type: "arbol-sucinto", data: e })}>
                         {semaforoEmoji(sem)}
                       </TableCell>
                     </TableRow>
@@ -166,7 +215,7 @@ export default function DashboardCadenasValor() {
         </CardContent>
       </Card>
 
-      {/* BLOQUE 3 — Alertas de rezago */}
+      {/* BLOQUE 2 — Alertas de rezago */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -195,7 +244,7 @@ export default function DashboardCadenasValor() {
         </CardContent>
       </Card>
 
-      {/* BLOQUE 4 — Entregas del mes */}
+      {/* BLOQUE 3 — Entregas del mes */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -219,25 +268,36 @@ export default function DashboardCadenasValor() {
         </CardContent>
       </Card>
 
-      {/* Panels */}
+      {/* PANEL — Árbol sucinto */}
+      <DetailPanel open={panel?.type === "arbol-sucinto"} onClose={() => { setPanel(null); setObsText(""); }}
+        title={`${panel?.data?.nombre_corto || ""} — ${filters.trimestre}`}>
+        {panel?.data && (
+          <SuccinctTreePanel
+            entidad={panel.data}
+            actividades={actividades?.filter(a => a.entidad_codigo === panel.data.codigo) || []}
+            trimestre={filters.trimestre}
+            obsText={obsText}
+            setObsText={setObsText}
+            onSaveObs={handleSaveObs}
+            obsSaving={obsSaving}
+          />
+        )}
+      </DetailPanel>
+
+      {/* Other panels */}
       <DetailPanel open={panel?.type === "tecnico"} onClose={() => setPanel(null)}
         title={`Avance técnico — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityTechPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
+        <EntityTechPanel actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "financiero"} onClose={() => setPanel(null)}
         title={`Ejecución financiera — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityFinPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
+        <EntityFinPanel actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "cruce"} onClose={() => setPanel(null)}
         title={`Cruce técnico-financiero — ${panel?.data?.nombre_corto || ""}`}>
         <EntityCrucePanel actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
-      </DetailPanel>
-
-      <DetailPanel open={panel?.type === "estado-actividades"} onClose={() => setPanel(null)}
-        title={`Actividades — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityActividadesPanel actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "ultimo-reporte"} onClose={() => setPanel(null)}
@@ -258,8 +318,7 @@ export default function DashboardCadenasValor() {
   );
 }
 
-function EntityTechPanel({ ent, actividades }: { ent: any; actividades: any[] }) {
-  if (!ent) return null;
+function EntityTechPanel({ actividades }: { actividades: any[] }) {
   return (
     <div className="space-y-2">
       {actividades.map(a => (
@@ -273,17 +332,13 @@ function EntityTechPanel({ ent, actividades }: { ent: any; actividades: any[] })
   );
 }
 
-function EntityFinPanel({ ent, actividades }: { ent: any; actividades: any[] }) {
-  if (!ent) return null;
+function EntityFinPanel({ actividades }: { actividades: any[] }) {
   return (
     <div className="space-y-2">
       {actividades.filter(a => a.presupuesto_seco_usd > 0 || a.ejecutado_seco > 0).map(a => (
         <div key={a.actividad_codigo} className="border rounded p-2 text-xs">
           <p className="font-medium"><span className="font-mono text-primary">{a.actividad_codigo}</span></p>
           <p className="text-muted-foreground">SECO: USD {fmt(a.ejecutado_seco)} / {fmt(a.presupuesto_seco_usd)} ({a.pct_seco}%)</p>
-          {a.presupuesto_contrapartida_usd > 0 && (
-            <p className="text-muted-foreground">Contrap: USD {fmt(a.ejecutado_contrapartida)} / {fmt(a.presupuesto_contrapartida_usd)}</p>
-          )}
         </div>
       ))}
     </div>
@@ -311,21 +366,6 @@ function EntityCrucePanel({ actividades }: { actividades: any[] }) {
   );
 }
 
-function EntityActividadesPanel({ actividades }: { actividades: any[] }) {
-  return (
-    <div className="space-y-2">
-      {actividades.map(a => (
-        <div key={a.actividad_codigo} className="flex items-center gap-2 text-xs border rounded p-2">
-          <span>{semaforoEmoji(a.semaforo_global)}</span>
-          <span className="font-mono text-primary">{a.actividad_codigo}</span>
-          <span className="flex-1 truncate">{a.actividad_descripcion}</span>
-          <span className="text-muted-foreground shrink-0">{a.pct_tecnico}% téc · {a.pct_seco}% fin</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ActividadDetallePanel({ act }: { act: any }) {
   return (
     <div className="space-y-3">
@@ -346,7 +386,6 @@ function ActividadDetallePanel({ act }: { act: any }) {
         <p className="font-medium">Semáforo temporal: {semaforoEmoji(act.semaforo_temporal)} {act.semaforo_temporal}</p>
         <p className="font-medium">Semáforo global: {semaforoEmoji(act.semaforo_global)} {act.semaforo_global}</p>
       </div>
-      {act.ultimo_reporte_mes && <p className="text-xs text-muted-foreground">Último reporte: {act.ultimo_reporte_mes}</p>}
     </div>
   );
 }

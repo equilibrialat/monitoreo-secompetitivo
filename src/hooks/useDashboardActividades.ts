@@ -24,7 +24,6 @@ export interface ActividadSemaforo {
   semaforo_temporal: "verde" | "amarillo" | "rojo";
   semaforo_global: "verde" | "amarillo" | "rojo";
   ultimo_reporte_mes: string | null;
-  // Whether this activity comes from reportes_trimestrales only
   solo_reporte_trimestral: boolean;
 }
 
@@ -33,13 +32,15 @@ function getCurrentYM() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
+async function fetchActividadesSemaforo(trimestre?: string): Promise<ActividadSemaforo[]> {
   const [planRes, compRes, regRes, entRes, rtRes] = await Promise.all([
     (supabase as any).from("planificacion_actividades").select("*").order("entidad_codigo, actividad_codigo"),
     (supabase as any).from("comprobantes").select("entidad_codigo, actividad_codigo, monto_usd, fuente"),
     (supabase as any).from("registros_mensuales").select("entidad_id, actividad_id, avance_valor, anio, mes, actividades!inner(codigo, entidad_id)"),
     (supabase as any).from("entidades").select("id, codigo, nombre_corto, mecanismo"),
-    (supabase as any).from("reportes_trimestrales").select("entidad_codigo, actividad_codigo, trimestre, avance_tecnico_trimestre, ejecutado_seco_total, presupuesto_seco_programado, resumen_tecnico_ri, ejecutado_contrapartida"),
+    trimestre
+      ? (supabase as any).from("reportes_trimestrales").select("entidad_codigo, actividad_codigo, trimestre, avance_tecnico_trimestre, ejecutado_seco_total, presupuesto_seco_programado, resumen_tecnico_ri, ejecutado_contrapartida").eq("trimestre", trimestre)
+      : (supabase as any).from("reportes_trimestrales").select("entidad_codigo, actividad_codigo, trimestre, avance_tecnico_trimestre, ejecutado_seco_total, presupuesto_seco_programado, resumen_tecnico_ri, ejecutado_contrapartida"),
   ]);
 
   const plan = planRes.data || [];
@@ -52,10 +53,8 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
   const entIdToCode = new Map<string, string>(ents.map((e: any) => [e.id, e.codigo]));
   const currentYM = getCurrentYM();
 
-  // Track which entidad_codigo+actividad_codigo combos are in planificacion
   const planKeys = new Set(plan.map((p: any) => `${p.entidad_codigo}|${p.actividad_codigo}`));
 
-  // Aggregate comprobantes
   const compAgg = new Map<string, { seco: number; contrapartida: number }>();
   for (const c of comps) {
     const k = `${c.entidad_codigo}|${c.actividad_codigo}`;
@@ -65,7 +64,6 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
     compAgg.set(k, cur);
   }
 
-  // Aggregate avance from registros
   const avanceAgg = new Map<string, { total: number; lastYM: string | null }>();
   for (const r of regs) {
     const code = r.actividades?.codigo;
@@ -79,7 +77,6 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
     avanceAgg.set(k, cur);
   }
 
-  // Build results from planificacion_actividades
   const results: ActividadSemaforo[] = plan.map((p: any) => {
     const k = `${p.entidad_codigo}|${p.actividad_codigo}`;
     const comp = compAgg.get(k) || { seco: 0, contrapartida: 0 };
@@ -140,8 +137,8 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
   // Add activities from reportes_trimestrales that are NOT in planificacion_actividades
   for (const rt of rts) {
     const k = `${rt.entidad_codigo}|${rt.actividad_codigo}`;
-    if (planKeys.has(k)) continue; // already covered
-    planKeys.add(k); // dedupe across multiple trimestres
+    if (planKeys.has(k)) continue;
+    planKeys.add(k);
 
     const ent = entMap.get(rt.entidad_codigo);
     const ejecutadoSeco = Number(rt.ejecutado_seco_total || 0);
@@ -150,7 +147,6 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
     const ejecutadoContra = Number(rt.ejecutado_contrapartida || 0);
     const pctSeco = pptoSeco > 0 ? Math.round((ejecutadoSeco / pptoSeco) * 100) : 0;
 
-    // Simple semaphore for RT-only: based on financial execution
     let semaforoGlobal: "verde" | "amarillo" | "rojo" = "verde";
     if (ejecutadoSeco > 0 && avanceTec === 0) semaforoGlobal = "rojo";
     else if (pctSeco > 80) semaforoGlobal = "verde";
@@ -186,10 +182,10 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
   return results;
 }
 
-export function useDashboardActividades() {
+export function useDashboardActividades(trimestre?: string) {
   return useQuery({
-    queryKey: ["dashboard-actividades-semaforo"],
-    queryFn: fetchActividadesSemaforo,
+    queryKey: ["dashboard-actividades-semaforo", trimestre || "current"],
+    queryFn: () => fetchActividadesSemaforo(trimestre),
     staleTime: 30_000,
   });
 }
