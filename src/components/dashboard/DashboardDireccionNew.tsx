@@ -71,7 +71,7 @@ export default function DashboardDireccionNew() {
   });
 
   const entidades = useMemo(() => (allEntidades || []).filter(e => {
-    if (e.total_actividades === 0) return false;
+    if (!e.has_data) return false;
     if (mecFilter === "A") return e.mecanismo === "A";
     if (mecFilter === "B") return e.mecanismo === "B";
     return true;
@@ -312,7 +312,9 @@ function EntitySummaryPanel({ ent, onNavigate }: { ent: DashboardEntidad; onNavi
         </div>
         <div className="border rounded p-2">
           <p className="text-[10px] text-muted-foreground">Avance Operativo</p>
-          <p className="text-lg font-bold">{ent.avance_operativo_promedio ?? 0}%</p>
+          <p className="text-lg font-bold">
+            {ent.avance_operativo_promedio != null ? `${ent.avance_operativo_promedio}%` : <span className="text-muted-foreground text-sm">Sin planificación</span>}
+          </p>
         </div>
         <div className="border rounded p-2">
           <p className="text-[10px] text-muted-foreground">Ejecutado SECO</p>

@@ -15,7 +15,6 @@ export interface ActividadSemaforo {
   presupuesto_seco_usd: number;
   presupuesto_contrapartida_usd: number;
   meses_programados: string[];
-  // Calculated
   avance_tecnico: number;
   pct_tecnico: number;
   ejecutado_seco: number;
@@ -25,6 +24,8 @@ export interface ActividadSemaforo {
   semaforo_temporal: "verde" | "amarillo" | "rojo";
   semaforo_global: "verde" | "amarillo" | "rojo";
   ultimo_reporte_mes: string | null;
+  // Whether this activity comes from reportes_trimestrales only
+  solo_reporte_trimestral: boolean;
 }
 
 function getCurrentYM() {
@@ -33,23 +34,28 @@ function getCurrentYM() {
 }
 
 async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
-  const [planRes, compRes, regRes, entRes] = await Promise.all([
+  const [planRes, compRes, regRes, entRes, rtRes] = await Promise.all([
     (supabase as any).from("planificacion_actividades").select("*").order("entidad_codigo, actividad_codigo"),
     (supabase as any).from("comprobantes").select("entidad_codigo, actividad_codigo, monto_usd, fuente"),
     (supabase as any).from("registros_mensuales").select("entidad_id, actividad_id, avance_valor, anio, mes, actividades!inner(codigo, entidad_id)"),
     (supabase as any).from("entidades").select("id, codigo, nombre_corto, mecanismo"),
+    (supabase as any).from("reportes_trimestrales").select("entidad_codigo, actividad_codigo, trimestre, avance_tecnico_trimestre, ejecutado_seco_total, presupuesto_seco_programado, resumen_tecnico_ri, ejecutado_contrapartida"),
   ]);
 
   const plan = planRes.data || [];
   const comps = compRes.data || [];
   const regs = regRes.data || [];
   const ents = entRes.data || [];
+  const rts = rtRes.data || [];
 
   const entMap = new Map<string, any>(ents.map((e: any) => [e.codigo, e]));
   const entIdToCode = new Map<string, string>(ents.map((e: any) => [e.id, e.codigo]));
   const currentYM = getCurrentYM();
 
-  // Aggregate comprobantes by entidad+actividad
+  // Track which entidad_codigo+actividad_codigo combos are in planificacion
+  const planKeys = new Set(plan.map((p: any) => `${p.entidad_codigo}|${p.actividad_codigo}`));
+
+  // Aggregate comprobantes
   const compAgg = new Map<string, { seco: number; contrapartida: number }>();
   for (const c of comps) {
     const k = `${c.entidad_codigo}|${c.actividad_codigo}`;
@@ -73,7 +79,8 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
     avanceAgg.set(k, cur);
   }
 
-  return plan.map((p: any) => {
+  // Build results from planificacion_actividades
+  const results: ActividadSemaforo[] = plan.map((p: any) => {
     const k = `${p.entidad_codigo}|${p.actividad_codigo}`;
     const comp = compAgg.get(k) || { seco: 0, contrapartida: 0 };
     const avance = avanceAgg.get(k) || { total: 0, lastYM: null };
@@ -87,7 +94,6 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
     const pctSeco = pptoSeco > 0 ? Math.round((comp.seco / pptoSeco) * 100) : 0;
     const pctContra = pptoContra > 0 ? Math.round((comp.contrapartida / pptoContra) * 100) : 0;
 
-    // Temporal semaphore
     const sorted = [...meses].sort();
     const pastMonths = sorted.filter(m => m <= currentYM);
     const totalMonths = sorted.length;
@@ -96,7 +102,6 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
     if (pctTemporal > 0.5 && pctTec < 30) semaforoTemporal = "rojo";
     else if (pctTemporal > 0.3 && pctTec < 50) semaforoTemporal = "amarillo";
 
-    // Global semaphore: difference between tech and financial
     const diff = Math.abs(pctTec - pctSeco);
     let semaforoGlobal: "verde" | "amarillo" | "rojo" = "verde";
     if (diff > 30 || (comp.seco > 0 && avance.total === 0) || (avance.total > 0 && comp.seco === 0 && pptoSeco > 0)) {
@@ -128,8 +133,57 @@ async function fetchActividadesSemaforo(): Promise<ActividadSemaforo[]> {
       semaforo_temporal: semaforoTemporal,
       semaforo_global: semaforoGlobal,
       ultimo_reporte_mes: avance.lastYM,
+      solo_reporte_trimestral: false,
     };
   });
+
+  // Add activities from reportes_trimestrales that are NOT in planificacion_actividades
+  for (const rt of rts) {
+    const k = `${rt.entidad_codigo}|${rt.actividad_codigo}`;
+    if (planKeys.has(k)) continue; // already covered
+    planKeys.add(k); // dedupe across multiple trimestres
+
+    const ent = entMap.get(rt.entidad_codigo);
+    const ejecutadoSeco = Number(rt.ejecutado_seco_total || 0);
+    const pptoSeco = Number(rt.presupuesto_seco_programado || 0);
+    const avanceTec = Number(rt.avance_tecnico_trimestre || 0);
+    const ejecutadoContra = Number(rt.ejecutado_contrapartida || 0);
+    const pctSeco = pptoSeco > 0 ? Math.round((ejecutadoSeco / pptoSeco) * 100) : 0;
+
+    // Simple semaphore for RT-only: based on financial execution
+    let semaforoGlobal: "verde" | "amarillo" | "rojo" = "verde";
+    if (ejecutadoSeco > 0 && avanceTec === 0) semaforoGlobal = "rojo";
+    else if (pctSeco > 80) semaforoGlobal = "verde";
+    else if (pctSeco > 0 && pctSeco < 30) semaforoGlobal = "amarillo";
+
+    results.push({
+      actividad_codigo: rt.actividad_codigo,
+      actividad_descripcion: rt.resumen_tecnico_ri ? rt.resumen_tecnico_ri.substring(0, 80) + "..." : rt.actividad_codigo,
+      entidad_codigo: rt.entidad_codigo,
+      entidad_nombre: ent?.nombre_corto || rt.entidad_codigo,
+      mecanismo: ent?.mecanismo || "",
+      resultado_intermedio_codigo: "",
+      resultado_intermedio: "",
+      producto_codigo: "",
+      unidad_medida: "",
+      meta_total: 0,
+      presupuesto_seco_usd: pptoSeco,
+      presupuesto_contrapartida_usd: 0,
+      meses_programados: [],
+      avance_tecnico: avanceTec,
+      pct_tecnico: 0,
+      ejecutado_seco: ejecutadoSeco,
+      pct_seco: pctSeco,
+      ejecutado_contrapartida: ejecutadoContra,
+      pct_contrapartida: 0,
+      semaforo_temporal: "verde",
+      semaforo_global: semaforoGlobal,
+      ultimo_reporte_mes: rt.trimestre || null,
+      solo_reporte_trimestral: true,
+    });
+  }
+
+  return results;
 }
 
 export function useDashboardActividades() {

@@ -54,7 +54,7 @@ export default function DashboardMonitoreoNew() {
   const [obsTexto, setObsTexto] = useState("");
   const [showNewObs, setShowNewObs] = useState(false);
 
-  const entidades = useMemo(() => (allEntidades || []).filter(e => e.total_actividades > 0), [allEntidades]);
+  const entidades = useMemo(() => (allEntidades || []).filter(e => e.has_data), [allEntidades]);
 
   // Entregas panel data
   const currentMonth = new Date().getMonth() + 1;
@@ -305,7 +305,7 @@ export default function DashboardMonitoreoNew() {
                       {a.actividad_codigo}
                     </TableCell>
                     <TableCell className="text-xs cursor-pointer hover:underline"
-                      onClick={() => { const ent = entidades.find(e => e.codigo === a.entidad_codigo || e.nombre_corto === a.entidad_nombre); if (ent) handleNavigateEntity(ent.entidad_id); }}>
+                      onClick={() => { const ent = entidades.find(e => e.codigo === a.entidad_codigo); if (ent) handleNavigateEntity(ent.entidad_id); }}>
                       {a.entidad_nombre}
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{a.actividad_descripcion}</TableCell>

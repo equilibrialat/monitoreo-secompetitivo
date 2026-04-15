@@ -65,7 +65,7 @@ export default function DashboardCoordinadorRegional() {
   const regionEntidades = useMemo(() => {
     if (!allEntidades) return [];
     return allEntidades.filter(e => {
-      if (e.total_actividades === 0) return false;
+      if (!e.has_data) return false;
       // Region filter: coordinador only sees non-Nacional
       if (e.region === "Nacional" || !e.region) return false;
       if (selectedRegion && e.region !== selectedRegion) return false;

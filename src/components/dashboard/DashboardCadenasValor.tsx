@@ -58,14 +58,14 @@ export default function DashboardCadenasValor() {
     },
   });
 
-  const mecB = useMemo(() => (allEntidades || []).filter(e => e.mecanismo === "B" && e.total_actividades > 0), [allEntidades]);
+  const mecB = useMemo(() => (allEntidades || []).filter(e => e.mecanismo === "B" && e.has_data), [allEntidades]);
 
   // Alertas de rezago: actividades con gasto sin avance técnico o viceversa
   const alertasRezago = useMemo(() => {
     if (!actividades) return [];
+    const mecBCodes = new Set(mecB.map(e => e.codigo));
     return actividades.filter(a => {
-      const ent = mecB.find(e => e.codigo === a.entidad_codigo || e.nombre_corto === a.entidad_nombre);
-      if (!ent) return false;
+      if (!mecBCodes.has(a.entidad_codigo)) return false;
       return a.semaforo_global === "rojo";
     }).slice(0, 10);
   }, [actividades, mecB]);
@@ -208,22 +208,22 @@ export default function DashboardCadenasValor() {
       {/* Panels */}
       <DetailPanel open={panel?.type === "tecnico"} onClose={() => setPanel(null)}
         title={`Avance técnico — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityTechPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+        <EntityTechPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "financiero"} onClose={() => setPanel(null)}
         title={`Ejecución financiera — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityFinPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+        <EntityFinPanel ent={panel?.data} actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "cruce"} onClose={() => setPanel(null)}
         title={`Cruce técnico-financiero — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityCrucePanel actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+        <EntityCrucePanel actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "estado-actividades"} onClose={() => setPanel(null)}
         title={`Actividades — ${panel?.data?.nombre_corto || ""}`}>
-        <EntityActividadesPanel actividades={actividades?.filter(a => a.entidad_nombre === panel?.data?.nombre_corto) || []} />
+        <EntityActividadesPanel actividades={actividades?.filter(a => a.entidad_codigo === panel?.data?.codigo) || []} />
       </DetailPanel>
 
       <DetailPanel open={panel?.type === "ultimo-reporte"} onClose={() => setPanel(null)}
