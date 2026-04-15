@@ -72,11 +72,11 @@ export default function DashboardDireccionNew() {
   const [showAllAlertas, setShowAllAlertas] = useState(false);
 
   // Available trimestres
-  const { data: trimestresDisp } = useQuery({
+  const { data: trimestresDisp } = useQuery<string[]>({
     queryKey: ["trimestres-disponibles"],
     queryFn: async () => {
       const { data } = await (supabase as any).from("reportes_trimestrales").select("trimestre");
-      return [...new Set((data || []).map((r: any) => r.trimestre))].sort();
+      return [...new Set((data || []).map((r: any) => r.trimestre as string))].sort();
     },
     staleTime: 120_000,
   });
