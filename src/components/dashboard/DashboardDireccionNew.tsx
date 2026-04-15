@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import CascadingFilters, { calcTrimestreActual, type CascadingFilterState } from "./CascadingFilters";
 import NarrativeBlock from "./NarrativeBlock";
+import ArbolIndicadoresActividades from "./ArbolIndicadoresActividades";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SEMAFORO_COLORS = { verde: "bg-emerald-500", amarillo: "bg-yellow-500", rojo: "bg-red-500", gris: "bg-muted-foreground/40" };
 
@@ -239,16 +241,33 @@ export default function DashboardDireccionNew() {
       {/* Panel lateral entidad */}
       <DetailPanel open={panel?.type === "entidad"} onClose={() => setPanel(null)} title={panel?.data?.nombre_corto || "Entidad"}>
         {panel?.data && (
-          <div className="space-y-4">
-            <NarrativeBlock tipo="resumen_entidad" params={{ entidad_codigo: panel.data.codigo }} />
-            <div className="grid grid-cols-2 gap-3">
-              <div className="border rounded p-2"><p className="text-[10px] text-muted-foreground">Actividades</p><p className="text-lg font-bold">{panel.data.actividades_completadas}/{panel.data.total_actividades}</p></div>
-              <div className="border rounded p-2"><p className="text-[10px] text-muted-foreground">Ejecución</p><p className="text-lg font-bold">{panel.data.pct_ejecucion_seco}%</p></div>
-            </div>
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => { setPanel(null); handleNavigateEntity(panel.data.entidad_id); }}>
-              Ver planificación completa →
-            </Button>
-          </div>
+          <Tabs defaultValue="resumen" className="w-full">
+            <TabsList className="w-full grid grid-cols-2 mb-3">
+              <TabsTrigger value="resumen" className="text-xs">Resumen</TabsTrigger>
+              <TabsTrigger value="indicadores" className="text-xs">Por indicadores</TabsTrigger>
+            </TabsList>
+            <TabsContent value="resumen">
+              <div className="space-y-4">
+                <NarrativeBlock tipo="resumen_entidad" params={{ entidad_codigo: panel.data.codigo }} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border rounded p-2"><p className="text-[10px] text-muted-foreground">Actividades</p><p className="text-lg font-bold">{panel.data.actividades_completadas}/{panel.data.total_actividades}</p></div>
+                  <div className="border rounded p-2"><p className="text-[10px] text-muted-foreground">Ejecución</p><p className="text-lg font-bold">{panel.data.pct_ejecucion_seco}%</p></div>
+                </div>
+                <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => { setPanel(null); handleNavigateEntity(panel.data.entidad_id); }}>
+                  Ver planificación completa →
+                </Button>
+              </div>
+            </TabsContent>
+            <TabsContent value="indicadores">
+              <ArbolIndicadoresActividades
+                filtros={{
+                  trimestre: filters.trimestre,
+                  entidad_codigo: panel.data.codigo,
+                  mecanismo: "B",
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         )}
       </DetailPanel>
 
