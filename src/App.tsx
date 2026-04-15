@@ -52,12 +52,12 @@ const App = () => (
               <Route path="/dashboard" element={<Index />} />
 
               {/* Entidad routes */}
-              <Route path="/actividades" element={<RegistrarAvancePage />} />
+              <Route path="/actividades" element={<Navigate to="/mi-planificacion" replace />} />
               <Route path="/mi-planificacion" element={<MiPlanificacionPage />} />
               <Route path="/registro-mensual" element={<RegistroMensualPage />} />
               <Route path="/registro-rapido" element={<RegistroRapidoPage />} />
               <Route path="/indicadores-impacto" element={<IndicadoresImpactoPage />} />
-              <Route path="/avance-proyecto" element={<ReporteTrimestralPage />} />
+              <Route path="/avance-proyecto" element={<Navigate to="/mi-planificacion" replace />} />
 
               {/* Gestor routes */}
               <Route path="/mis-iniciativas" element={<MisIniciativasPage />} />

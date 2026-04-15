@@ -37,24 +37,12 @@ const ENTIDAD_NAV: NavSection[] = [
   {
     items: [
       { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: "PLANIFICACIÓN",
-    items: [
       { label: "Mi Planificación", path: "/mi-planificacion", icon: ClipboardList },
     ],
   },
   {
-    label: "MENSUAL",
+    label: "REPORTES",
     items: [
-      { label: "Registrar Avance", path: "/actividades", icon: FileText },
-    ],
-  },
-  {
-    label: "TRIMESTRAL",
-    items: [
-      { label: "Avance del Proyecto", path: "/avance-proyecto", icon: BarChart3 },
       { label: "Generar Reporte", path: "/generar-reportes", icon: FileDown },
     ],
   },
