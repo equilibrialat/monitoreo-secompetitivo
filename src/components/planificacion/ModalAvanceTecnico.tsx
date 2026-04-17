@@ -73,6 +73,9 @@ export default function ModalAvanceTecnico({
         anio = fecha.getFullYear();
       }
 
+      // Solo insertamos en registros_mensuales (avance técnico).
+      // Importante: NO tocar `actividades` ni `ejecucion_financiera` aquí — el guardado
+      // del avance técnico debe ser independiente del estado financiero.
       const { error: regError } = await supabase.from("registros_mensuales").insert({
         actividad_id: actividadId,
         entidad_id: entidadId,
@@ -86,11 +89,6 @@ export default function ModalAvanceTecnico({
       });
 
       if (regError) throw regError;
-
-      await supabase
-        .from("actividades")
-        .update({ avance_operativo_pct: porcentaje } as any)
-        .eq("id", actividadId);
 
       toast.success("Avance técnico registrado");
       setDescripcion("");
