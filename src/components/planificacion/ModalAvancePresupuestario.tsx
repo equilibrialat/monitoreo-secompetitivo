@@ -111,18 +111,28 @@ export default function ModalAvancePresupuestario({
         regId = newReg.id;
       }
 
-      // Upload file if provided
+      // Adjuntar archivo o URL si se proporcionó
       let docUrl: string | null = null;
-      if (archivo) {
-        const ext = archivo.name.split(".").pop();
+      if (source.mode === "file" && source.file) {
+        const file = source.file;
+        const ext = file.name.split(".").pop();
         const path = `comprobantes/${entidadId}/${actividadCodigo}/${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from("documentos").upload(path, archivo);
+        const { error: uploadErr } = await supabase.storage.from("documentos").upload(path, file);
         if (uploadErr) {
           console.error("Upload error:", uploadErr);
         } else {
           const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
           docUrl = urlData.publicUrl;
         }
+      } else if (source.mode === "url") {
+        const trimmed = source.url.trim();
+        const urlErr = validateUrl(trimmed);
+        if (trimmed && urlErr) {
+          toast.error(urlErr);
+          setSaving(false);
+          return;
+        }
+        if (trimmed) docUrl = trimmed;
       }
 
       const { error: efError } = await supabase.from("ejecucion_financiera").insert({
@@ -143,7 +153,7 @@ export default function ModalAvancePresupuestario({
       setTipoComprobante("factura");
       setFuente("cofinanciamiento_seco");
       setFecha(new Date());
-      setArchivo(null);
+      setSource({ mode: "file", file: null });
       setMesReportar("");
       onOpenChange(false);
       onSaved?.();
