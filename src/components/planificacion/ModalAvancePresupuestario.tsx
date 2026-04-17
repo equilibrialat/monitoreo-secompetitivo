@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Upload } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MesReportarSelect, { parseMesReportar } from "./MesReportarSelect";
+import { FileOrUrlInput, type FileOrUrlValue, validateUrl } from "@/components/ui/file-or-url-input";
 
 const TIPOS_COMPROBANTE = [
   { value: "factura", label: "Factura" },
@@ -58,7 +59,7 @@ export default function ModalAvancePresupuestario({
   const [tipoComprobante, setTipoComprobante] = useState("factura");
   const [fuente, setFuente] = useState("cofinanciamiento_seco");
   const [fecha, setFecha] = useState<Date>(new Date());
-  const [archivo, setArchivo] = useState<File | null>(null);
+  const [source, setSource] = useState<FileOrUrlValue>({ mode: "file", file: null });
   const [mesReportar, setMesReportar] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
