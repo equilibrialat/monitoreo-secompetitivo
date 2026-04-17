@@ -163,11 +163,15 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
   const currentYM = getCurrentYearMonth();
 
-  function loadData() {
+  function loadData(opts?: { skipFinanciero?: boolean }) {
     if (!entidadCodigo) { setActividades([]); setLoading(false); return; }
-    setLoading(true);
+    const skipFin = opts?.skipFinanciero === true;
+    // En recargas parciales (p. ej. tras guardar avance técnico) no mostramos
+    // el skeleton global y NO refetcheamos ejecución financiera, para que el
+    // estado del componente presupuestario no se vea afectado.
+    if (!skipFin) setLoading(true);
 
-    Promise.all([
+    const queries: Promise<any>[] = [
       (supabase as any)
         .from("planificacion_actividades")
         .select("*")
@@ -177,21 +181,25 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         .from("registros_mensuales")
         .select("actividad_id, anio, mes, avance_valor, estado_registro, fecha_registro, actividades!inner(codigo)")
         .eq("entidad_id", entidadId),
-      // Fetch activity UUIDs
       (supabase as any)
         .from("actividades")
         .select("id, codigo")
         .eq("entidad_id", entidadId),
-      // Fetch last financial entries
-      (supabase as any)
-        .from("ejecucion_financiera")
-        .select("actividad_id, created_at, actividades!inner(codigo)")
-        .eq("entidad_id", entidadId)
-        .order("created_at", { ascending: false }),
-    ]).then(([planRes, regRes, actRes, efRes]: any[]) => {
+    ];
+    if (!skipFin) {
+      queries.push(
+        (supabase as any)
+          .from("ejecucion_financiera")
+          .select("actividad_id, created_at, actividades!inner(codigo)")
+          .eq("entidad_id", entidadId)
+          .order("created_at", { ascending: false }),
+      );
+    }
+
+    Promise.all(queries).then((results: any[]) => {
+      const [planRes, regRes, actRes, efRes] = results;
       setActividades(planRes.data || []);
 
-      // Activity ID map
       const idMap = new Map<string, string>();
       if (actRes.data) {
         for (const a of actRes.data) idMap.set(a.codigo, a.id);
@@ -212,7 +220,6 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
             const prev = avanceMap.get(code) || 0;
             avanceMap.set(code, prev + (r.avance_valor || 0));
           }
-          // Track latest registro date
           if (r.fecha_registro) {
             const prev = lastTecMap.get(code);
             if (!prev || r.fecha_registro > prev) lastTecMap.set(code, r.fecha_registro);
@@ -223,16 +230,18 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
       setAvanceByActivity(avanceMap);
       setLastTecnico(lastTecMap);
 
-      // Last financial update per activity code
-      const lastFinMap = new Map<string, string>();
-      if (efRes.data) {
-        for (const ef of efRes.data) {
-          const code = ef.actividades?.codigo;
-          if (!code || lastFinMap.has(code)) continue;
-          lastFinMap.set(code, ef.created_at);
+      // Solo recalculamos el mapa financiero si recargamos esa fuente.
+      if (!skipFin && efRes) {
+        const lastFinMap = new Map<string, string>();
+        if (efRes.data) {
+          for (const ef of efRes.data) {
+            const code = ef.actividades?.codigo;
+            if (!code || lastFinMap.has(code)) continue;
+            lastFinMap.set(code, ef.created_at);
+          }
         }
+        setLastFinanciero(lastFinMap);
       }
-      setLastFinanciero(lastFinMap);
 
       setLoading(false);
     });
