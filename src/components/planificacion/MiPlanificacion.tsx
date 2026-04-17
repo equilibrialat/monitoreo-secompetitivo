@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronRight, ChevronDown, Calendar, Target, DollarSign,
   CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star,
-  FileEdit, Wallet
+  FileEdit, Wallet, Info
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
