@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronRight, ChevronDown, BarChart3, Target,
+  ChevronRight, ChevronDown, BarChart3, Target, Info,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -365,12 +365,23 @@ export default function MiEjecucionTecnica({ readOnly = false, entidadCodigoOver
                                     <tr key={act.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                                       <td className="py-2 px-2 text-center font-mono text-xs font-bold text-primary">{act.actividad_codigo}</td>
                                       <td className="py-2 px-2">
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <span className="text-xs text-foreground line-clamp-1">{act.actividad_descripcion}</span>
-                                          </TooltipTrigger>
-                                          <TooltipContent side="top" className="max-w-sm text-xs">{act.actividad_descripcion}</TooltipContent>
-                                        </Tooltip>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-xs text-foreground line-clamp-1 flex-1 min-w-0">{act.actividad_descripcion}</span>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0" />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="max-w-[280px] text-xs space-y-1">
+                                              <p className="font-medium leading-snug">{act.actividad_descripcion}</p>
+                                              <p className="text-[11px] text-muted-foreground">
+                                                <span className="font-semibold">Unidad:</span> {act.unidad_medida || "—"}
+                                              </p>
+                                              <p className="text-[11px] text-muted-foreground">
+                                                <span className="font-semibold">Meta planificada:</span> {act.meta_total ?? "—"} {act.unidad_medida || ""}
+                                              </p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </div>
                                       </td>
                                       <td className="py-2 px-2 text-xs text-muted-foreground">{act.unidad_medida}</td>
                                       <td className="py-2 px-2 text-center text-xs font-semibold">
