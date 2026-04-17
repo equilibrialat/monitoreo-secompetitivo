@@ -555,7 +555,7 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         actividadDescripcion={modalTecnico.act.actividad_descripcion}
         actividadId={actIdMap.get(modalTecnico.act.actividad_codigo)}
         entidadId={entidadId || ""}
-        onSaved={loadData}
+        onSaved={() => loadData({ skipFinanciero: true })}
         mesesProgramados={modalTecnico.act.meses_programados || []}
         mesesReportados={reportsByActivity.get(modalTecnico.act.actividad_codigo) || new Set()}
       />
