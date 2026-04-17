@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Upload, X, FileText, Eye } from "lucide-react";
+import { Paperclip, X, FileText, Eye, Link as LinkIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { FileOrUrlInput, type FileOrUrlValue, validateUrl } from "@/components/ui/file-or-url-input";
 
 interface Props {
   entidadCodigo: string;
@@ -17,8 +18,8 @@ const TIPOS_DOCUMENTO = ["Contrato", "Factura", "Informe", "Foto", "Otro"];
 export default function DocumentUploadBlock({ entidadCodigo, actividades }: Props) {
   const [actividadCodigo, setActividadCodigo] = useState("");
   const [tipoDoc, setTipoDoc] = useState("Informe");
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+  const [source, setSource] = useState<FileOrUrlValue>({ mode: "file", file: null });
   const queryClient = useQueryClient();
 
   const { data: documentos } = useQuery({
@@ -34,49 +35,82 @@ export default function DocumentUploadBlock({ entidadCodigo, actividades }: Prop
     },
   });
 
-  const handleUpload = useCallback(async (file: File) => {
+  const handleSave = useCallback(async () => {
     if (!actividadCodigo) {
       toast.error("Selecciona una actividad primero");
       return;
     }
 
-    setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${entidadCodigo}/${actividadCodigo}/${Date.now()}.${ext}`;
+    let nombreArchivo = "";
+    let urlFinal = "";
 
-    const { error: uploadError } = await supabase.storage
-      .from("documentos")
-      .upload(path, file);
-
-    if (uploadError) {
-      toast.error("Error al subir archivo");
-      setUploading(false);
-      return;
+    if (source.mode === "file") {
+      if (!source.file) {
+        toast.error("Selecciona un archivo o cambia a modo enlace");
+        return;
+      }
+      setSaving(true);
+      const file = source.file;
+      const ext = file.name.split(".").pop();
+      const path = `${entidadCodigo}/${actividadCodigo}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("documentos")
+        .upload(path, file);
+      if (uploadError) {
+        toast.error("Error al subir archivo");
+        setSaving(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
+      urlFinal = urlData.publicUrl;
+      nombreArchivo = file.name;
+    } else {
+      const trimmed = source.url.trim();
+      const err = validateUrl(trimmed);
+      if (!trimmed || err) {
+        toast.error(err || "Ingresa una URL válida");
+        return;
+      }
+      setSaving(true);
+      urlFinal = trimmed;
+      // Try to derive a friendly label from the URL
+      try {
+        const parsed = new URL(trimmed);
+        nombreArchivo = parsed.hostname + (parsed.pathname && parsed.pathname !== "/" ? parsed.pathname : "");
+        if (nombreArchivo.length > 60) nombreArchivo = nombreArchivo.slice(0, 57) + "…";
+      } catch {
+        nombreArchivo = trimmed.slice(0, 60);
+      }
     }
 
-    const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
-
-    await (supabase as any).from("documentos").insert({
+    const { error: insertError } = await (supabase as any).from("documentos").insert({
       entidad_codigo: entidadCodigo,
       actividad_codigo: actividadCodigo,
       tipo_documento: tipoDoc,
-      nombre_archivo: file.name,
-      url_storage: urlData.publicUrl,
+      nombre_archivo: nombreArchivo,
+      url_storage: urlFinal,
     });
 
-    toast.success("Documento subido");
-    setUploading(false);
+    if (insertError) {
+      toast.error("Error al guardar el registro");
+      setSaving(false);
+      return;
+    }
+
+    toast.success(source.mode === "file" ? "Documento subido" : "Enlace agregado");
+    setSource({ mode: source.mode, ...(source.mode === "file" ? { file: null } : { url: "" }) } as FileOrUrlValue);
+    setSaving(false);
     queryClient.invalidateQueries({ queryKey: ["documentos", entidadCodigo] });
-  }, [actividadCodigo, tipoDoc, entidadCodigo, queryClient]);
+  }, [actividadCodigo, tipoDoc, entidadCodigo, queryClient, source]);
 
   const handleDelete = async (id: string, url: string) => {
-    // Extract path from URL
+    // Solo borrar de storage si es un archivo subido por nosotros
     const pathMatch = url.split("/documentos/")[1];
-    if (pathMatch) {
+    if (pathMatch && url.includes("/storage/")) {
       await supabase.storage.from("documentos").remove([pathMatch]);
     }
     await (supabase as any).from("documentos").delete().eq("id", id);
-    toast.success("Documento eliminado");
+    toast.success("Eliminado");
     queryClient.invalidateQueries({ queryKey: ["documentos", entidadCodigo] });
   };
 
@@ -111,49 +145,67 @@ export default function DocumentUploadBlock({ entidadCodigo, actividades }: Prop
               ))}
             </SelectContent>
           </Select>
+        </div>
 
+        <FileOrUrlInput
+          value={source}
+          onChange={setSource}
+          disabled={saving || !actividadCodigo}
+          helperText="Solo uno de los dos: archivo o enlace."
+        />
+
+        <div className="mt-2">
           <Button
-            variant="outline"
             size="sm"
             className="h-8 text-xs"
-            disabled={uploading || !actividadCodigo}
-            onClick={() => fileInputRef.current?.click()}
+            disabled={
+              saving ||
+              !actividadCodigo ||
+              (source.mode === "file" ? !source.file : !source.url.trim())
+            }
+            onClick={handleSave}
           >
-            <Upload className="h-3 w-3 mr-1" />
-            {uploading ? "Subiendo..." : "Subir archivo"}
+            {saving && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+            {source.mode === "file" ? "Subir" : "Guardar enlace"}
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) handleUpload(file);
-              e.target.value = "";
-            }}
-          />
         </div>
 
         {/* Recent documents */}
         {documentos && documentos.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-[10px] text-muted-foreground font-medium">Archivos recientes:</p>
-            {documentos.map((doc: any) => (
-              <div key={doc.id} className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-muted/50">
-                <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-                <span className="truncate flex-1">{doc.nombre_archivo}</span>
-                <span className="text-[10px] text-muted-foreground shrink-0">{doc.actividad_codigo}</span>
-                <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1" asChild>
-                  <a href={doc.url_storage} target="_blank" rel="noopener noreferrer">
-                    <Eye className="h-3 w-3" />
+          <div className="space-y-1.5 mt-4">
+            <p className="text-[10px] text-muted-foreground font-medium">Recientes:</p>
+            {documentos.map((doc: any) => {
+              const isExternalLink =
+                doc.url_storage &&
+                !doc.url_storage.includes("/storage/v1/object/public/documentos/");
+              return (
+                <div key={doc.id} className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-muted/50">
+                  {isExternalLink ? (
+                    <LinkIcon className="h-3 w-3 text-primary shrink-0" />
+                  ) : (
+                    <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                  )}
+                  <a
+                    href={doc.url_storage}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate flex-1 hover:underline hover:text-primary"
+                  >
+                    {doc.nombre_archivo}
                   </a>
-                </Button>
-                <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-destructive"
-                  onClick={() => handleDelete(doc.id, doc.url_storage)}>
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
+                  <span className="text-[10px] text-muted-foreground shrink-0">{doc.actividad_codigo}</span>
+                  <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1" asChild>
+                    <a href={doc.url_storage} target="_blank" rel="noopener noreferrer">
+                      <Eye className="h-3 w-3" />
+                    </a>
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-destructive"
+                    onClick={() => handleDelete(doc.id, doc.url_storage)}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>

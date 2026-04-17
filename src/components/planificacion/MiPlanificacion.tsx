@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronRight, ChevronDown, Calendar, Target, DollarSign,
   CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star,
-  FileEdit, Wallet
+  FileEdit, Wallet, Info
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -163,11 +163,15 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
   const currentYM = getCurrentYearMonth();
 
-  function loadData() {
+  function loadData(opts?: { skipFinanciero?: boolean }) {
     if (!entidadCodigo) { setActividades([]); setLoading(false); return; }
-    setLoading(true);
+    const skipFin = opts?.skipFinanciero === true;
+    // En recargas parciales (p. ej. tras guardar avance técnico) no mostramos
+    // el skeleton global y NO refetcheamos ejecución financiera, para que el
+    // estado del componente presupuestario no se vea afectado.
+    if (!skipFin) setLoading(true);
 
-    Promise.all([
+    const queries: Promise<any>[] = [
       (supabase as any)
         .from("planificacion_actividades")
         .select("*")
@@ -177,21 +181,25 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         .from("registros_mensuales")
         .select("actividad_id, anio, mes, avance_valor, estado_registro, fecha_registro, actividades!inner(codigo)")
         .eq("entidad_id", entidadId),
-      // Fetch activity UUIDs
       (supabase as any)
         .from("actividades")
         .select("id, codigo")
         .eq("entidad_id", entidadId),
-      // Fetch last financial entries
-      (supabase as any)
-        .from("ejecucion_financiera")
-        .select("actividad_id, created_at, actividades!inner(codigo)")
-        .eq("entidad_id", entidadId)
-        .order("created_at", { ascending: false }),
-    ]).then(([planRes, regRes, actRes, efRes]: any[]) => {
+    ];
+    if (!skipFin) {
+      queries.push(
+        (supabase as any)
+          .from("ejecucion_financiera")
+          .select("actividad_id, created_at, actividades!inner(codigo)")
+          .eq("entidad_id", entidadId)
+          .order("created_at", { ascending: false }),
+      );
+    }
+
+    Promise.all(queries).then((results: any[]) => {
+      const [planRes, regRes, actRes, efRes] = results;
       setActividades(planRes.data || []);
 
-      // Activity ID map
       const idMap = new Map<string, string>();
       if (actRes.data) {
         for (const a of actRes.data) idMap.set(a.codigo, a.id);
@@ -212,7 +220,6 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
             const prev = avanceMap.get(code) || 0;
             avanceMap.set(code, prev + (r.avance_valor || 0));
           }
-          // Track latest registro date
           if (r.fecha_registro) {
             const prev = lastTecMap.get(code);
             if (!prev || r.fecha_registro > prev) lastTecMap.set(code, r.fecha_registro);
@@ -223,16 +230,18 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
       setAvanceByActivity(avanceMap);
       setLastTecnico(lastTecMap);
 
-      // Last financial update per activity code
-      const lastFinMap = new Map<string, string>();
-      if (efRes.data) {
-        for (const ef of efRes.data) {
-          const code = ef.actividades?.codigo;
-          if (!code || lastFinMap.has(code)) continue;
-          lastFinMap.set(code, ef.created_at);
+      // Solo recalculamos el mapa financiero si recargamos esa fuente.
+      if (!skipFin && efRes) {
+        const lastFinMap = new Map<string, string>();
+        if (efRes.data) {
+          for (const ef of efRes.data) {
+            const code = ef.actividades?.codigo;
+            if (!code || lastFinMap.has(code)) continue;
+            lastFinMap.set(code, ef.created_at);
+          }
         }
+        setLastFinanciero(lastFinMap);
       }
-      setLastFinanciero(lastFinMap);
 
       setLoading(false);
     });
@@ -546,7 +555,7 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         actividadDescripcion={modalTecnico.act.actividad_descripcion}
         actividadId={actIdMap.get(modalTecnico.act.actividad_codigo)}
         entidadId={entidadId || ""}
-        onSaved={loadData}
+        onSaved={() => loadData({ skipFinanciero: true })}
         mesesProgramados={modalTecnico.act.meses_programados || []}
         mesesReportados={reportsByActivity.get(modalTecnico.act.actividad_codigo) || new Set()}
       />
@@ -605,14 +614,23 @@ function ActividadRow({
       >
         <td className="py-2 px-2 text-center font-mono text-xs font-bold text-primary">{act.actividad_codigo}</td>
         <td className="py-2 px-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="text-xs text-foreground line-clamp-1">{act.actividad_descripcion}</span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-sm text-xs">
-              {act.actividad_descripcion}
-            </TooltipContent>
-          </Tooltip>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-foreground line-clamp-1 flex-1 min-w-0">{act.actividad_descripcion}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[280px] text-xs space-y-1">
+                <p className="font-medium leading-snug">{act.actividad_descripcion}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-semibold">Unidad:</span> {act.unidad_medida || "—"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-semibold">Meta planificada:</span> {act.meta_total ?? "—"} {act.unidad_medida || ""}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </td>
         <td className="py-2 px-2 text-xs text-muted-foreground">{act.unidad_medida}</td>
         <td className="py-2 px-2 text-center text-xs font-semibold">{act.meta_total}</td>

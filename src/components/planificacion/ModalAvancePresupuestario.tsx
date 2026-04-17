@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Upload } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MesReportarSelect, { parseMesReportar } from "./MesReportarSelect";
+import { FileOrUrlInput, type FileOrUrlValue, validateUrl } from "@/components/ui/file-or-url-input";
 
 const TIPOS_COMPROBANTE = [
   { value: "factura", label: "Factura" },
@@ -58,7 +59,7 @@ export default function ModalAvancePresupuestario({
   const [tipoComprobante, setTipoComprobante] = useState("factura");
   const [fuente, setFuente] = useState("cofinanciamiento_seco");
   const [fecha, setFecha] = useState<Date>(new Date());
-  const [archivo, setArchivo] = useState<File | null>(null);
+  const [source, setSource] = useState<FileOrUrlValue>({ mode: "file", file: null });
   const [mesReportar, setMesReportar] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -110,18 +111,28 @@ export default function ModalAvancePresupuestario({
         regId = newReg.id;
       }
 
-      // Upload file if provided
+      // Adjuntar archivo o URL si se proporcionó
       let docUrl: string | null = null;
-      if (archivo) {
-        const ext = archivo.name.split(".").pop();
+      if (source.mode === "file" && source.file) {
+        const file = source.file;
+        const ext = file.name.split(".").pop();
         const path = `comprobantes/${entidadId}/${actividadCodigo}/${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from("documentos").upload(path, archivo);
+        const { error: uploadErr } = await supabase.storage.from("documentos").upload(path, file);
         if (uploadErr) {
           console.error("Upload error:", uploadErr);
         } else {
           const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
           docUrl = urlData.publicUrl;
         }
+      } else if (source.mode === "url") {
+        const trimmed = source.url.trim();
+        const urlErr = validateUrl(trimmed);
+        if (trimmed && urlErr) {
+          toast.error(urlErr);
+          setSaving(false);
+          return;
+        }
+        if (trimmed) docUrl = trimmed;
       }
 
       const { error: efError } = await supabase.from("ejecucion_financiera").insert({
@@ -142,7 +153,7 @@ export default function ModalAvancePresupuestario({
       setTipoComprobante("factura");
       setFuente("cofinanciamiento_seco");
       setFecha(new Date());
-      setArchivo(null);
+      setSource({ mode: "file", file: null });
       setMesReportar("");
       onOpenChange(false);
       onSaved?.();
@@ -236,24 +247,14 @@ export default function ModalAvancePresupuestario({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Adjuntar comprobante (opcional)</Label>
-            <div className="flex items-center gap-2">
-              <label className="flex-1 flex items-center gap-2 px-3 py-2 border border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors text-sm text-muted-foreground">
-                <Upload className="h-4 w-4" />
-                {archivo ? archivo.name : "Seleccionar archivo…"}
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
-                  onChange={(e) => setArchivo(e.target.files?.[0] || null)}
-                />
-              </label>
-              {archivo && (
-                <Button variant="ghost" size="sm" onClick={() => setArchivo(null)}>✕</Button>
-              )}
-            </div>
-          </div>
+          <FileOrUrlInput
+            label="Adjuntar comprobante (opcional)"
+            value={source}
+            onChange={setSource}
+            accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
+            disabled={saving}
+            helperText="Sube el archivo o pega un enlace (Drive, OneDrive, etc.)."
+          />
         </div>
 
         <DialogFooter>
