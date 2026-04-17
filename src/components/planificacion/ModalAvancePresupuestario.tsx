@@ -247,24 +247,14 @@ export default function ModalAvancePresupuestario({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Adjuntar comprobante (opcional)</Label>
-            <div className="flex items-center gap-2">
-              <label className="flex-1 flex items-center gap-2 px-3 py-2 border border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors text-sm text-muted-foreground">
-                <Upload className="h-4 w-4" />
-                {archivo ? archivo.name : "Seleccionar archivo…"}
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
-                  onChange={(e) => setArchivo(e.target.files?.[0] || null)}
-                />
-              </label>
-              {archivo && (
-                <Button variant="ghost" size="sm" onClick={() => setArchivo(null)}>✕</Button>
-              )}
-            </div>
-          </div>
+          <FileOrUrlInput
+            label="Adjuntar comprobante (opcional)"
+            value={source}
+            onChange={setSource}
+            accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
+            disabled={saving}
+            helperText="Sube el archivo o pega un enlace (Drive, OneDrive, etc.)."
+          />
         </div>
 
         <DialogFooter>
