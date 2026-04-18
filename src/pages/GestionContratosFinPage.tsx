@@ -237,15 +237,51 @@ export default function GestionContratosFinPage() {
       mes: calcMes(pForm.fecha_documento),
       fuente: pForm.fuente,
       igv_usd: parseFloat(pForm.igv_usd) || 0,
+      enlace_producto: pForm.enlace_producto.trim() || null,
     });
     setSaving(false);
     if (error) { toast.error("Error al guardar"); console.error(error); }
     else {
       toast.success("Comprobante registrado");
       setShowComprobanteDialog(false);
-      setPForm({ contrato_id: "none", actividad_codigo: "", fecha_documento: "", clase_documento: "FAC", numero_documento: "", ruc: "", proveedor_nombre: "", concepto: "", moneda: "USD", monto_moneda_origen: "", tipo_cambio: "1", tipo_gasto: "consultoría", fuente: "seco", igv_usd: "0" });
+      setPForm({ contrato_id: "none", actividad_codigo: "", fecha_documento: "", clase_documento: "FAC", numero_documento: "", ruc: "", proveedor_nombre: "", concepto: "", moneda: "USD", monto_moneda_origen: "", tipo_cambio: "1", tipo_gasto: "consultoría", fuente: "seco", igv_usd: "0", enlace_producto: "" });
       loadData();
     }
+  }
+
+  function handleExportComprobantes() {
+    if (comprobantes.length === 0) {
+      toast.info("No hay comprobantes para exportar");
+      return;
+    }
+    const contratoLabel = (id: string | null) => {
+      if (!id) return "—";
+      const c = contratos.find(x => x.id === id);
+      return c ? (c.numero_contrato || c.proveedor_nombre || "—") : "—";
+    };
+    const contratadoLabel = (id: string | null) => {
+      if (!id) return "—";
+      const c = contratos.find(x => x.id === id);
+      return c?.proveedor_nombre || "—";
+    };
+    const rows = comprobantes.map(p => ({
+      "Contrato": contratoLabel(p.contrato_id),
+      "Contratado": contratadoLabel(p.contrato_id) !== "—" ? contratadoLabel(p.contrato_id) : (p.proveedor_nombre || "—"),
+      "Actividad vinculada": p.actividad_codigo,
+      "N° comprobante": [p.clase_documento, p.numero_documento].filter(Boolean).join(" ") || "—",
+      "Fecha": p.fecha_documento,
+      "Concepto": p.concepto,
+      "Tipo de documento": p.clase_documento || "—",
+      "Monto": Number(p.monto_usd?.toFixed(2) ?? 0),
+      "Enlace producto": p.enlace_producto || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 22 }, { wch: 26 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 50 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Comprobantes");
+    const fname = `comprobantes_${entidadCodigo}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fname);
+    toast.success(`Exportados ${rows.length} comprobantes`);
   }
 
   // When selecting contrato in comprobante form, pre-fill fields
