@@ -42,18 +42,20 @@ const ENTIDAD_NAV: NavSection[] = [
       { label: "Mi Ejecución Presup.", path: "/ejecucion-presupuestaria", icon: Banknote },
     ],
   },
-  {
-    label: "REPORTES",
-    items: [
-      { label: "Generar Reporte", path: "/generar-reportes", icon: FileDown },
-    ],
-  },
+  // HIDDEN — coming_soon: true. Mantener componente y rutas, no visible en menú.
+  // {
+  //   label: "REPORTES",
+  //   items: [
+  //     { label: "Generar Reporte", path: "/generar-reportes", icon: FileDown },
+  //   ],
+  // },
   {
     label: "GESTIÓN",
     items: [
       { label: "Contratos y Comprobantes", path: "/gestion-contratos", icon: FileCheck },
       { label: "Viáticos", path: "/viaticos", icon: Plane },
-      { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
+      // HIDDEN — coming_soon: true. Historial vivirá dentro de Planificación; bandeja en dashboard.
+      // { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
     ],
   },
 ];
@@ -75,7 +77,8 @@ const COORDINADOR_REGIONAL_NAV: NavSection[] = [
     items: [
       { label: "Planificación", path: "/planificacion-trimestral", icon: ClipboardList },
       { label: "Aprobaciones", path: "/aprobaciones", icon: ClipboardCheck },
-      { label: "Reasignaciones", path: "/bandeja-reasignaciones", icon: Shuffle },
+      // HIDDEN — coming_soon: true. Bandeja vivirá en dashboard del rol.
+      // { label: "Reasignaciones", path: "/bandeja-reasignaciones", icon: Shuffle },
       { label: "Consolidado Regional", path: "/reportes-regionales", icon: BarChart3 },
     ],
   },
@@ -103,7 +106,8 @@ const COORDINADOR_CADENAS_NAV: NavSection[] = [
     label: "TRIMESTRAL",
     items: [
       { label: "Consolidado Mec B", path: "/reportes-mec-b", icon: BarChart3 },
-      { label: "Reasignaciones", path: "/bandeja-reasignaciones", icon: Shuffle },
+      // HIDDEN — coming_soon: true. Bandeja vivirá en dashboard del rol.
+      // { label: "Reasignaciones", path: "/bandeja-reasignaciones", icon: Shuffle },
       { label: "Reportes Trimestrales", path: "/reportes", icon: FolderOpen },
     ],
   },
@@ -173,7 +177,8 @@ const ADMINISTRACION_NAV: NavSection[] = [
     items: [
       { label: "Contratos", path: "/contratos", icon: FileCheck },
       { label: "Viáticos", path: "/viaticos", icon: Plane },
-      { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
+      // HIDDEN — coming_soon: true. Bandeja vivirá en dashboard del rol.
+      // { label: "Reasignaciones", path: "/reasignaciones", icon: Shuffle },
     ],
   },
   {
