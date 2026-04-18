@@ -174,24 +174,28 @@ export default function RegistrarAvancePage() {
     if (!meses.length) return "por_iniciar";
     const sorted = [...meses].sort();
     const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+    const financiero = financieroByActivity.get(act.actividad_codigo) || new Set<string>();
     const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
 
-    // COMPLETADA
+    // A month is "fully done" only if BOTH technical (reported) AND financial entries exist
+    const isFullyDone = (m: string) => reported.has(m) && financiero.has(m);
+
+    // COMPLETADA — every month fully done + meta met
     const allPast = sorted.every(m => m <= selectedMonth);
-    const allReported = sorted.every(m => reported.has(m));
-    if (allPast && allReported && ejecutado >= (act.meta_total || 0) && (act.meta_total || 0) > 0) return "completada";
+    const allFullyDone = sorted.every(isFullyDone);
+    if (allPast && allFullyDone && ejecutado >= (act.meta_total || 0) && (act.meta_total || 0) > 0) return "completada";
 
-    // VENCIDA — has past months in meses_programados without report
-    const pastWithout = sorted.filter(m => m < selectedMonth && !reported.has(m));
-    if (pastWithout.length > 0) return "vencida";
+    // VENCIDA — past delivery month missing technical OR financial
+    const pastIncomplete = sorted.filter(m => m < selectedMonth && !isFullyDone(m));
+    if (pastIncomplete.length > 0) return "vencida";
 
-    // ENTREGABLE ESTE MES
-    if (sorted.includes(selectedMonth) && !reported.has(selectedMonth)) return "entregable_este_mes";
+    // ENTREGABLE ESTE MES — current month is delivery and missing technical OR financial
+    if (sorted.includes(selectedMonth) && !isFullyDone(selectedMonth)) return "entregable_este_mes";
 
     // POR INICIAR
     if (sorted[0] > selectedMonth) return "por_iniciar";
 
-    // EN CURSO (between first and last, not a delivery month OR already reported this month)
+    // EN CURSO
     return "en_curso";
   }
 
@@ -206,37 +210,37 @@ export default function RegistrarAvancePage() {
       const lifecycle = getLifecycle(act);
       const meses = (act.meses_programados || []) as string[];
       const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+      const financiero = financieroByActivity.get(act.actividad_codigo) || new Set<string>();
+      const isFullyDone = (m: string) => reported.has(m) && financiero.has(m);
 
       if (lifecycle === "completada") {
         completadas.push(act);
       } else if (lifecycle === "vencida") {
-        // Create one entry per overdue month
+        // Create one entry per past month missing técnico OR financiero
         const sorted = [...meses].sort();
-        const pastWithout = sorted.filter(m => m < selectedMonth && !reported.has(m));
-        for (const mesVencido of pastWithout) {
+        const pastIncomplete = sorted.filter(m => m < selectedMonth && !isFullyDone(m));
+        for (const mesVencido of pastIncomplete) {
           vencidas.push({ act, mesVencido });
         }
-        // Also add if current month is a delivery month and not reported
-        if (meses.includes(selectedMonth) && !reported.has(selectedMonth)) {
+        // Current month also pending if delivery and not fully done
+        if (meses.includes(selectedMonth) && !isFullyDone(selectedMonth)) {
           entregablesEsteMes.push(act);
         }
       } else if (lifecycle === "entregable_este_mes") {
         entregablesEsteMes.push(act);
       } else if (lifecycle === "en_curso" || lifecycle === "por_iniciar") {
-        // Find next deliverable for the "nothing to do" message
         const sorted = [...meses].sort();
-        const nextMonth = sorted.find(m => m >= selectedMonth && !reported.has(m));
+        const nextMonth = sorted.find(m => m >= selectedMonth && !isFullyDone(m));
         if (nextMonth && (!proximoEntregable || nextMonth < proximoEntregable.mes)) {
           proximoEntregable = { act, mes: nextMonth };
         }
       }
     }
 
-    // Sort vencidas by oldest first
     vencidas.sort((a, b) => a.mesVencido.localeCompare(b.mesVencido));
 
     return { vencidas, entregablesEsteMes, completadas, proximoEntregable };
-  }, [actividades, reportsByActivity, avanceByActivity, selectedMonth]);
+  }, [actividades, reportsByActivity, financieroByActivity, avanceByActivity, selectedMonth]);
 
   // Group entregables by RI
   const riGroups = useMemo(() => {
