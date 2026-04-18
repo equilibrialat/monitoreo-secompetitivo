@@ -447,6 +447,21 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
+        {/* Botón solicitar reasignación — solo Entidad */}
+        {!readOnly && (role === "entidad_mec_a" || role === "entidad_mec_b") && (
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setModalReasig(true)}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Solicitar reasignación
+            </Button>
+          </div>
+        )}
+
         {/* Filter bar */}
         <PlanificacionFilters
           filters={filters}
