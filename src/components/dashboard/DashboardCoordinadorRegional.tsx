@@ -188,6 +188,18 @@ export default function DashboardCoordinadorRegional() {
         </Card>
       )}
 
+      {/* BLOQUE — Reasignaciones presupuestales pendientes (Paso 2) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-primary" /> Reasignaciones presupuestales pendientes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BandejaReasignaciones mode="coordinador" />
+        </CardContent>
+      </Card>
+
       {/* BLOQUE — Ver por indicadores (colapsable) */}
       <Card>
         <CardHeader className="pb-0 cursor-pointer" onClick={() => setIndicadoresOpen(!indicadoresOpen)}>

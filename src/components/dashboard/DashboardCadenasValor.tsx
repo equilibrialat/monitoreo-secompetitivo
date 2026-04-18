@@ -236,6 +236,18 @@ export default function DashboardCadenasValor() {
         </CardContent>
       </Card>
 
+      {/* BLOQUE — Reasignaciones presupuestales (Paso 4 — aprobación final Iván) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-primary" /> Reasignaciones presupuestales pendientes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BandejaReasignaciones mode="ivan" />
+        </CardContent>
+      </Card>
+
       {/* BLOQUE 3 — Entregas del mes */}
       <Card>
         <CardHeader className="pb-2">
