@@ -166,6 +166,9 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   const [modalPresup, setModalPresup] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
   // Filter state
   const [filters, setFilters] = useState<PlanificacionFilterState>(EMPTY_FILTERS);
+  // Reasignaciones
+  const [reasignaciones, setReasignaciones] = useState<ReasignacionPresupuestal[]>([]);
+  const [modalReasig, setModalReasig] = useState(false);
 
   const entidad = entidades.find((e) => e.id === entidadId);
   const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
