@@ -9,13 +9,14 @@ import { Header, MecanismoBadge, fmt, DashboardSkeleton, ClickableKpiCard } from
 import { DetailPanel } from "./DetailPanel";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "@/contexts/RoleContext";
-import { AlertTriangle, ArrowRight, Calendar, Info, ChevronDown } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Info, ChevronDown, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import CascadingFilters, { buildDefaultFilterState, type CascadingFilterState } from "./CascadingFilters";
 import { periodToTrimestre } from "./PeriodSelector";
 import SuccinctTreePanel from "./SuccinctTreePanel";
 import ArbolIndicadoresActividades from "./ArbolIndicadoresActividades";
+import BandejaReasignaciones from "@/components/planificacion/BandejaReasignaciones";
 
 const MONTH_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -233,6 +234,18 @@ export default function DashboardCadenasValor() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* BLOQUE — Reasignaciones presupuestales (Paso 4 — aprobación final Iván) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-primary" /> Reasignaciones presupuestales pendientes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BandejaReasignaciones mode="ivan" />
         </CardContent>
       </Card>
 

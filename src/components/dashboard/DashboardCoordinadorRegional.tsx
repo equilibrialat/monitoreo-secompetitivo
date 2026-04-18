@@ -11,11 +11,12 @@ import { useRole } from "@/contexts/RoleContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ChevronRight, ArrowRight, Save, ChevronDown } from "lucide-react";
+import { AlertTriangle, ChevronRight, ArrowRight, Save, ChevronDown, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import NarrativeBlock from "./NarrativeBlock";
 import SuccinctTreePanel from "./SuccinctTreePanel";
 import ArbolIndicadoresActividades from "./ArbolIndicadoresActividades";
+import BandejaReasignaciones from "@/components/planificacion/BandejaReasignaciones";
 
 const MONTH_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -186,6 +187,18 @@ export default function DashboardCoordinadorRegional() {
           </CardContent>
         </Card>
       )}
+
+      {/* BLOQUE — Reasignaciones presupuestales pendientes (Paso 2) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-primary" /> Reasignaciones presupuestales pendientes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BandejaReasignaciones mode="coordinador" />
+        </CardContent>
+      </Card>
 
       {/* BLOQUE — Ver por indicadores (colapsable) */}
       <Card>
