@@ -71,6 +71,26 @@ export default function ModalSolicitarReasignacion({
     if (!justificacion.trim()) { toast.error("La justificación es obligatoria"); return; }
 
     setSaving(true);
+
+    // Regla 9: no permitir doble pendiente para las mismas actividades
+    const { data: pendientes } = await (supabase as any)
+      .from("reasignaciones_presupuestales")
+      .select("id, actividad_origen_codigo, actividad_destino_codigo")
+      .eq("entidad_codigo", entidadCodigo)
+      .in("estado", ["pendiente_coordinador", "pendiente_ivan", "devuelta_coordinador"]);
+    const pares = [
+      [origen, destino],
+      [destino, origen],
+    ];
+    const conflict = (pendientes || []).find((p: any) =>
+      pares.some(([a, b]) => p.actividad_origen_codigo === a && p.actividad_destino_codigo === b)
+    );
+    if (conflict) {
+      setSaving(false);
+      toast.error("Ya existe una solicitud pendiente entre estas dos actividades. Espera resolución antes de proponer otra.");
+      return;
+    }
+
     const { error } = await (supabase as any)
       .from("reasignaciones_presupuestales")
       .insert({
@@ -187,6 +207,29 @@ export default function ModalSolicitarReasignacion({
           <div className="text-[11px] text-muted-foreground">
             Fecha de solicitud: <span className="font-medium text-foreground">{fechaSolicitud}</span>
           </div>
+
+          {/* Preview de nuevos vigentes */}
+          {actOrigen && destino && montoNum > 0 && (() => {
+            const actDest = actividades.find(a => a.actividad_codigo === destino);
+            if (!actDest) return null;
+            const nuevoOrigen = actOrigen.presupuesto_vigente - montoNum;
+            const nuevoDestino = actDest.presupuesto_vigente + montoNum;
+            return (
+              <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1.5">
+                <p className="font-medium text-foreground">Nuevos presupuestos vigentes (preview)</p>
+                <div className="grid grid-cols-2 gap-2 font-mono">
+                  <div>
+                    <p className="text-muted-foreground text-[10px]">{actOrigen.actividad_codigo} (origen)</p>
+                    <p>USD {actOrigen.presupuesto_vigente.toLocaleString()} → <span className="text-red-600 font-semibold">USD {nuevoOrigen.toLocaleString()}</span></p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-[10px]">{actDest.actividad_codigo} (destino)</p>
+                    <p>USD {actDest.presupuesto_vigente.toLocaleString()} → <span className="text-emerald-600 font-semibold">USD {nuevoDestino.toLocaleString()}</span></p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {alerta && (
             <Alert className={alerta.nivel === "warning" ? "border-amber-500" : "border-blue-300"}>
