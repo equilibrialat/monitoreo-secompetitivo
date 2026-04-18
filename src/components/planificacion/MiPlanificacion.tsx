@@ -149,7 +149,7 @@ interface MiPlanificacionProps {
 }
 
 export default function MiPlanificacion({ readOnly = false, entidadCodigoOverride }: MiPlanificacionProps) {
-  const { entidadId, entidades } = useRole();
+  const { entidadId, entidades, role } = useRole();
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
