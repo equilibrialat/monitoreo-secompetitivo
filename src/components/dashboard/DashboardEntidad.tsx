@@ -36,6 +36,7 @@ export default function DashboardEntidad() {
 
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
+  const [compsByActivity, setCompsByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
   const [actIdMap, setActIdMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -54,7 +55,8 @@ export default function DashboardEntidad() {
       (supabase as any).from("planificacion_actividades").select("*").eq("entidad_codigo", entidadCodigo).order("actividad_codigo"),
       (supabase as any).from("registros_mensuales").select("actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)").eq("entidad_id", entidadId),
       (supabase as any).from("actividades").select("id, codigo").eq("entidad_id", entidadId),
-    ]).then(([planRes, regRes, actRes]: any[]) => {
+      (supabase as any).from("comprobantes").select("actividad_codigo, mes").eq("entidad_codigo", entidadCodigo),
+    ]).then(([planRes, regRes, actRes, compRes]: any[]) => {
       setActividades(planRes.data || []);
 
       const idMap = new Map<string, string>();
@@ -76,6 +78,21 @@ export default function DashboardEntidad() {
       }
       setReportsByActivity(byCode);
       setAvanceByActivity(avanceMap);
+
+      // Build comprobantes map: actividad_codigo -> Set of "YYYY-MM"
+      // The `mes` column in comprobantes can be either "YYYY-MM" or just month name; normalize.
+      const compMap = new Map<string, Set<string>>();
+      if (compRes.data) {
+        for (const c of compRes.data) {
+          const code = c.actividad_codigo;
+          if (!code) continue;
+          const ym = String(c.mes || "").length >= 7 ? String(c.mes).slice(0, 7) : String(c.mes);
+          if (!compMap.has(code)) compMap.set(code, new Set());
+          compMap.get(code)!.add(ym);
+        }
+      }
+      setCompsByActivity(compMap);
+
       setLoading(false);
     });
   }, [entidadCodigo, entidadId]);
