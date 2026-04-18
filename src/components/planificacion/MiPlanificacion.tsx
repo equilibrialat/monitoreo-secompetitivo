@@ -539,11 +539,15 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                 <tr className="border-b text-[11px] text-muted-foreground">
                                   <th className="py-1.5 px-2 text-center w-[60px]">Cód.</th>
                                   <th className="py-1.5 px-2 text-left">Actividad</th>
-                                  <th className="py-1.5 px-2 text-left w-[80px]">Unidad</th>
                                   <th className="py-1.5 px-2 text-center w-[50px]">Meta</th>
                                   <th className="py-1.5 px-2 text-center w-[70px]">Ejecutado</th>
                                   <th className="py-1.5 px-2 text-center w-[80px]">Próximo</th>
                                   <th className="py-1.5 px-2 text-center w-[40px]">Estado</th>
+                                  <th className="py-1.5 px-2 text-right w-[90px]">Pres. orig.</th>
+                                  {Array.from({ length: maxReasigCols }).map((_, i) => (
+                                    <th key={i} className="py-1.5 px-2 text-right w-[100px]">Reasig. {i + 1}</th>
+                                  ))}
+                                  <th className="py-1.5 px-2 text-right w-[100px]">Pres. vigente</th>
                                   {!readOnly && <th className="py-1.5 px-2 text-center w-[110px]">Av. Técnico</th>}
                                   {!readOnly && <th className="py-1.5 px-2 text-center w-[110px]">Av. Presup.</th>}
                                 </tr>
@@ -574,6 +578,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                         readOnly={readOnly}
                                         lastTecnicoDate={lastTecnico.get(act.actividad_codigo)}
                                         lastFinancieroDate={lastFinanciero.get(act.actividad_codigo)}
+                                        ajustes={reasigEfectos.get(act.actividad_codigo)}
+                                        maxReasigCols={maxReasigCols}
                                         onToggle={() => setExpandedRow(isExpanded ? null : act.id)}
                                         onOpenTecnico={() => setModalTecnico({ open: true, act })}
                                         onOpenPresup={() => setModalPresup({ open: true, act })}
