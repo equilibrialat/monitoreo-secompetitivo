@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronRight, ChevronDown, Calendar, Target, DollarSign,
   CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star,
-  FileEdit, Wallet, Info
+  FileEdit, Wallet, Info, ArrowUp, ArrowDown, RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import ModalAvanceTecnico from "./ModalAvanceTecnico";
 import ModalAvancePresupuestario from "./ModalAvancePresupuestario";
+import ModalSolicitarReasignacion from "./ModalSolicitarReasignacion";
+import HistorialReasignaciones from "./HistorialReasignaciones";
 import {
   Tooltip,
   TooltipContent,
@@ -23,6 +25,12 @@ import PlanificacionFilters, {
   EMPTY_FILTERS,
   hasActiveFilters,
 } from "./PlanificacionFilters";
+import {
+  calcularEfectoPorActividad,
+  presupuestoVigente,
+  type ReasignacionPresupuestal,
+  type ReasignacionAplicada,
+} from "@/lib/reasignacionesPresupuestales";
 
 /* ─── Types ─── */
 
