@@ -275,9 +275,27 @@ export default function DashboardEntidad() {
                     <CardContent className="py-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 space-y-1">
-                          <p className="text-sm font-semibold">
-                            {act.actividad_codigo} — {act.actividad_descripcion}
-                          </p>
+                          <div className="flex items-start gap-1.5">
+                            <p className="text-sm font-semibold flex-1 min-w-0">
+                              {act.actividad_codigo} — {act.actividad_descripcion}
+                            </p>
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0 mt-0.5" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[280px] text-xs space-y-1">
+                                  <p className="font-medium leading-snug">{act.actividad_descripcion}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    <span className="font-semibold">Unidad:</span> {act.unidad_medida || "—"}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    <span className="font-semibold">Meta planificada:</span> {act.meta_total ?? "—"} {act.unidad_medida || ""}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                           <Badge variant="outline" className="text-[10px] border-yellow-300 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
                             🟡 Entregable este mes
                           </Badge>
