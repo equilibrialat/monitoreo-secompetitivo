@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * Botón de reset — visible solo en desarrollo.
@@ -17,6 +18,7 @@ import { toast } from "sonner";
  */
 export default function DevResetButton() {
   const [busy, setBusy] = useState(false);
+  const qc = useQueryClient();
 
   if (!import.meta.env.DEV) return null;
 
@@ -34,9 +36,10 @@ export default function DevResetButton() {
         .select("id")
         .eq("anio", anio)
         .eq("mes", mes);
-      if (errRegs) throw new Error(`registros_mensuales: ${errRegs.message}`);
+      if (errRegs) throw new Error(`registros_mensuales (select): ${errRegs.message}`);
 
       const regIds = (regs ?? []).map((r: any) => r.id);
+      let totalBorrados = 0;
 
       if (regIds.length > 0) {
         // 2) Borrar sub-registros dependientes del mes actual
@@ -55,13 +58,21 @@ export default function DevResetButton() {
           if (error) throw new Error(`${t}: ${error.message}`);
         }
 
-        // Participantes vinculados a capacitaciones del mes
-        // (ya se eliminan por cascada al borrar registro_capacitaciones)
+        // 3) Borrar los registros mensuales del mes actual y verificar
+        const { data: deleted, error: errDel } = await (supabase as any)
+          .from("registros_mensuales")
+          .delete()
+          .in("id", regIds)
+          .select("id");
+        if (errDel) throw new Error(`registros_mensuales (delete): ${errDel.message}`);
+        totalBorrados = (deleted ?? []).length;
 
-        // 3) Borrar los registros mensuales del mes actual
-        const { error: errDel } = await (supabase as any)
-          .from("registros_mensuales").delete().in("id", regIds);
-        if (errDel) throw new Error(`registros_mensuales: ${errDel.message}`);
+        if (totalBorrados === 0) {
+          throw new Error(
+            "El borrado fue rechazado por la base de datos (0 filas afectadas). " +
+            "Puede ser un problema de permisos RLS."
+          );
+        }
       }
 
       // 4) Comprobantes del mes actual (campo `mes` = "YYYY-MM")
@@ -69,8 +80,16 @@ export default function DevResetButton() {
         .from("comprobantes").delete().eq("mes", mesStr);
       if (errComp) throw new Error(`comprobantes: ${errComp.message}`);
 
-      toast.success("Actividades del mes actual reseteadas. Recargando…");
-      setTimeout(() => window.location.reload(), 800);
+      // 5) Invalidar cachés de react-query antes de recargar para que
+      //    cualquier vista que sí use react-query se refresque al instante.
+      await qc.invalidateQueries();
+
+      toast.success(
+        regIds.length > 0
+          ? `Reset OK: ${totalBorrados} actividad(es) del mes vuelven a "pendiente". Recargando…`
+          : "No había registros del mes actual. Recargando…"
+      );
+      setTimeout(() => window.location.reload(), 600);
     } catch (e: any) {
       toast.error(`Error en reset: ${e.message || e}`);
       setBusy(false);
