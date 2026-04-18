@@ -112,7 +112,8 @@ export default function RegistrarAvancePage() {
     Promise.all([
       (supabase as any).from("planificacion_actividades").select("*").eq("entidad_codigo", entidadCodigo).order("actividad_codigo"),
       (supabase as any).from("registros_mensuales").select("id, actividad_id, anio, mes, avance_valor, estado_registro, descripcion_avance, limitaciones, prioridades_proximo_mes, actividades!inner(codigo)").eq("entidad_id", entidadId),
-    ]).then(([planRes, regRes]: any[]) => {
+      (supabase as any).from("ejecucion_financiera").select("actividad_id, registro_mensual_id, registros_mensuales!inner(anio, mes), actividades!inner(codigo)").eq("entidad_id", entidadId),
+    ]).then(([planRes, regRes, finRes]: any[]) => {
       const acts = planRes.data || [];
       setActividades(acts);
 
@@ -143,7 +144,22 @@ export default function RegistrarAvancePage() {
           }
         }
       }
+
+      // Build financial-by-month map per activity
+      const finMap = new Map<string, Set<string>>();
+      if (finRes.data) {
+        for (const f of finRes.data) {
+          const code = f.actividades?.codigo;
+          const rm = f.registros_mensuales;
+          if (!code || !rm) continue;
+          const ym = `${rm.anio}-${String(rm.mes).padStart(2, "0")}`;
+          if (!finMap.has(code)) finMap.set(code, new Set());
+          finMap.get(code)!.add(ym);
+        }
+      }
+
       setReportsByActivity(byCode);
+      setFinancieroByActivity(finMap);
       setAvanceByActivity(avanceMap);
       setExistingReports(existing);
       setLoading(false);
