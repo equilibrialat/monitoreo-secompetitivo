@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, FileText, Receipt, Loader2, DollarSign, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, FileText, Receipt, Loader2, DollarSign, ChevronDown, ChevronRight, Download, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { toast } from "sonner";
 import { Header } from "@/components/dashboard/DashboardEntidad";
 import { cn } from "@/lib/utils";
+import * as XLSX from "xlsx";
 
 interface ContratoFin {
   id: string;
@@ -58,6 +59,7 @@ interface Comprobante {
   mes: string;
   fuente: string;
   igv_usd: number;
+  enlace_producto: string | null;
   created_at: string;
 }
 
@@ -134,7 +136,7 @@ export default function GestionContratosFinPage() {
     contrato_id: "none", actividad_codigo: "", fecha_documento: "",
     clase_documento: "FAC", numero_documento: "", ruc: "", proveedor_nombre: "",
     concepto: "", moneda: "USD", monto_moneda_origen: "", tipo_cambio: "1",
-    tipo_gasto: "consultoría", fuente: "seco", igv_usd: "0",
+    tipo_gasto: "consultoría", fuente: "seco", igv_usd: "0", enlace_producto: "",
   });
 
   const loadData = useCallback(() => {
