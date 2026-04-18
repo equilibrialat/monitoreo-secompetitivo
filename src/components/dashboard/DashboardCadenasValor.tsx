@@ -139,7 +139,7 @@ export default function DashboardCadenasValor() {
 
   return (
     <div className="space-y-4">
-      <Header title="Dashboard Cadenas de Valor" subtitle="Iván — Coordinador Mecanismo B" />
+      <Header title="Dashboard Cadenas de Valor" subtitle="Coordinador de Cadenas de Valor — Mecanismo B" />
 
       {/* FILTROS — No mecanismo selector (fixed to B) */}
       <CascadingFilters

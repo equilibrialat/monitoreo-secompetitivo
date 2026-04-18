@@ -189,7 +189,7 @@ export default function DetalleSolicitudReasignacion({
         await sendNotificacion({
           tipo: "reasignacion_rechazada",
           asunto: `Tu solicitud de reasignación fue rechazada`,
-          mensaje: `Tu solicitud fue rechazada por Iván: ${text}`,
+          mensaje: `Tu solicitud fue rechazada por el Coordinador de Cadenas de Valor: ${text}`,
           destinatarios: { entidad_codigo: r.entidad_codigo },
           entidad_destino_id: null,
         });
@@ -199,7 +199,7 @@ export default function DetalleSolicitudReasignacion({
     setBusy(false);
     toast.success(
       accion === "rechazar" ? "Solicitud rechazada"
-      : mode === "coordinador" ? "Aprobada — enviada a Iván"
+      : mode === "coordinador" ? "Aprobada — enviada al Coordinador de Cadenas de Valor"
       : "Aprobada — presupuesto vigente actualizado",
     );
     setComentario("");

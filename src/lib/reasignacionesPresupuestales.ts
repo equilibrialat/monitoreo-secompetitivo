@@ -162,8 +162,8 @@ export async function fetchReasignacionesPorEstado(estados: EstadoReasignacion[]
 }
 
 export const ESTADO_LABELS: Record<EstadoReasignacion, string> = {
-  pendiente_coordinador: "Pendiente Coordinador",
-  pendiente_ivan: "Pendiente Iván",
+  pendiente_coordinador: "Pendiente Coordinador Regional",
+  pendiente_ivan: "Pendiente Coordinador de Cadenas de Valor",
   aprobada: "Aprobada",
   rechazada: "Rechazada",
 };
