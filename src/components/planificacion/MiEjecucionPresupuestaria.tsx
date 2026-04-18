@@ -1,11 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-  ChevronRight, ChevronDown, DollarSign, Info,
-} from "lucide-react";
+import { ChevronRight, ChevronDown, DollarSign, Info, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { cn } from "@/lib/utils";
@@ -25,38 +21,22 @@ import {
   getCurrentYearMonth,
   calcEstado,
 } from "./MiPlanificacion";
+import {
+  calcularEfectoPorActividad,
+  presupuestoVigente,
+  type ReasignacionPresupuestal,
+  type ReasignacionAplicada,
+} from "@/lib/reasignacionesPresupuestales";
 
-/* ─── Period helpers ─── */
-
-type PeriodType = "mes" | "trimestre" | "anio";
-
-function getCurrentTrimestre(): number {
-  return Math.ceil((new Date().getMonth() + 1) / 3);
-}
-
-function getMonthsForPeriod(type: PeriodType): string[] {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  if (type === "mes") return [`${y}-${String(m).padStart(2, "0")}`];
-  if (type === "trimestre") {
-    const q = getCurrentTrimestre();
-    const start = (q - 1) * 3 + 1;
-    return [1, 2, 3].map((i) => `${y}-${String(start + i - 1).padStart(2, "0")}`);
-  }
-  return Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, "0")}`);
-}
-
-function getPeriodLabel(type: PeriodType): string {
-  const now = new Date();
-  const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-  if (type === "mes") return `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
-  if (type === "trimestre") return `T${getCurrentTrimestre()} ${now.getFullYear()}`;
-  return `${now.getFullYear()}`;
-}
+/* ─── Helpers ─── */
 
 function fmtUSD(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function getCurrentYM(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 /* ─── Main component ─── */
@@ -66,31 +46,51 @@ interface Props {
   entidadCodigoOverride?: string;
 }
 
-export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCodigoOverride }: Props) {
+export default function MiEjecucionPresupuestaria({ entidadCodigoOverride }: Props) {
   const { entidadId, entidades } = useRole();
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
-  const [ejecutadoByActivity, setEjecutadoByActivity] = useState<Map<string, number>>(new Map());
+  // Solo cuenta ejecución aprobada (cerrada por Carmen). Se separa del histórico bloqueado.
+  const [ejecutadoAprobado, setEjecutadoAprobado] = useState<Map<string, number>>(new Map());
+  const [ejecutadoMesActual, setEjecutadoMesActual] = useState<Map<string, number>>(new Map());
   const [lastFinanciero, setLastFinanciero] = useState<Map<string, string>>(new Map());
+  const [reasignacionesByAct, setReasignacionesByAct] = useState<Map<string, ReasignacionAplicada[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  const [period, setPeriod] = useState<PeriodType>("trimestre");
   const [filters, setFilters] = useState<PlanificacionFilterState>(EMPTY_FILTERS);
 
   const entidad = entidades.find((e) => e.id === entidadId);
   const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
   const currentYM = getCurrentYearMonth();
-  const periodMonths = useMemo(() => getMonthsForPeriod(period), [period]);
 
   useEffect(() => {
     if (!entidadCodigo) { setActividades([]); setLoading(false); return; }
     setLoading(true);
 
     Promise.all([
-      (supabase as any).from("planificacion_actividades").select("*").eq("entidad_codigo", entidadCodigo).order("actividad_codigo"),
-      (supabase as any).from("registros_mensuales").select("actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)").eq("entidad_id", entidadId),
-      (supabase as any).from("ejecucion_financiera").select("actividad_id, monto, fecha_gasto, created_at, actividades!inner(codigo)").eq("entidad_id", entidadId),
-    ]).then(([planRes, regRes, efRes]: any[]) => {
+      (supabase as any)
+        .from("planificacion_actividades")
+        .select("*")
+        .eq("entidad_codigo", entidadCodigo)
+        .order("actividad_codigo"),
+      (supabase as any)
+        .from("registros_mensuales")
+        .select("actividad_id, anio, mes, estado_registro, actividades!inner(codigo)")
+        .eq("entidad_id", entidadId),
+      (supabase as any)
+        .from("ejecucion_financiera")
+        .select(`
+          actividad_id, monto, fecha_gasto, created_at,
+          registros_mensuales!inner(anio, mes, estado_registro),
+          actividades!inner(codigo)
+        `)
+        .eq("entidad_id", entidadId),
+      (supabase as any)
+        .from("reasignaciones_presupuestales")
+        .select("*")
+        .eq("entidad_codigo", entidadCodigo)
+        .eq("estado", "aprobada"),
+    ]).then(([planRes, regRes, efRes, reasigRes]: any[]) => {
       setActividades(planRes.data || []);
 
       // Reports by activity code
@@ -106,21 +106,37 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
       }
       setReportsByActivity(byCode);
 
-      // Financial execution by activity code (period-aware via fecha_gasto)
-      const ejMap = new Map<string, number>();
+      // Ejecución financiera: separar aprobado (histórico bloqueado) vs mes actual editable
+      const ejAprobado = new Map<string, number>();
+      const ejActual = new Map<string, number>();
       const lastFinMap = new Map<string, string>();
+      const cur = getCurrentYM();
       if (efRes.data) {
         for (const ef of efRes.data) {
           const code = ef.actividades?.codigo;
           if (!code) continue;
-          // Sum all financial records (period filtering done at render)
-          const key = code;
-          ejMap.set(key, (ejMap.get(key) || 0) + (ef.monto || 0));
+          const monto = Number(ef.monto || 0);
+          const reg = ef.registros_mensuales;
+          const estado = reg?.estado_registro;
+          const ym = reg ? `${reg.anio}-${String(reg.mes).padStart(2, "0")}` : null;
+
+          if (estado === "aprobado") {
+            ejAprobado.set(code, (ejAprobado.get(code) || 0) + monto);
+          } else if (ym === cur) {
+            // Mes actual aún editable (en revisión / borrador): se cuenta como ejecutado provisional
+            ejActual.set(code, (ejActual.get(code) || 0) + monto);
+          }
           if (!lastFinMap.has(code)) lastFinMap.set(code, ef.created_at);
         }
       }
-      setEjecutadoByActivity(ejMap);
+      setEjecutadoAprobado(ejAprobado);
+      setEjecutadoMesActual(ejActual);
       setLastFinanciero(lastFinMap);
+
+      // Reasignaciones aprobadas → deltas por actividad
+      const efectos = calcularEfectoPorActividad((reasigRes.data as ReasignacionPresupuestal[]) || []);
+      setReasignacionesByAct(efectos);
+
       setLoading(false);
     });
   }, [entidadCodigo, entidadId]);
@@ -128,38 +144,22 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
   /* ─── Stats ─── */
   function getActStats(act: PlanificacionActividad) {
     const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
-    const ejecutado = 0; // avance técnico not needed here
-    const estado = calcEstado(act.meses_programados || [], currentYM, reported, ejecutado, act.meta_total || 0);
+    const estado = calcEstado(act.meses_programados || [], currentYM, reported, 0, act.meta_total || 0);
     return { reported, estado };
   }
 
   function getFinMetrics(act: PlanificacionActividad) {
-    const presupuesto = (act.presupuesto_seco_usd || 0) + (act.presupuesto_contrapartida_usd || 0);
-    const ejecutado = ejecutadoByActivity.get(act.actividad_codigo) || 0;
-    const pendiente = Math.max(0, presupuesto - ejecutado);
-    const meses = act.meses_programados || [];
-    const mesesEnPeriodo = meses.filter((m) => periodMonths.includes(m)).length;
-    const totalMeses = meses.length || 1;
-    const programadoPeriodo = presupuesto * (mesesEnPeriodo / totalMeses);
-    const pctEjecucion = presupuesto > 0 ? Math.round((ejecutado / presupuesto) * 100) : null;
-    const pctVsProgramado = programadoPeriodo > 0 ? (ejecutado / programadoPeriodo) * 100 : null;
-    return { presupuesto, ejecutado, pendiente, programadoPeriodo, pctEjecucion, pctVsProgramado };
-  }
-
-  function getSemaforo(pctVsProgramado: number | null): { color: string; dot: string; label: string } {
-    if (pctVsProgramado === null) return { color: "text-muted-foreground", dot: "bg-gray-300", label: "Sin programación" };
-    if (pctVsProgramado >= 80) return { color: "text-green-600", dot: "bg-green-500", label: "En línea" };
-    if (pctVsProgramado >= 50) return { color: "text-yellow-600", dot: "bg-yellow-500", label: "Atención" };
-    return { color: "text-red-600", dot: "bg-red-500", label: "Crítico" };
-  }
-
-  function getWorstSemaforo(acts: PlanificacionActividad[]): { color: string; dot: string; label: string } {
-    let worst: number | null = null;
-    for (const a of acts) {
-      const { pctVsProgramado } = getFinMetrics(a);
-      if (pctVsProgramado !== null && (worst === null || pctVsProgramado < worst)) worst = pctVsProgramado;
-    }
-    return getSemaforo(worst);
+    const presupuestoOriginal = (act.presupuesto_seco_usd || 0) + (act.presupuesto_contrapartida_usd || 0);
+    const ajustes = reasignacionesByAct.get(act.actividad_codigo);
+    // Vigente = original + Σ deltas aprobados (mismo cálculo que Mi Planificación)
+    const vigente = presupuestoVigente(presupuestoOriginal, ajustes);
+    const aprobado = ejecutadoAprobado.get(act.actividad_codigo) || 0;
+    const enCurso = ejecutadoMesActual.get(act.actividad_codigo) || 0;
+    const ejecutado = aprobado + enCurso;
+    const pendiente = Math.max(0, vigente - ejecutado);
+    const pct = vigente > 0 ? Math.round((ejecutado / vigente) * 100) : 0;
+    const tieneAjustes = !!(ajustes && ajustes.length > 0);
+    return { vigente, original: presupuestoOriginal, aprobado, enCurso, ejecutado, pendiente, pct, tieneAjustes };
   }
 
   /* ─── Filter logic ─── */
@@ -211,16 +211,16 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
   /* ─── Global totals ─── */
   const globalTotals = useMemo(() => {
     const visible = filtersActive ? actividades.filter(matchesFilters) : actividades;
-    let presupuesto = 0;
+    let vigente = 0;
     let ejecutado = 0;
     for (const a of visible) {
       const m = getFinMetrics(a);
-      presupuesto += m.presupuesto;
+      vigente += m.vigente;
       ejecutado += m.ejecutado;
     }
-    const pct = presupuesto > 0 ? Math.round((ejecutado / presupuesto) * 100) : 0;
-    return { presupuesto, ejecutado, pct };
-  }, [actividades, ejecutadoByActivity, filters, periodMonths]);
+    const pct = vigente > 0 ? Math.round((ejecutado / vigente) * 100) : 0;
+    return { vigente, ejecutado, pendiente: Math.max(0, vigente - ejecutado), pct };
+  }, [actividades, ejecutadoAprobado, ejecutadoMesActual, reasignacionesByAct, filters]);
 
   function toggleSection(key: string) {
     setCollapsedSections((prev) => {
@@ -265,22 +265,28 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
   return (
     <div className="space-y-4">
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-4">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Presupuesto total</p>
-            <p className="text-xl font-bold text-foreground mt-1">USD {fmtUSD(globalTotals.presupuesto)}</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Presupuesto vigente</p>
+            <p className="text-xl font-bold text-foreground mt-1">USD {fmtUSD(globalTotals.vigente)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Total ejecutado</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Ejecutado</p>
             <p className="text-xl font-bold text-foreground mt-1">USD {fmtUSD(globalTotals.ejecutado)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">% Ejecución global</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Pendiente</p>
+            <p className="text-xl font-bold text-foreground mt-1">USD {fmtUSD(globalTotals.pendiente)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">% Ejecución</p>
             <div className="flex items-center gap-3 mt-1">
               <p className={cn("text-xl font-bold", globalTotals.pct >= 80 ? "text-green-600" : globalTotals.pct >= 50 ? "text-yellow-600" : "text-red-600")}>
                 {globalTotals.pct}%
@@ -301,26 +307,12 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
           <p className="text-xs text-muted-foreground mt-1">
             {hierarchy.proyectoNombre} · {hierarchy.entidadNombre} · Mecanismo {hierarchy.mecanismo}
           </p>
+          <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5">
+            <Lock className="h-3 w-3" />
+            Los registros de periodos cerrados son de solo lectura. El presupuesto vigente proviene de Planificación y se actualiza al aprobarse una reasignación.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Period selector */}
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex gap-1 bg-muted rounded-lg p-0.5">
-              {(["mes", "trimestre", "anio"] as PeriodType[]).map((p) => (
-                <Button
-                  key={p}
-                  size="sm"
-                  variant={period === p ? "default" : "ghost"}
-                  className={cn("h-7 text-xs px-3", period === p && "shadow-sm")}
-                  onClick={() => setPeriod(p)}
-                >
-                  {p === "mes" ? "Mes" : p === "trimestre" ? "Trimestre" : "Año"}
-                </Button>
-              ))}
-            </div>
-            <Badge variant="outline" className="text-xs">{getPeriodLabel(period)}</Badge>
-          </div>
-
           {/* Filters */}
           <PlanificacionFilters
             filters={filters}
@@ -360,15 +352,15 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
                       const visibleActs = filtersActive ? filteredProdActs : prod.acts;
 
                       // Product summary
-                      let prodPresupuesto = 0;
+                      let prodVigente = 0;
                       let prodEjecutado = 0;
                       for (const a of visibleActs) {
                         const m = getFinMetrics(a);
-                        prodPresupuesto += m.presupuesto;
+                        prodVigente += m.vigente;
                         prodEjecutado += m.ejecutado;
                       }
-                      const prodPct = prodPresupuesto > 0 ? Math.round((prodEjecutado / prodPresupuesto) * 100) : 0;
-                      const prodSemaforo = getWorstSemaforo(visibleActs);
+                      const prodPendiente = Math.max(0, prodVigente - prodEjecutado);
+                      const prodPct = prodVigente > 0 ? Math.round((prodEjecutado / prodVigente) * 100) : 0;
 
                       return (
                         <div key={prod.codigo} className="ml-3">
@@ -382,11 +374,10 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
                               {prod.codigo}. {prod.desc}
                             </span>
                             <span className="text-[10px] text-muted-foreground shrink-0 flex items-center gap-3">
-                              <span>USD {fmtUSD(prodEjecutado)} / {fmtUSD(prodPresupuesto)}</span>
+                              <span>USD {fmtUSD(prodEjecutado)} / <span className="font-bold text-foreground">{fmtUSD(prodVigente)}</span></span>
                               <span className={cn("font-semibold", prodPct >= 80 ? "text-green-600" : prodPct >= 50 ? "text-yellow-600" : "text-red-600")}>
                                 {prodPct}%
                               </span>
-                              <span className={cn("h-2.5 w-2.5 rounded-full inline-block", prodSemaforo.dot)} />
                             </span>
                           </button>
 
@@ -395,27 +386,36 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
                               <table className="w-full text-sm ml-2">
                                 <thead>
                                   <tr className="border-b text-[11px] text-muted-foreground">
-                                    <th className="py-1.5 px-2 text-center w-[55px]">Cód.</th>
                                     <th className="py-1.5 px-2 text-left">Actividad</th>
-                                    <th className="py-1.5 px-2 text-right w-[100px]">Presupuesto</th>
-                                    <th className="py-1.5 px-2 text-right w-[90px]">Ejecutado</th>
-                                    <th className="py-1.5 px-2 text-right w-[90px]">Pendiente</th>
-                                    <th className="py-1.5 px-2 text-right w-[90px]">Prog. período</th>
-                                    <th className="py-1.5 px-2 text-center w-[65px]">% Ejec.</th>
-                                    <th className="py-1.5 px-2 text-center w-[45px]">Alerta</th>
+                                    <th className="py-1.5 px-2 text-right w-[120px]">Vigente</th>
+                                    <th className="py-1.5 px-2 text-right w-[110px]">Ejecutado</th>
+                                    <th className="py-1.5 px-2 text-right w-[110px]">Pendiente</th>
+                                    <th className="py-1.5 px-2 text-left w-[180px]">% Ejecución</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {visibleActs.map((act) => {
-                                    const { presupuesto, ejecutado, pendiente, programadoPeriodo, pctEjecucion, pctVsProgramado } = getFinMetrics(act);
-                                    const semaforo = getSemaforo(pctVsProgramado);
+                                    const { vigente, original, ejecutado, aprobado, pendiente, pct, tieneAjustes } = getFinMetrics(act);
+                                    const barColor =
+                                      pct >= 80 ? "bg-green-500" :
+                                      pct >= 50 ? "bg-yellow-500" : "bg-red-500";
 
                                     return (
                                       <tr key={act.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                                        <td className="py-2 px-2 text-center font-mono text-xs font-bold text-primary">{act.actividad_codigo}</td>
                                         <td className="py-2 px-2">
                                           <div className="flex items-center gap-1.5">
+                                            <span className="font-mono text-[10px] font-bold text-primary shrink-0">{act.actividad_codigo}</span>
                                             <span className="text-xs text-foreground line-clamp-1 flex-1 min-w-0">{act.actividad_descripcion}</span>
+                                            {aprobado > 0 && (
+                                              <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                  <Lock className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="text-xs">
+                                                  Incluye USD {fmtUSD(aprobado)} de periodos cerrados (solo lectura)
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            )}
                                             <Tooltip>
                                               <TooltipTrigger asChild>
                                                 <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0" />
@@ -432,37 +432,57 @@ export default function MiEjecucionPresupuestaria({ readOnly = false, entidadCod
                                             </Tooltip>
                                           </div>
                                         </td>
-                                        <td className="py-2 px-2 text-right text-xs font-mono">{fmtUSD(presupuesto)}</td>
-                                        <td className="py-2 px-2 text-right text-xs font-mono font-semibold">{fmtUSD(ejecutado)}</td>
-                                        <td className="py-2 px-2 text-right text-xs font-mono text-muted-foreground">{fmtUSD(pendiente)}</td>
-                                        <td className="py-2 px-2 text-right text-xs font-mono text-muted-foreground">{fmtUSD(Math.round(programadoPeriodo))}</td>
-                                        <td className={cn("py-2 px-2 text-center text-xs font-semibold", semaforo.color)}>
-                                          {pctEjecucion !== null ? `${pctEjecucion}%` : "—"}
+                                        <td className="py-2 px-2 text-right text-xs font-mono font-bold text-foreground">
+                                          {tieneAjustes ? (
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <span className="cursor-help underline decoration-dotted decoration-muted-foreground/60">
+                                                  {fmtUSD(vigente)}
+                                                </span>
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top" className="text-xs">
+                                                Original USD {fmtUSD(original)} · ajustado por reasignaciones aprobadas
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          ) : (
+                                            fmtUSD(vigente)
+                                          )}
                                         </td>
-                                        <td className="py-2 px-2 text-center">
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <span className={cn("inline-block h-3 w-3 rounded-full", semaforo.dot)} />
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="text-xs">{semaforo.label}</TooltipContent>
-                                          </Tooltip>
+                                        <td className="py-2 px-2 text-right text-xs font-mono">{fmtUSD(ejecutado)}</td>
+                                        <td className="py-2 px-2 text-right text-xs font-mono text-muted-foreground">{fmtUSD(pendiente)}</td>
+                                        <td className="py-2 px-2">
+                                          <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                              <div
+                                                className={cn("h-full rounded-full transition-all", barColor)}
+                                                style={{ width: `${Math.min(100, pct)}%` }}
+                                              />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-muted-foreground w-8 text-right">{pct}%</span>
+                                          </div>
                                         </td>
                                       </tr>
                                     );
                                   })}
                                   {/* Product totals row */}
                                   <tr className="bg-muted/40 font-semibold">
-                                    <td className="py-1.5 px-2" />
                                     <td className="py-1.5 px-2 text-xs">Total {prod.codigo}</td>
-                                    <td className="py-1.5 px-2 text-right text-xs font-mono">{fmtUSD(prodPresupuesto)}</td>
+                                    <td className="py-1.5 px-2 text-right text-xs font-mono font-bold">{fmtUSD(prodVigente)}</td>
                                     <td className="py-1.5 px-2 text-right text-xs font-mono">{fmtUSD(prodEjecutado)}</td>
-                                    <td className="py-1.5 px-2 text-right text-xs font-mono text-muted-foreground">{fmtUSD(prodPresupuesto - prodEjecutado)}</td>
-                                    <td className="py-1.5 px-2" />
-                                    <td className={cn("py-1.5 px-2 text-center text-xs", prodPct >= 80 ? "text-green-600" : prodPct >= 50 ? "text-yellow-600" : "text-red-600")}>
-                                      {prodPct}%
-                                    </td>
-                                    <td className="py-1.5 px-2 text-center">
-                                      <span className={cn("inline-block h-3 w-3 rounded-full", prodSemaforo.dot)} />
+                                    <td className="py-1.5 px-2 text-right text-xs font-mono text-muted-foreground">{fmtUSD(prodPendiente)}</td>
+                                    <td className="py-1.5 px-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className={cn("h-full rounded-full",
+                                              prodPct >= 80 ? "bg-green-500" :
+                                              prodPct >= 50 ? "bg-yellow-500" : "bg-red-500"
+                                            )}
+                                            style={{ width: `${Math.min(100, prodPct)}%` }}
+                                          />
+                                        </div>
+                                        <span className="text-[10px] font-semibold w-8 text-right">{prodPct}%</span>
+                                      </div>
                                     </td>
                                   </tr>
                                 </tbody>
