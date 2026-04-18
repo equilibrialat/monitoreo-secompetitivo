@@ -128,6 +128,7 @@ export type Database = {
           contrato_id: string | null
           created_at: string | null
           documento_url: string | null
+          enlace_producto: string | null
           entidad_codigo: string
           fecha_documento: string
           fuente: string | null
@@ -151,6 +152,7 @@ export type Database = {
           contrato_id?: string | null
           created_at?: string | null
           documento_url?: string | null
+          enlace_producto?: string | null
           entidad_codigo: string
           fecha_documento: string
           fuente?: string | null
@@ -174,6 +176,7 @@ export type Database = {
           contrato_id?: string | null
           created_at?: string | null
           documento_url?: string | null
+          enlace_producto?: string | null
           entidad_codigo?: string
           fecha_documento?: string
           fuente?: string | null
