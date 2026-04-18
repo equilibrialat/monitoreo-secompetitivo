@@ -598,8 +598,29 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
             </div>
           );
         })}
+        {/* Historial al pie */}
+        <HistorialReasignaciones reasignaciones={reasignaciones} />
       </CardContent>
     </Card>
+
+    {/* Modal solicitar reasignación */}
+    {!readOnly && (role === "entidad_mec_a" || role === "entidad_mec_b") && entidadCodigo && hierarchy && (
+      <ModalSolicitarReasignacion
+        open={modalReasig}
+        onOpenChange={setModalReasig}
+        entidadCodigo={entidadCodigo}
+        mecanismo={hierarchy.mecanismo || "B"}
+        actividades={actividades.map(a => ({
+          actividad_codigo: a.actividad_codigo,
+          actividad_descripcion: a.actividad_descripcion,
+          presupuesto_vigente: presupuestoVigente(
+            Number(a.presupuesto_seco_usd || 0),
+            reasigEfectos.get(a.actividad_codigo),
+          ),
+        }))}
+        onSaved={loadReasignaciones}
+      />
+    )}
 
     {/* Modals */}
     {modalTecnico.act && (
@@ -706,6 +727,48 @@ function ActividadRow({
             <TooltipContent side="top" className="text-xs">{cfg.label}</TooltipContent>
           </Tooltip>
         </td>
+        {/* Presupuesto original */}
+        <td className="py-2 px-2 text-right text-xs font-mono text-muted-foreground">
+          ${original.toLocaleString()}
+        </td>
+        {/* Columnas dinámicas de reasignaciones */}
+        {Array.from({ length: maxReasigCols }).map((_, i) => {
+          const aj = ajustes && ajustes[i];
+          if (!aj) {
+            return <td key={i} className="py-2 px-2 text-right text-xs text-muted-foreground/40">—</td>;
+          }
+          const positivo = aj.monto_delta > 0;
+          return (
+            <td key={i} className="py-2 px-2 text-right text-xs font-mono">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={cn(
+                    "inline-flex items-center gap-0.5 cursor-help",
+                    positivo ? "text-emerald-600" : "text-red-600",
+                  )}>
+                    {positivo ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                    {positivo ? "+" : "−"}${Math.abs(aj.monto_delta).toLocaleString()}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-[11px]">
+                  <p>{new Date(aj.fecha).toLocaleDateString("es-PE")}</p>
+                  <p className="text-muted-foreground">↔ {aj.contraparte_codigo}</p>
+                </TooltipContent>
+              </Tooltip>
+            </td>
+          );
+        })}
+        {/* Presupuesto vigente con flecha del último ajuste */}
+        <td className="py-2 px-2 text-right text-xs font-mono font-bold">
+          <span className="inline-flex items-center gap-1">
+            {ultimoAjuste && (
+              ultimoAjuste.monto_delta > 0
+                ? <ArrowUp className="h-3 w-3 text-emerald-600" />
+                : <ArrowDown className="h-3 w-3 text-red-600" />
+            )}
+            ${vigente.toLocaleString()}
+          </span>
+        </td>
         {!readOnly && (
           <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={onOpenTecnico}>
@@ -737,7 +800,7 @@ function ActividadRow({
       {/* Expanded detail panel */}
       {isExpanded && (
         <tr>
-          <td colSpan={readOnly ? 7 : 9} className="p-0">
+          <td colSpan={(readOnly ? 7 : 9) + 2 + maxReasigCols} className="p-0">
             <div className="bg-muted/30 border-t border-b px-4 py-3 space-y-2 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>

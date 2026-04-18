@@ -38,6 +38,7 @@ import EjecucionTecnicaPage from "./pages/EjecucionTecnicaPage";
 import EjecucionPresupuestariaPage from "./pages/EjecucionPresupuestariaPage";
 import RegistrarAvancePage from "./pages/RegistrarAvancePage";
 import ReporteTrimestralPage from "./pages/ReporteTrimestralPage";
+import BandejaReasignacionesPage from "./pages/BandejaReasignacionesPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -84,6 +85,7 @@ const App = () => (
               <Route path="/desembolsos" element={<DesembolsosPage />} />
               <Route path="/viaticos" element={<ViaticosPage />} />
               <Route path="/reasignaciones" element={<ReasignacionesPage />} />
+              <Route path="/bandeja-reasignaciones" element={<BandejaReasignacionesPage />} />
               <Route path="/reportes-financieros" element={<ReportesFinancierosPage />} />
 
               {/* Direccion routes */}
