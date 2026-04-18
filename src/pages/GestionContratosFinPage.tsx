@@ -590,6 +590,7 @@ export default function GestionContratosFinPage() {
                         <TableHead className="text-xs text-right">USD</TableHead>
                         <TableHead className="text-xs">Fuente</TableHead>
                         <TableHead className="text-xs">Trim.</TableHead>
+                        <TableHead className="text-xs">Producto</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -605,6 +606,22 @@ export default function GestionContratosFinPage() {
                             <Badge variant="outline" className="text-[10px]">{p.fuente === "seco" ? "SECO" : p.fuente}</Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{p.trimestre}</TableCell>
+                          <TableCell className="text-xs">
+                            {p.enlace_producto ? (
+                              <a
+                                href={p.enlace_producto}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                                title={p.enlace_producto}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Ver producto
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
