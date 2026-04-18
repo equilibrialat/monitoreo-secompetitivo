@@ -143,7 +143,7 @@ export default function DetalleSolicitudReasignacion({
     } else {
       nuevoEstado = accion === "aprobar" ? "aprobada" : "rechazada";
       update.comentario_ivan = text || null;
-      update.ivan_nombre = "Iván";
+      update.ivan_nombre = "Coordinador de Cadenas de Valor";
       update.fecha_aprobacion = new Date().toISOString();
     }
     update.estado = nuevoEstado;
