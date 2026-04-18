@@ -36,6 +36,7 @@ export default function DashboardEntidad() {
 
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
+  const [compsByActivity, setCompsByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
   const [actIdMap, setActIdMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -54,7 +55,8 @@ export default function DashboardEntidad() {
       (supabase as any).from("planificacion_actividades").select("*").eq("entidad_codigo", entidadCodigo).order("actividad_codigo"),
       (supabase as any).from("registros_mensuales").select("actividad_id, anio, mes, avance_valor, estado_registro, actividades!inner(codigo)").eq("entidad_id", entidadId),
       (supabase as any).from("actividades").select("id, codigo").eq("entidad_id", entidadId),
-    ]).then(([planRes, regRes, actRes]: any[]) => {
+      (supabase as any).from("comprobantes").select("actividad_codigo, mes").eq("entidad_codigo", entidadCodigo),
+    ]).then(([planRes, regRes, actRes, compRes]: any[]) => {
       setActividades(planRes.data || []);
 
       const idMap = new Map<string, string>();
@@ -76,6 +78,21 @@ export default function DashboardEntidad() {
       }
       setReportsByActivity(byCode);
       setAvanceByActivity(avanceMap);
+
+      // Build comprobantes map: actividad_codigo -> Set of "YYYY-MM"
+      // The `mes` column in comprobantes can be either "YYYY-MM" or just month name; normalize.
+      const compMap = new Map<string, Set<string>>();
+      if (compRes.data) {
+        for (const c of compRes.data) {
+          const code = c.actividad_codigo;
+          if (!code) continue;
+          const ym = String(c.mes || "").length >= 7 ? String(c.mes).slice(0, 7) : String(c.mes);
+          if (!compMap.has(code)) compMap.set(code, new Set());
+          compMap.get(code)!.add(ym);
+        }
+      }
+      setCompsByActivity(compMap);
+
       setLoading(false);
     });
   }, [entidadCodigo, entidadId]);
@@ -144,6 +161,8 @@ export default function DashboardEntidad() {
     esteMes: boolean;
     pendientes: number;
     reportados: number;
+    tecnicoOk: boolean;
+    financieroOk: boolean;
   };
 
   const actividadesConPendientes = useMemo(() => {
@@ -152,21 +171,43 @@ export default function DashboardEntidad() {
       const meses = (act.meses_programados || []) as string[];
       if (!meses.length) continue;
       const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+      const comps = compsByActivity.get(act.actividad_codigo) || new Set<string>();
 
       let rezagados = 0;
       let esteMes = false;
       let pendientes = 0;
       let reportadosCount = 0;
+      // For current month: track each leg independently
+      const tecnicoOkMesActual = reported.has(currentYM);
+      const financieroOkMesActual = comps.has(currentYM);
 
       for (const m of meses) {
+        if (m === currentYM) {
+          // Current month — keep visible until BOTH technical and financial are done
+          const ambosOk = tecnicoOkMesActual && financieroOkMesActual;
+          if (ambosOk) {
+            reportadosCount++;
+          } else {
+            esteMes = true;
+          }
+          continue;
+        }
+        // For other months use technical record presence as before
         if (reported.has(m)) { reportadosCount++; continue; }
         if (m < currentYM) rezagados++;
-        else if (m === currentYM) esteMes = true;
         else pendientes++;
       }
 
       if (rezagados > 0 || esteMes) {
-        result.push({ ...act, rezagados, esteMes, pendientes, reportados: reportadosCount });
+        result.push({
+          ...act,
+          rezagados,
+          esteMes,
+          pendientes,
+          reportados: reportadosCount,
+          tecnicoOk: tecnicoOkMesActual,
+          financieroOk: financieroOkMesActual,
+        });
       }
     }
     // Sort: esteMes first, then by rezagados desc
@@ -175,7 +216,7 @@ export default function DashboardEntidad() {
       return b.rezagados - a.rezagados;
     });
     return result;
-  }, [actividades, reportsByActivity, avanceByActivity, currentYM]);
+  }, [actividades, reportsByActivity, compsByActivity, avanceByActivity, currentYM]);
 
   /* ─── Render ─── */
 
@@ -296,16 +337,52 @@ export default function DashboardEntidad() {
                               </Tooltip>
                             </TooltipProvider>
                           </div>
-                          <Badge variant="outline" className="text-[10px] border-yellow-300 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
-                            🟡 Entregable este mes
-                          </Badge>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] border-yellow-300 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
+                              🟡 Entregable este mes
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px]",
+                                act.tecnicoOk
+                                  ? "border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
+                                  : "border-muted text-muted-foreground bg-muted/30"
+                              )}
+                            >
+                              {act.tecnicoOk ? "✓ Técnico" : "○ Técnico pendiente"}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px]",
+                                act.financieroOk
+                                  ? "border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
+                                  : "border-muted text-muted-foreground bg-muted/30"
+                              )}
+                            >
+                              {act.financieroOk ? "✓ Financiero" : "○ Financiero pendiente"}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="flex flex-col gap-1 shrink-0">
-                          <Button size="sm" className="text-xs" onClick={() => setModalTecnico({ open: true, act })}>
-                            Av. Técnico <ArrowRight className="h-3 w-3 ml-1" />
+                          <Button
+                            size="sm"
+                            className="text-xs"
+                            variant={act.tecnicoOk ? "outline" : "default"}
+                            disabled={act.tecnicoOk}
+                            onClick={() => setModalTecnico({ open: true, act })}
+                          >
+                            {act.tecnicoOk ? "✓ Av. Técnico" : <>Av. Técnico <ArrowRight className="h-3 w-3 ml-1" /></>}
                           </Button>
-                          <Button size="sm" variant="outline" className="text-xs" onClick={() => setModalPresup({ open: true, act })}>
-                            Av. Presup. <ArrowRight className="h-3 w-3 ml-1" />
+                          <Button
+                            size="sm"
+                            variant={act.financieroOk ? "outline" : "default"}
+                            className="text-xs"
+                            disabled={act.financieroOk}
+                            onClick={() => setModalPresup({ open: true, act })}
+                          >
+                            {act.financieroOk ? "✓ Av. Presup." : <>Av. Presup. <ArrowRight className="h-3 w-3 ml-1" /></>}
                           </Button>
                         </div>
                       </div>
