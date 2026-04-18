@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronRight, ChevronDown, Calendar, Target, DollarSign,
   CheckCircle2, Circle, Clock, AlertTriangle, Lock, Star,
-  FileEdit, Wallet, Info
+  FileEdit, Wallet, Info, ArrowUp, ArrowDown, RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import ModalAvanceTecnico from "./ModalAvanceTecnico";
 import ModalAvancePresupuestario from "./ModalAvancePresupuestario";
+import ModalSolicitarReasignacion from "./ModalSolicitarReasignacion";
+import HistorialReasignaciones from "./HistorialReasignaciones";
 import {
   Tooltip,
   TooltipContent,
@@ -23,6 +25,12 @@ import PlanificacionFilters, {
   EMPTY_FILTERS,
   hasActiveFilters,
 } from "./PlanificacionFilters";
+import {
+  calcularEfectoPorActividad,
+  presupuestoVigente,
+  type ReasignacionPresupuestal,
+  type ReasignacionAplicada,
+} from "@/lib/reasignacionesPresupuestales";
 
 /* ─── Types ─── */
 
@@ -141,7 +149,7 @@ interface MiPlanificacionProps {
 }
 
 export default function MiPlanificacion({ readOnly = false, entidadCodigoOverride }: MiPlanificacionProps) {
-  const { entidadId, entidades } = useRole();
+  const { entidadId, entidades, role } = useRole();
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
@@ -158,6 +166,9 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
   const [modalPresup, setModalPresup] = useState<{ open: boolean; act: PlanificacionActividad | null }>({ open: false, act: null });
   // Filter state
   const [filters, setFilters] = useState<PlanificacionFilterState>(EMPTY_FILTERS);
+  // Reasignaciones
+  const [reasignaciones, setReasignaciones] = useState<ReasignacionPresupuestal[]>([]);
+  const [modalReasig, setModalReasig] = useState(false);
 
   const entidad = entidades.find((e) => e.id === entidadId);
   const entidadCodigo = entidadCodigoOverride || (entidad?.nombre_corto === "App Cacao" ? "APPCACAO" : null);
@@ -247,7 +258,30 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
     });
   }
 
-  useEffect(() => { loadData(); }, [entidadCodigo, entidadId]);
+  async function loadReasignaciones() {
+    if (!entidadCodigo) { setReasignaciones([]); return; }
+    const { data } = await (supabase as any)
+      .from("reasignaciones_presupuestales")
+      .select("*")
+      .eq("entidad_codigo", entidadCodigo)
+      .order("fecha_solicitud", { ascending: false });
+    setReasignaciones((data as ReasignacionPresupuestal[]) || []);
+  }
+
+  useEffect(() => { loadData(); loadReasignaciones(); }, [entidadCodigo, entidadId]);
+
+  // Mapa: actividad_codigo -> ajustes aprobados aplicados
+  const reasigEfectos = useMemo(() => {
+    const aprobadas = reasignaciones.filter(r => r.estado === "aprobada");
+    return calcularEfectoPorActividad(aprobadas);
+  }, [reasignaciones]);
+
+  // Máximo número de reasignaciones en cualquier actividad (para columnas dinámicas)
+  const maxReasigCols = useMemo(() => {
+    let max = 0;
+    reasigEfectos.forEach(list => { if (list.length > max) max = list.length; });
+    return max;
+  }, [reasigEfectos]);
 
   /* ─── Build hierarchy ─── */
   const hierarchy = useMemo(() => {
@@ -413,6 +447,21 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
+        {/* Botón solicitar reasignación — solo Entidad */}
+        {!readOnly && (role === "entidad_mec_a" || role === "entidad_mec_b") && (
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setModalReasig(true)}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Solicitar reasignación
+            </Button>
+          </div>
+        )}
+
         {/* Filter bar */}
         <PlanificacionFilters
           filters={filters}
@@ -490,11 +539,15 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                 <tr className="border-b text-[11px] text-muted-foreground">
                                   <th className="py-1.5 px-2 text-center w-[60px]">Cód.</th>
                                   <th className="py-1.5 px-2 text-left">Actividad</th>
-                                  <th className="py-1.5 px-2 text-left w-[80px]">Unidad</th>
                                   <th className="py-1.5 px-2 text-center w-[50px]">Meta</th>
                                   <th className="py-1.5 px-2 text-center w-[70px]">Ejecutado</th>
                                   <th className="py-1.5 px-2 text-center w-[80px]">Próximo</th>
                                   <th className="py-1.5 px-2 text-center w-[40px]">Estado</th>
+                                  <th className="py-1.5 px-2 text-right w-[90px]">Pres. orig.</th>
+                                  {Array.from({ length: maxReasigCols }).map((_, i) => (
+                                    <th key={i} className="py-1.5 px-2 text-right w-[100px]">Reasig. {i + 1}</th>
+                                  ))}
+                                  <th className="py-1.5 px-2 text-right w-[100px]">Pres. vigente</th>
                                   {!readOnly && <th className="py-1.5 px-2 text-center w-[110px]">Av. Técnico</th>}
                                   {!readOnly && <th className="py-1.5 px-2 text-center w-[110px]">Av. Presup.</th>}
                                 </tr>
@@ -525,6 +578,8 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
                                         readOnly={readOnly}
                                         lastTecnicoDate={lastTecnico.get(act.actividad_codigo)}
                                         lastFinancieroDate={lastFinanciero.get(act.actividad_codigo)}
+                                        ajustes={reasigEfectos.get(act.actividad_codigo)}
+                                        maxReasigCols={maxReasigCols}
                                         onToggle={() => setExpandedRow(isExpanded ? null : act.id)}
                                         onOpenTecnico={() => setModalTecnico({ open: true, act })}
                                         onOpenPresup={() => setModalPresup({ open: true, act })}
@@ -581,7 +636,7 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
 
 function ActividadRow({
   act, ejecutado, estado, cfg, proximo, proximoClass, isExpanded, reported, currentYM, readOnly,
-  lastTecnicoDate, lastFinancieroDate, onToggle, onOpenTecnico, onOpenPresup,
+  lastTecnicoDate, lastFinancieroDate, ajustes, maxReasigCols, onToggle, onOpenTecnico, onOpenPresup,
 }: {
   act: PlanificacionActividad;
   ejecutado: number;
@@ -595,11 +650,16 @@ function ActividadRow({
   readOnly: boolean;
   lastTecnicoDate?: string;
   lastFinancieroDate?: string;
+  ajustes?: ReasignacionAplicada[];
+  maxReasigCols: number;
   onToggle: () => void;
   onOpenTecnico: () => void;
   onOpenPresup: () => void;
 }) {
   const meses = (act.meses_programados || []).sort();
+  const original = Number(act.presupuesto_seco_usd || 0);
+  const vigente = presupuestoVigente(original, ajustes);
+  const ultimoAjuste = ajustes && ajustes.length > 0 ? ajustes[ajustes.length - 1] : null;
 
   return (
     <>
@@ -632,7 +692,6 @@ function ActividadRow({
             </Tooltip>
           </div>
         </td>
-        <td className="py-2 px-2 text-xs text-muted-foreground">{act.unidad_medida}</td>
         <td className="py-2 px-2 text-center text-xs font-semibold">{act.meta_total}</td>
         <td className="py-2 px-2 text-center text-xs font-mono">
           <span className={cn(ejecutado > 0 && "font-semibold")}>{ejecutado}</span>
