@@ -503,6 +503,17 @@ export default function GestionContratosFinPage() {
                     </div>
                     <div><Label className="text-xs">IGV (USD)</Label><Input className="h-8 text-xs" type="number" step="0.01" value={pForm.igv_usd} onChange={e => setPForm(p => ({ ...p, igv_usd: e.target.value }))} /></div>
                   </div>
+                  <div>
+                    <Label className="text-xs">Enlace del producto</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      type="url"
+                      placeholder="https://drive.google.com/... (opcional)"
+                      value={pForm.enlace_producto}
+                      onChange={e => setPForm(p => ({ ...p, enlace_producto: e.target.value }))}
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">URL del repositorio donde está alojado el producto/entregable que justifica este pago.</p>
+                  </div>
                   <Button className="w-full" onClick={handleSaveComprobante} disabled={saving}>
                     {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Guardar comprobante
                   </Button>
