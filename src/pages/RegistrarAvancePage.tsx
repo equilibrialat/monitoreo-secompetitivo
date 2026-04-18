@@ -454,10 +454,22 @@ export default function RegistrarAvancePage() {
             </div>
 
             {isThisMonthReport && isThisMonthReport.estado_registro !== "borrador" ? (
-              <div className="bg-green-50 dark:bg-green-900/20 rounded p-3 text-sm">
-                <p className="text-green-700 dark:text-green-400 font-medium text-xs">✓ Reporte registrado</p>
-                {isThisMonthReport.avance_valor && (
-                  <p className="text-xs mt-1">Avance reportado: {isThisMonthReport.avance_valor} {act.unidad_medida}</p>
+              <div className="space-y-2">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded p-3 text-sm">
+                  <p className="text-green-700 dark:text-green-400 font-medium text-xs">✓ Avance técnico presentado</p>
+                  {isThisMonthReport.avance_valor && (
+                    <p className="text-xs mt-1">Avance reportado: {isThisMonthReport.avance_valor} {act.unidad_medida}</p>
+                  )}
+                </div>
+                {!financieroOk && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 rounded p-3 text-sm">
+                    <p className="text-amber-700 dark:text-amber-400 font-medium text-xs flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" /> Avance financiero pendiente
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Registra el gasto financiero del mes para cerrar esta actividad.
+                    </p>
+                  </div>
                 )}
               </div>
             ) : (
