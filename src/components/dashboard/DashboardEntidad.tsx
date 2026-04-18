@@ -161,6 +161,8 @@ export default function DashboardEntidad() {
     esteMes: boolean;
     pendientes: number;
     reportados: number;
+    tecnicoOk: boolean;
+    financieroOk: boolean;
   };
 
   const actividadesConPendientes = useMemo(() => {
@@ -169,21 +171,43 @@ export default function DashboardEntidad() {
       const meses = (act.meses_programados || []) as string[];
       if (!meses.length) continue;
       const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+      const comps = compsByActivity.get(act.actividad_codigo) || new Set<string>();
 
       let rezagados = 0;
       let esteMes = false;
       let pendientes = 0;
       let reportadosCount = 0;
+      // For current month: track each leg independently
+      const tecnicoOkMesActual = reported.has(currentYM);
+      const financieroOkMesActual = comps.has(currentYM);
 
       for (const m of meses) {
+        if (m === currentYM) {
+          // Current month — keep visible until BOTH technical and financial are done
+          const ambosOk = tecnicoOkMesActual && financieroOkMesActual;
+          if (ambosOk) {
+            reportadosCount++;
+          } else {
+            esteMes = true;
+          }
+          continue;
+        }
+        // For other months use technical record presence as before
         if (reported.has(m)) { reportadosCount++; continue; }
         if (m < currentYM) rezagados++;
-        else if (m === currentYM) esteMes = true;
         else pendientes++;
       }
 
       if (rezagados > 0 || esteMes) {
-        result.push({ ...act, rezagados, esteMes, pendientes, reportados: reportadosCount });
+        result.push({
+          ...act,
+          rezagados,
+          esteMes,
+          pendientes,
+          reportados: reportadosCount,
+          tecnicoOk: tecnicoOkMesActual,
+          financieroOk: financieroOkMesActual,
+        });
       }
     }
     // Sort: esteMes first, then by rezagados desc
@@ -192,7 +216,7 @@ export default function DashboardEntidad() {
       return b.rezagados - a.rezagados;
     });
     return result;
-  }, [actividades, reportsByActivity, avanceByActivity, currentYM]);
+  }, [actividades, reportsByActivity, compsByActivity, avanceByActivity, currentYM]);
 
   /* ─── Render ─── */
 
