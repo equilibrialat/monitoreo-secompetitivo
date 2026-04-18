@@ -1564,6 +1564,84 @@ export type Database = {
           },
         ]
       }
+      reasignaciones_presupuestales: {
+        Row: {
+          actividad_destino_codigo: string
+          actividad_origen_codigo: string
+          alerta_mensaje: string | null
+          alerta_nivel: string | null
+          comentario_coordinador: string | null
+          comentario_ivan: string | null
+          coordinador_nombre: string | null
+          created_at: string
+          entidad_codigo: string
+          estado: string
+          fecha_aprobacion: string | null
+          fecha_coordinador: string | null
+          fecha_solicitud: string
+          id: string
+          ivan_nombre: string | null
+          justificacion: string
+          mecanismo: string
+          monto_usd: number
+          numero_reasignacion: number | null
+          pct_variacion: number | null
+          solicitado_por: string | null
+          tipo_reasignacion: string
+          updated_at: string
+        }
+        Insert: {
+          actividad_destino_codigo: string
+          actividad_origen_codigo: string
+          alerta_mensaje?: string | null
+          alerta_nivel?: string | null
+          comentario_coordinador?: string | null
+          comentario_ivan?: string | null
+          coordinador_nombre?: string | null
+          created_at?: string
+          entidad_codigo: string
+          estado?: string
+          fecha_aprobacion?: string | null
+          fecha_coordinador?: string | null
+          fecha_solicitud?: string
+          id?: string
+          ivan_nombre?: string | null
+          justificacion: string
+          mecanismo: string
+          monto_usd: number
+          numero_reasignacion?: number | null
+          pct_variacion?: number | null
+          solicitado_por?: string | null
+          tipo_reasignacion: string
+          updated_at?: string
+        }
+        Update: {
+          actividad_destino_codigo?: string
+          actividad_origen_codigo?: string
+          alerta_mensaje?: string | null
+          alerta_nivel?: string | null
+          comentario_coordinador?: string | null
+          comentario_ivan?: string | null
+          coordinador_nombre?: string | null
+          created_at?: string
+          entidad_codigo?: string
+          estado?: string
+          fecha_aprobacion?: string | null
+          fecha_coordinador?: string | null
+          fecha_solicitud?: string
+          id?: string
+          ivan_nombre?: string | null
+          justificacion?: string
+          mecanismo?: string
+          monto_usd?: number
+          numero_reasignacion?: number | null
+          pct_variacion?: number | null
+          solicitado_por?: string | null
+          tipo_reasignacion?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       registro_capacitaciones: {
         Row: {
           actividad_id: string
