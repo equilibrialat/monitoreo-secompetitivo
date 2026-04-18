@@ -7,6 +7,7 @@ import { StatusLegendFab } from "./StatusLegend";
 import { TrimestreHeader } from "./TrimestreHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRole } from "@/contexts/RoleContext";
+import DevResetButton from "./DevResetButton";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -65,8 +66,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {children}
         </main>
         <StatusLegendFab />
-        <div className="shrink-0 border-t px-4 py-1.5 text-[10px] text-muted-foreground text-center bg-card">
-          MVP — Mecanismo B · 3 entidades activas
+        <div className="shrink-0 border-t px-4 py-1.5 text-[10px] text-muted-foreground flex items-center justify-between gap-2 bg-card">
+          <span className="flex-1 text-center">MVP — Mecanismo B · 3 entidades activas</span>
+          <DevResetButton />
         </div>
       </div>
     </div>
