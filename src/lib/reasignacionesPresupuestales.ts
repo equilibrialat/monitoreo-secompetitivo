@@ -2,10 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type EstadoReasignacion =
   | "pendiente_coordinador"
-  | "devuelta_coordinador"
   | "pendiente_ivan"
-  | "rechazada_ivan"
-  | "aprobada";
+  | "aprobada"
+  | "rechazada";
 
 export type TipoReasignacion = "productos_mismo_resultado" | "entre_resultados";
 export type AlertaNivel = "info" | "warning";
@@ -164,8 +163,15 @@ export async function fetchReasignacionesPorEstado(estados: EstadoReasignacion[]
 
 export const ESTADO_LABELS: Record<EstadoReasignacion, string> = {
   pendiente_coordinador: "Pendiente Coordinador",
-  devuelta_coordinador: "Devuelta por Coordinador",
   pendiente_ivan: "Pendiente Iván",
-  rechazada_ivan: "Rechazada por Iván",
   aprobada: "Aprobada",
+  rechazada: "Rechazada",
+};
+
+/** Color/variant por estado para Badges. */
+export const ESTADO_VARIANT: Record<EstadoReasignacion, "default" | "secondary" | "destructive" | "outline"> = {
+  pendiente_coordinador: "outline",
+  pendiente_ivan: "secondary",
+  aprobada: "default",
+  rechazada: "destructive",
 };
