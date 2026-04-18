@@ -237,7 +237,7 @@ export default function DashboardCadenasValor() {
         </CardContent>
       </Card>
 
-      {/* BLOQUE — Reasignaciones presupuestales (Paso 4 — aprobación final Iván) */}
+      {/* BLOQUE — Reasignaciones presupuestales (Paso 4 — aprobación final Coordinador de Cadenas de Valor) */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">

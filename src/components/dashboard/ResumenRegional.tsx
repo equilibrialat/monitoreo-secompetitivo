@@ -294,7 +294,7 @@ export function ResumenRegional() {
                   📋 Copiar texto
                 </Button>
                 <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setEmailOpen(true)}>
-                  <Mail className="h-3 w-3 mr-1" /> 📧 Preparar correo para Iván
+                  <Mail className="h-3 w-3 mr-1" /> 📧 Preparar correo para Coordinador de Cadenas de Valor
                 </Button>
               </div>
             </div>
