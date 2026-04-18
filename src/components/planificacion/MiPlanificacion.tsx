@@ -692,7 +692,6 @@ function ActividadRow({
             </Tooltip>
           </div>
         </td>
-        <td className="py-2 px-2 text-xs text-muted-foreground">{act.unidad_medida}</td>
         <td className="py-2 px-2 text-center text-xs font-semibold">{act.meta_total}</td>
         <td className="py-2 px-2 text-center text-xs font-mono">
           <span className={cn(ejecutado > 0 && "font-semibold")}>{ejecutado}</span>
