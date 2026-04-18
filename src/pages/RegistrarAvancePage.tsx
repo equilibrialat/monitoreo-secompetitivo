@@ -78,6 +78,7 @@ export default function RegistrarAvancePage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
+  const [financieroByActivity, setFinancieroByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
   const [existingReports, setExistingReports] = useState<Map<string, ReportExisting>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -111,7 +112,8 @@ export default function RegistrarAvancePage() {
     Promise.all([
       (supabase as any).from("planificacion_actividades").select("*").eq("entidad_codigo", entidadCodigo).order("actividad_codigo"),
       (supabase as any).from("registros_mensuales").select("id, actividad_id, anio, mes, avance_valor, estado_registro, descripcion_avance, limitaciones, prioridades_proximo_mes, actividades!inner(codigo)").eq("entidad_id", entidadId),
-    ]).then(([planRes, regRes]: any[]) => {
+      (supabase as any).from("ejecucion_financiera").select("actividad_id, registro_mensual_id, registros_mensuales!inner(anio, mes), actividades!inner(codigo)").eq("entidad_id", entidadId),
+    ]).then(([planRes, regRes, finRes]: any[]) => {
       const acts = planRes.data || [];
       setActividades(acts);
 
@@ -142,7 +144,22 @@ export default function RegistrarAvancePage() {
           }
         }
       }
+
+      // Build financial-by-month map per activity
+      const finMap = new Map<string, Set<string>>();
+      if (finRes.data) {
+        for (const f of finRes.data) {
+          const code = f.actividades?.codigo;
+          const rm = f.registros_mensuales;
+          if (!code || !rm) continue;
+          const ym = `${rm.anio}-${String(rm.mes).padStart(2, "0")}`;
+          if (!finMap.has(code)) finMap.set(code, new Set());
+          finMap.get(code)!.add(ym);
+        }
+      }
+
       setReportsByActivity(byCode);
+      setFinancieroByActivity(finMap);
       setAvanceByActivity(avanceMap);
       setExistingReports(existing);
       setLoading(false);
@@ -157,24 +174,28 @@ export default function RegistrarAvancePage() {
     if (!meses.length) return "por_iniciar";
     const sorted = [...meses].sort();
     const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+    const financiero = financieroByActivity.get(act.actividad_codigo) || new Set<string>();
     const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
 
-    // COMPLETADA
+    // A month is "fully done" only if BOTH technical (reported) AND financial entries exist
+    const isFullyDone = (m: string) => reported.has(m) && financiero.has(m);
+
+    // COMPLETADA — every month fully done + meta met
     const allPast = sorted.every(m => m <= selectedMonth);
-    const allReported = sorted.every(m => reported.has(m));
-    if (allPast && allReported && ejecutado >= (act.meta_total || 0) && (act.meta_total || 0) > 0) return "completada";
+    const allFullyDone = sorted.every(isFullyDone);
+    if (allPast && allFullyDone && ejecutado >= (act.meta_total || 0) && (act.meta_total || 0) > 0) return "completada";
 
-    // VENCIDA — has past months in meses_programados without report
-    const pastWithout = sorted.filter(m => m < selectedMonth && !reported.has(m));
-    if (pastWithout.length > 0) return "vencida";
+    // VENCIDA — past delivery month missing technical OR financial
+    const pastIncomplete = sorted.filter(m => m < selectedMonth && !isFullyDone(m));
+    if (pastIncomplete.length > 0) return "vencida";
 
-    // ENTREGABLE ESTE MES
-    if (sorted.includes(selectedMonth) && !reported.has(selectedMonth)) return "entregable_este_mes";
+    // ENTREGABLE ESTE MES — current month is delivery and missing technical OR financial
+    if (sorted.includes(selectedMonth) && !isFullyDone(selectedMonth)) return "entregable_este_mes";
 
     // POR INICIAR
     if (sorted[0] > selectedMonth) return "por_iniciar";
 
-    // EN CURSO (between first and last, not a delivery month OR already reported this month)
+    // EN CURSO
     return "en_curso";
   }
 
@@ -189,37 +210,37 @@ export default function RegistrarAvancePage() {
       const lifecycle = getLifecycle(act);
       const meses = (act.meses_programados || []) as string[];
       const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+      const financiero = financieroByActivity.get(act.actividad_codigo) || new Set<string>();
+      const isFullyDone = (m: string) => reported.has(m) && financiero.has(m);
 
       if (lifecycle === "completada") {
         completadas.push(act);
       } else if (lifecycle === "vencida") {
-        // Create one entry per overdue month
+        // Create one entry per past month missing técnico OR financiero
         const sorted = [...meses].sort();
-        const pastWithout = sorted.filter(m => m < selectedMonth && !reported.has(m));
-        for (const mesVencido of pastWithout) {
+        const pastIncomplete = sorted.filter(m => m < selectedMonth && !isFullyDone(m));
+        for (const mesVencido of pastIncomplete) {
           vencidas.push({ act, mesVencido });
         }
-        // Also add if current month is a delivery month and not reported
-        if (meses.includes(selectedMonth) && !reported.has(selectedMonth)) {
+        // Current month also pending if delivery and not fully done
+        if (meses.includes(selectedMonth) && !isFullyDone(selectedMonth)) {
           entregablesEsteMes.push(act);
         }
       } else if (lifecycle === "entregable_este_mes") {
         entregablesEsteMes.push(act);
       } else if (lifecycle === "en_curso" || lifecycle === "por_iniciar") {
-        // Find next deliverable for the "nothing to do" message
         const sorted = [...meses].sort();
-        const nextMonth = sorted.find(m => m >= selectedMonth && !reported.has(m));
+        const nextMonth = sorted.find(m => m >= selectedMonth && !isFullyDone(m));
         if (nextMonth && (!proximoEntregable || nextMonth < proximoEntregable.mes)) {
           proximoEntregable = { act, mes: nextMonth };
         }
       }
     }
 
-    // Sort vencidas by oldest first
     vencidas.sort((a, b) => a.mesVencido.localeCompare(b.mesVencido));
 
     return { vencidas, entregablesEsteMes, completadas, proximoEntregable };
-  }, [actividades, reportsByActivity, avanceByActivity, selectedMonth]);
+  }, [actividades, reportsByActivity, financieroByActivity, avanceByActivity, selectedMonth]);
 
   // Group entregables by RI
   const riGroups = useMemo(() => {
@@ -357,12 +378,17 @@ export default function RegistrarAvancePage() {
 
   function renderActivityForm(act: PlanificacionActividad, mesYM: string, formKey: string, isOverdue: boolean) {
     const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+    const financiero = financieroByActivity.get(act.actividad_codigo) || new Set<string>();
     const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
     const isActExpanded = expandedAct.has(formKey);
     const form = getForm(formKey);
     const isSaving = savingId === formKey;
     const existingReport = existingReports.get(act.actividad_codigo);
     const isThisMonthReport = mesYM === selectedMonth && existingReport;
+
+    // Per-month dual status for THIS row (mesYM)
+    const tecnicoOk = reported.has(mesYM);
+    const financieroOk = financiero.has(mesYM);
 
     return (
       <div key={formKey} className={cn("border rounded-lg", isActExpanded && "ring-1 ring-primary/20", isOverdue && "border-destructive/30")}>
@@ -377,15 +403,41 @@ export default function RegistrarAvancePage() {
           {isActExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
           <span className="text-xs font-mono font-bold text-primary shrink-0">{act.actividad_codigo}</span>
           <span className="text-sm truncate flex-1">{act.actividad_descripcion}</span>
-          {isOverdue ? (
-            <Badge className="text-[10px] gap-1 border-0 shrink-0 bg-destructive/10 text-destructive">
-              ✗ {formatYM(mesYM)}
+
+          {/* Dual status: técnico + financiero per month */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] gap-1 border",
+                tecnicoOk
+                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/40"
+                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/40"
+              )}
+              title={tecnicoOk ? "Avance técnico presentado" : "Avance técnico pendiente"}
+            >
+              {tecnicoOk ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+              Técnico
             </Badge>
-          ) : (
-            <Badge className="text-[10px] gap-1 border-0 shrink-0 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-              ● HOY
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] gap-1 border",
+                financieroOk
+                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/40"
+                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/40"
+              )}
+              title={financieroOk ? "Avance financiero presentado" : "Avance financiero pendiente"}
+            >
+              {financieroOk ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+              Financiero
             </Badge>
-          )}
+            {isOverdue && (
+              <Badge className="text-[10px] gap-1 border-0 bg-destructive/10 text-destructive">
+                ✗ {formatYM(mesYM)}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {isActExpanded && (
@@ -402,10 +454,22 @@ export default function RegistrarAvancePage() {
             </div>
 
             {isThisMonthReport && isThisMonthReport.estado_registro !== "borrador" ? (
-              <div className="bg-green-50 dark:bg-green-900/20 rounded p-3 text-sm">
-                <p className="text-green-700 dark:text-green-400 font-medium text-xs">✓ Reporte registrado</p>
-                {isThisMonthReport.avance_valor && (
-                  <p className="text-xs mt-1">Avance reportado: {isThisMonthReport.avance_valor} {act.unidad_medida}</p>
+              <div className="space-y-2">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded p-3 text-sm">
+                  <p className="text-green-700 dark:text-green-400 font-medium text-xs">✓ Avance técnico presentado</p>
+                  {isThisMonthReport.avance_valor && (
+                    <p className="text-xs mt-1">Avance reportado: {isThisMonthReport.avance_valor} {act.unidad_medida}</p>
+                  )}
+                </div>
+                {!financieroOk && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 rounded p-3 text-sm">
+                    <p className="text-amber-700 dark:text-amber-400 font-medium text-xs flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" /> Avance financiero pendiente
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Registra el gasto financiero del mes para cerrar esta actividad.
+                    </p>
+                  </div>
                 )}
               </div>
             ) : (
