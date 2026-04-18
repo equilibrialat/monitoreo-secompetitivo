@@ -45,7 +45,7 @@ export default function BandejaReasignacionesPage() {
                 <TabsTrigger value="coordinador">Pendientes (Coordinador Regional)</TabsTrigger>
               )}
               {isIvan && (
-                <TabsTrigger value="ivan">Pendientes (Cadenas de Valor)</TabsTrigger>
+                <TabsTrigger value="ivan">Pendientes (Coordinador de Cadenas de Valor)</TabsTrigger>
               )}
             </TabsList>
             {isCoordinador && (

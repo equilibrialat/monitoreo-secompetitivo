@@ -294,7 +294,7 @@ export function ResumenRegional() {
                   📋 Copiar texto
                 </Button>
                 <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setEmailOpen(true)}>
-                  <Mail className="h-3 w-3 mr-1" /> 📧 Preparar correo para Iván
+                  <Mail className="h-3 w-3 mr-1" /> 📧 Preparar correo para Coordinador de Cadenas de Valor
                 </Button>
               </div>
             </div>
@@ -449,11 +449,11 @@ export function ResumenRegional() {
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>📧 Correo para Iván — Coordinador Cadenas de Valor</DialogTitle>
+            <DialogTitle>📧 Correo para Coordinador de Cadenas de Valor</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="text-xs text-muted-foreground">
-              <p><strong>Para:</strong> Iván (Coordinador Cadenas de Valor)</p>
+              <p><strong>Para:</strong> Coordinador de Cadenas de Valor</p>
               <p><strong>Asunto:</strong> Resumen Regional {region} — {MESES[mes]} {anio}</p>
             </div>
             <Textarea
