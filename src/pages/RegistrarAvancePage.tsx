@@ -378,12 +378,17 @@ export default function RegistrarAvancePage() {
 
   function renderActivityForm(act: PlanificacionActividad, mesYM: string, formKey: string, isOverdue: boolean) {
     const reported = reportsByActivity.get(act.actividad_codigo) || new Set<string>();
+    const financiero = financieroByActivity.get(act.actividad_codigo) || new Set<string>();
     const ejecutado = avanceByActivity.get(act.actividad_codigo) || 0;
     const isActExpanded = expandedAct.has(formKey);
     const form = getForm(formKey);
     const isSaving = savingId === formKey;
     const existingReport = existingReports.get(act.actividad_codigo);
     const isThisMonthReport = mesYM === selectedMonth && existingReport;
+
+    // Per-month dual status for THIS row (mesYM)
+    const tecnicoOk = reported.has(mesYM);
+    const financieroOk = financiero.has(mesYM);
 
     return (
       <div key={formKey} className={cn("border rounded-lg", isActExpanded && "ring-1 ring-primary/20", isOverdue && "border-destructive/30")}>
@@ -398,15 +403,41 @@ export default function RegistrarAvancePage() {
           {isActExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
           <span className="text-xs font-mono font-bold text-primary shrink-0">{act.actividad_codigo}</span>
           <span className="text-sm truncate flex-1">{act.actividad_descripcion}</span>
-          {isOverdue ? (
-            <Badge className="text-[10px] gap-1 border-0 shrink-0 bg-destructive/10 text-destructive">
-              ✗ {formatYM(mesYM)}
+
+          {/* Dual status: técnico + financiero per month */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] gap-1 border",
+                tecnicoOk
+                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/40"
+                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/40"
+              )}
+              title={tecnicoOk ? "Avance técnico presentado" : "Avance técnico pendiente"}
+            >
+              {tecnicoOk ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+              Técnico
             </Badge>
-          ) : (
-            <Badge className="text-[10px] gap-1 border-0 shrink-0 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-              ● HOY
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] gap-1 border",
+                financieroOk
+                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/40"
+                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/40"
+              )}
+              title={financieroOk ? "Avance financiero presentado" : "Avance financiero pendiente"}
+            >
+              {financieroOk ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+              Financiero
             </Badge>
-          )}
+            {isOverdue && (
+              <Badge className="text-[10px] gap-1 border-0 bg-destructive/10 text-destructive">
+                ✗ {formatYM(mesYM)}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {isActExpanded && (
