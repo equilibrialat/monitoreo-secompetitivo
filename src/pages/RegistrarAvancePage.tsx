@@ -78,6 +78,7 @@ export default function RegistrarAvancePage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
   const [actividades, setActividades] = useState<PlanificacionActividad[]>([]);
   const [reportsByActivity, setReportsByActivity] = useState<Map<string, Set<string>>>(new Map());
+  const [financieroByActivity, setFinancieroByActivity] = useState<Map<string, Set<string>>>(new Map());
   const [avanceByActivity, setAvanceByActivity] = useState<Map<string, number>>(new Map());
   const [existingReports, setExistingReports] = useState<Map<string, ReportExisting>>(new Map());
   const [loading, setLoading] = useState(true);
