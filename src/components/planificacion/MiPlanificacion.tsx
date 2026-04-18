@@ -258,7 +258,30 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
     });
   }
 
-  useEffect(() => { loadData(); }, [entidadCodigo, entidadId]);
+  async function loadReasignaciones() {
+    if (!entidadCodigo) { setReasignaciones([]); return; }
+    const { data } = await (supabase as any)
+      .from("reasignaciones_presupuestales")
+      .select("*")
+      .eq("entidad_codigo", entidadCodigo)
+      .order("fecha_solicitud", { ascending: false });
+    setReasignaciones((data as ReasignacionPresupuestal[]) || []);
+  }
+
+  useEffect(() => { loadData(); loadReasignaciones(); }, [entidadCodigo, entidadId]);
+
+  // Mapa: actividad_codigo -> ajustes aprobados aplicados
+  const reasigEfectos = useMemo(() => {
+    const aprobadas = reasignaciones.filter(r => r.estado === "aprobada");
+    return calcularEfectoPorActividad(aprobadas);
+  }, [reasignaciones]);
+
+  // Máximo número de reasignaciones en cualquier actividad (para columnas dinámicas)
+  const maxReasigCols = useMemo(() => {
+    let max = 0;
+    reasigEfectos.forEach(list => { if (list.length > max) max = list.length; });
+    return max;
+  }, [reasigEfectos]);
 
   /* ─── Build hierarchy ─── */
   const hierarchy = useMemo(() => {
