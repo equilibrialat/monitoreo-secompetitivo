@@ -75,6 +75,7 @@ const COORDINADOR_REGIONAL_NAV: NavSection[] = [
     items: [
       { label: "Planificación", path: "/planificacion-trimestral", icon: ClipboardList },
       { label: "Aprobaciones", path: "/aprobaciones", icon: ClipboardCheck },
+      { label: "Reasignaciones", path: "/bandeja-reasignaciones", icon: Shuffle },
       { label: "Consolidado Regional", path: "/reportes-regionales", icon: BarChart3 },
     ],
   },
@@ -102,6 +103,7 @@ const COORDINADOR_CADENAS_NAV: NavSection[] = [
     label: "TRIMESTRAL",
     items: [
       { label: "Consolidado Mec B", path: "/reportes-mec-b", icon: BarChart3 },
+      { label: "Reasignaciones", path: "/bandeja-reasignaciones", icon: Shuffle },
       { label: "Reportes Trimestrales", path: "/reportes", icon: FolderOpen },
     ],
   },
