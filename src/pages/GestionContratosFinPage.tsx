@@ -347,6 +347,14 @@ export default function GestionContratosFinPage() {
             <TabsTrigger value="comprobantes">Comprobantes ({comprobantes.length})</TabsTrigger>
           </TabsList>
           <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportComprobantes}
+              disabled={loading || comprobantes.length === 0}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" /> Exportar
+            </Button>
             <Dialog open={showContratoDialog} onOpenChange={setShowContratoDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5 mr-1" /> Contrato</Button>
