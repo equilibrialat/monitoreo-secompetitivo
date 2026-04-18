@@ -1,0 +1,1 @@
+ALTER TABLE public.comprobantes ADD COLUMN IF NOT EXISTS enlace_producto text;

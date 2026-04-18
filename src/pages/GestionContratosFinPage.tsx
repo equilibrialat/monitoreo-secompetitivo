@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, FileText, Receipt, Loader2, DollarSign, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, FileText, Receipt, Loader2, DollarSign, ChevronDown, ChevronRight, Download, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { toast } from "sonner";
 import { Header } from "@/components/dashboard/DashboardEntidad";
 import { cn } from "@/lib/utils";
+import * as XLSX from "xlsx";
 
 interface ContratoFin {
   id: string;
@@ -58,6 +59,7 @@ interface Comprobante {
   mes: string;
   fuente: string;
   igv_usd: number;
+  enlace_producto: string | null;
   created_at: string;
 }
 
@@ -134,7 +136,7 @@ export default function GestionContratosFinPage() {
     contrato_id: "none", actividad_codigo: "", fecha_documento: "",
     clase_documento: "FAC", numero_documento: "", ruc: "", proveedor_nombre: "",
     concepto: "", moneda: "USD", monto_moneda_origen: "", tipo_cambio: "1",
-    tipo_gasto: "consultoría", fuente: "seco", igv_usd: "0",
+    tipo_gasto: "consultoría", fuente: "seco", igv_usd: "0", enlace_producto: "",
   });
 
   const loadData = useCallback(() => {
@@ -235,15 +237,51 @@ export default function GestionContratosFinPage() {
       mes: calcMes(pForm.fecha_documento),
       fuente: pForm.fuente,
       igv_usd: parseFloat(pForm.igv_usd) || 0,
+      enlace_producto: pForm.enlace_producto.trim() || null,
     });
     setSaving(false);
     if (error) { toast.error("Error al guardar"); console.error(error); }
     else {
       toast.success("Comprobante registrado");
       setShowComprobanteDialog(false);
-      setPForm({ contrato_id: "none", actividad_codigo: "", fecha_documento: "", clase_documento: "FAC", numero_documento: "", ruc: "", proveedor_nombre: "", concepto: "", moneda: "USD", monto_moneda_origen: "", tipo_cambio: "1", tipo_gasto: "consultoría", fuente: "seco", igv_usd: "0" });
+      setPForm({ contrato_id: "none", actividad_codigo: "", fecha_documento: "", clase_documento: "FAC", numero_documento: "", ruc: "", proveedor_nombre: "", concepto: "", moneda: "USD", monto_moneda_origen: "", tipo_cambio: "1", tipo_gasto: "consultoría", fuente: "seco", igv_usd: "0", enlace_producto: "" });
       loadData();
     }
+  }
+
+  function handleExportComprobantes() {
+    if (comprobantes.length === 0) {
+      toast.info("No hay comprobantes para exportar");
+      return;
+    }
+    const contratoLabel = (id: string | null) => {
+      if (!id) return "—";
+      const c = contratos.find(x => x.id === id);
+      return c ? (c.numero_contrato || c.proveedor_nombre || "—") : "—";
+    };
+    const contratadoLabel = (id: string | null) => {
+      if (!id) return "—";
+      const c = contratos.find(x => x.id === id);
+      return c?.proveedor_nombre || "—";
+    };
+    const rows = comprobantes.map(p => ({
+      "Contrato": contratoLabel(p.contrato_id),
+      "Contratado": contratadoLabel(p.contrato_id) !== "—" ? contratadoLabel(p.contrato_id) : (p.proveedor_nombre || "—"),
+      "Actividad vinculada": p.actividad_codigo,
+      "N° comprobante": [p.clase_documento, p.numero_documento].filter(Boolean).join(" ") || "—",
+      "Fecha": p.fecha_documento,
+      "Concepto": p.concepto,
+      "Tipo de documento": p.clase_documento || "—",
+      "Monto": Number(p.monto_usd?.toFixed(2) ?? 0),
+      "Enlace producto": p.enlace_producto || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 22 }, { wch: 26 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 50 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Comprobantes");
+    const fname = `comprobantes_${entidadCodigo}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fname);
+    toast.success(`Exportados ${rows.length} comprobantes`);
   }
 
   // When selecting contrato in comprobante form, pre-fill fields
@@ -309,6 +347,14 @@ export default function GestionContratosFinPage() {
             <TabsTrigger value="comprobantes">Comprobantes ({comprobantes.length})</TabsTrigger>
           </TabsList>
           <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportComprobantes}
+              disabled={loading || comprobantes.length === 0}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" /> Exportar
+            </Button>
             <Dialog open={showContratoDialog} onOpenChange={setShowContratoDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5 mr-1" /> Contrato</Button>
@@ -465,6 +511,17 @@ export default function GestionContratosFinPage() {
                     </div>
                     <div><Label className="text-xs">IGV (USD)</Label><Input className="h-8 text-xs" type="number" step="0.01" value={pForm.igv_usd} onChange={e => setPForm(p => ({ ...p, igv_usd: e.target.value }))} /></div>
                   </div>
+                  <div>
+                    <Label className="text-xs">Enlace del producto</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      type="url"
+                      placeholder="https://drive.google.com/... (opcional)"
+                      value={pForm.enlace_producto}
+                      onChange={e => setPForm(p => ({ ...p, enlace_producto: e.target.value }))}
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">URL del repositorio donde está alojado el producto/entregable que justifica este pago.</p>
+                  </div>
                   <Button className="w-full" onClick={handleSaveComprobante} disabled={saving}>
                     {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Guardar comprobante
                   </Button>
@@ -533,6 +590,7 @@ export default function GestionContratosFinPage() {
                         <TableHead className="text-xs text-right">USD</TableHead>
                         <TableHead className="text-xs">Fuente</TableHead>
                         <TableHead className="text-xs">Trim.</TableHead>
+                        <TableHead className="text-xs">Producto</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -548,6 +606,22 @@ export default function GestionContratosFinPage() {
                             <Badge variant="outline" className="text-[10px]">{p.fuente === "seco" ? "SECO" : p.fuente}</Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{p.trimestre}</TableCell>
+                          <TableCell className="text-xs">
+                            {p.enlace_producto ? (
+                              <a
+                                href={p.enlace_producto}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                                title={p.enlace_producto}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Ver producto
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
