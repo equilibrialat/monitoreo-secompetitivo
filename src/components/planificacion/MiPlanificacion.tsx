@@ -636,7 +636,7 @@ export default function MiPlanificacion({ readOnly = false, entidadCodigoOverrid
 
 function ActividadRow({
   act, ejecutado, estado, cfg, proximo, proximoClass, isExpanded, reported, currentYM, readOnly,
-  lastTecnicoDate, lastFinancieroDate, onToggle, onOpenTecnico, onOpenPresup,
+  lastTecnicoDate, lastFinancieroDate, ajustes, maxReasigCols, onToggle, onOpenTecnico, onOpenPresup,
 }: {
   act: PlanificacionActividad;
   ejecutado: number;
@@ -650,11 +650,16 @@ function ActividadRow({
   readOnly: boolean;
   lastTecnicoDate?: string;
   lastFinancieroDate?: string;
+  ajustes?: ReasignacionAplicada[];
+  maxReasigCols: number;
   onToggle: () => void;
   onOpenTecnico: () => void;
   onOpenPresup: () => void;
 }) {
   const meses = (act.meses_programados || []).sort();
+  const original = Number(act.presupuesto_seco_usd || 0);
+  const vigente = presupuestoVigente(original, ajustes);
+  const ultimoAjuste = ajustes && ajustes.length > 0 ? ajustes[ajustes.length - 1] : null;
 
   return (
     <>
