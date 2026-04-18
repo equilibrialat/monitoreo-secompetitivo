@@ -77,7 +77,7 @@ export default function ModalSolicitarReasignacion({
       .from("reasignaciones_presupuestales")
       .select("id, actividad_origen_codigo, actividad_destino_codigo")
       .eq("entidad_codigo", entidadCodigo)
-      .in("estado", ["pendiente_coordinador", "pendiente_ivan", "devuelta_coordinador"]);
+      .in("estado", ["pendiente_coordinador", "pendiente_ivan"]);
     const pares = [
       [origen, destino],
       [destino, origen],
@@ -91,7 +91,7 @@ export default function ModalSolicitarReasignacion({
       return;
     }
 
-    const { error } = await (supabase as any)
+    const { data: inserted, error } = await (supabase as any)
       .from("reasignaciones_presupuestales")
       .insert({
         entidad_codigo: entidadCodigo,
@@ -106,12 +106,27 @@ export default function ModalSolicitarReasignacion({
         justificacion: justificacion.trim(),
         solicitado_por: "Entidad",
         estado: "pendiente_coordinador",
-      });
+      })
+      .select()
+      .single();
     setSaving(false);
     if (error) {
       toast.error("No se pudo enviar la solicitud: " + error.message);
       return;
     }
+
+    // Notificación → Coordinador Regional
+    try {
+      const { sendNotificacion } = await import("@/lib/notificaciones");
+      await sendNotificacion({
+        tipo: "reasignacion_nueva",
+        asunto: `Nueva solicitud de reasignación de ${entidadCodigo}`,
+        mensaje: `${entidadCodigo} solicita reasignar USD ${montoNum.toLocaleString()} de ${origen} a ${destino}.`,
+        destinatarios: { rol: "coordinador_regional" },
+        entidad_destino_id: null,
+      });
+    } catch { /* noop */ }
+
     toast.success("Solicitud enviada al Coordinador Regional");
     reset();
     onOpenChange(false);
