@@ -337,16 +337,52 @@ export default function DashboardEntidad() {
                               </Tooltip>
                             </TooltipProvider>
                           </div>
-                          <Badge variant="outline" className="text-[10px] border-yellow-300 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
-                            🟡 Entregable este mes
-                          </Badge>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] border-yellow-300 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
+                              🟡 Entregable este mes
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px]",
+                                act.tecnicoOk
+                                  ? "border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
+                                  : "border-muted text-muted-foreground bg-muted/30"
+                              )}
+                            >
+                              {act.tecnicoOk ? "✓ Técnico" : "○ Técnico pendiente"}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px]",
+                                act.financieroOk
+                                  ? "border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
+                                  : "border-muted text-muted-foreground bg-muted/30"
+                              )}
+                            >
+                              {act.financieroOk ? "✓ Financiero" : "○ Financiero pendiente"}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="flex flex-col gap-1 shrink-0">
-                          <Button size="sm" className="text-xs" onClick={() => setModalTecnico({ open: true, act })}>
-                            Av. Técnico <ArrowRight className="h-3 w-3 ml-1" />
+                          <Button
+                            size="sm"
+                            className="text-xs"
+                            variant={act.tecnicoOk ? "outline" : "default"}
+                            disabled={act.tecnicoOk}
+                            onClick={() => setModalTecnico({ open: true, act })}
+                          >
+                            {act.tecnicoOk ? "✓ Av. Técnico" : <>Av. Técnico <ArrowRight className="h-3 w-3 ml-1" /></>}
                           </Button>
-                          <Button size="sm" variant="outline" className="text-xs" onClick={() => setModalPresup({ open: true, act })}>
-                            Av. Presup. <ArrowRight className="h-3 w-3 ml-1" />
+                          <Button
+                            size="sm"
+                            variant={act.financieroOk ? "outline" : "default"}
+                            className="text-xs"
+                            disabled={act.financieroOk}
+                            onClick={() => setModalPresup({ open: true, act })}
+                          >
+                            {act.financieroOk ? "✓ Av. Presup." : <>Av. Presup. <ArrowRight className="h-3 w-3 ml-1" /></>}
                           </Button>
                         </div>
                       </div>
