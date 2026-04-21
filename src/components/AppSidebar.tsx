@@ -1,7 +1,8 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { ChevronDown, Building2, X } from "lucide-react";
 import { useRole, ROLE_LABELS, type AppRole } from "@/contexts/RoleContext";
-import { getNavSectionsForRole } from "@/config/navigation";
+import { getNavSectionsForRole, GESTOR_INICIATIVA_NAV_BASE } from "@/config/navigation";
+import { DevSeeder } from "@/components/DevSeeder";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,14 +32,23 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
     setEntidadId,
     loadingEntidades,
     filteredEntidades,
+    iniciativaId,
+    setIniciativaId,
   } = useRole();
   const location = useLocation();
   const navigate = useNavigate();
   const navSections = getNavSectionsForRole(role);
 
+  // When gestor_iniciativa has no iniciativaId yet, pick first available (demo mode)
+  const resolvedIniciativaId = iniciativaId ?? "demo";
+
   const handleRoleChange = (r: AppRole) => {
     setRole(r);
-    navigate("/dashboard");
+    if (r === "gestor_iniciativa") {
+      navigate(`${GESTOR_INICIATIVA_NAV_BASE}/${resolvedIniciativaId}`);
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   const handleNavClick = () => {
@@ -131,6 +141,11 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
             {/* Items */}
             <div className="space-y-0.5">
               {section.items.map((item) => {
+                // Replace placeholder 'current' with real iniciativaId for gestor_iniciativa
+                const resolvedPath = role === "gestor_iniciativa"
+                  ? item.path.replace("/current", `/${resolvedIniciativaId}`)
+                  : item.path;
+
                 if (item.disabled) {
                   return (
                     <div
@@ -143,11 +158,12 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
                   );
                 }
 
-                const active = location.pathname === item.path;
+                const active = location.pathname === resolvedPath ||
+                  (resolvedPath !== "/dashboard" && location.pathname.startsWith(resolvedPath) && resolvedPath.length > 10);
                 return (
                   <Link
-                    key={item.path}
-                    to={item.path}
+                    key={resolvedPath}
+                    to={resolvedPath}
                     onClick={handleNavClick}
                     className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors min-h-[44px] ${
                       active
@@ -164,6 +180,9 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           </div>
         ))}
       </nav>
+
+      {/* Dev seeder */}
+      <DevSeeder />
 
       {/* Footer */}
       <div className="px-5 py-4 text-xs text-sidebar-foreground/50">

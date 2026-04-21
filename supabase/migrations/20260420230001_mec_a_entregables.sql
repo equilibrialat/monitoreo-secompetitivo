@@ -1,0 +1,80 @@
+-- Módulo Mec A: Entregables y Contrapartida No Monetaria
+-- No toca tablas ni vistas de Mecanismo B
+
+-- Tabla entregables (versión completa)
+CREATE TABLE IF NOT EXISTS public.entregables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entidad_codigo TEXT NOT NULL,
+  actividad_codigo TEXT NOT NULL,
+  contrato_id UUID,
+  titulo TEXT NOT NULL,
+  descripcion TEXT,
+  tipo TEXT CHECK (tipo IN (
+    'informe','producto','consultoria',
+    'capacitacion','estudio','otro'
+  )),
+  responsable_nombre TEXT,
+  responsable_rol TEXT CHECK (responsable_rol IN (
+    'consultor','equipo_interno','socio'
+  )),
+  fecha_compromiso DATE NOT NULL,
+  fecha_entrega_real DATE,
+  estado TEXT DEFAULT 'pendiente' CHECK (estado IN (
+    'pendiente','en_proceso','entregado','observado'
+  )),
+  presupuesto_vinculado_usd NUMERIC,
+  documento_url TEXT,
+  observaciones TEXT,
+  mes TEXT GENERATED ALWAYS AS (
+    TO_CHAR(fecha_compromiso, 'YYYY-MM')
+  ) STORED,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Tabla contrapartida no monetaria
+-- (horas de funcionarios públicos valorizadas)
+CREATE TABLE IF NOT EXISTS public.contrapartida_no_monetaria (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entidad_codigo TEXT NOT NULL,
+  actividad_codigo TEXT NOT NULL,
+  fecha DATE NOT NULL,
+  funcionario_nombre TEXT NOT NULL,
+  funcionario_cargo TEXT,
+  concepto TEXT NOT NULL,
+  unidad TEXT DEFAULT 'Hora',
+  cantidad NUMERIC NOT NULL,
+  costo_unitario_soles NUMERIC NOT NULL,
+  total_soles NUMERIC GENERATED ALWAYS AS (
+    cantidad * costo_unitario_soles
+  ) STORED,
+  tipo_cambio NUMERIC DEFAULT 3.75,
+  total_usd NUMERIC,
+  mes TEXT GENERATED ALWAYS AS (
+    TO_CHAR(fecha, 'YYYY-MM')
+  ) STORED,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS entregables
+ALTER TABLE public.entregables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public_read_entregables"
+  ON public.entregables FOR SELECT USING (true);
+CREATE POLICY "public_insert_entregables"
+  ON public.entregables FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_update_entregables"
+  ON public.entregables FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "public_delete_entregables"
+  ON public.entregables FOR DELETE USING (true);
+
+-- RLS contrapartida_no_monetaria
+ALTER TABLE public.contrapartida_no_monetaria 
+  ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public_read_cnm"
+  ON public.contrapartida_no_monetaria FOR SELECT USING (true);
+CREATE POLICY "public_insert_cnm"
+  ON public.contrapartida_no_monetaria FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_update_cnm"
+  ON public.contrapartida_no_monetaria FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "public_delete_cnm"
+  ON public.contrapartida_no_monetaria FOR DELETE USING (true);

@@ -5,6 +5,7 @@ export type AppRole =
   | "entidad_mec_a"
   | "entidad_mec_b"
   | "gestor"
+  | "gestor_iniciativa"
   | "coordinador_regional"
   | "asesora_politicas"
   | "coordinador_cadenas"
@@ -16,6 +17,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   entidad_mec_a: "Entidad Mecanismo A",
   entidad_mec_b: "Entidad Mecanismo B",
   gestor: "Gestor",
+  gestor_iniciativa: "Gestor Iniciativa (Mec A)",
   coordinador_regional: "Coordinador Regional",
   asesora_politicas: "Asesora Políticas Públicas",
   coordinador_cadenas: "Coordinador Cadenas de Valor",
@@ -52,6 +54,9 @@ interface RoleContextValue {
   clearFilters: () => void;
   hasActiveFilters: boolean;
   filteredEntidades: EntidadOption[];
+  // Mec A — Gestor de Iniciativa
+  iniciativaId: string | null;
+  setIniciativaId: (id: string | null) => void;
 }
 
 const DEFAULT_FILTERS: GlobalFilters = {
@@ -69,6 +74,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [entidades, setEntidades] = useState<EntidadOption[]>([]);
   const [loadingEntidades, setLoadingEntidades] = useState(true);
   const [filters, setFiltersState] = useState<GlobalFilters>(DEFAULT_FILTERS);
+  // Mec A — Gestor de Iniciativa
+  const [iniciativaId, setIniciativaId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchEntidades() {
@@ -178,6 +185,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       value={{
         role, setRole, entidadId, setEntidadId, entidades, loadingEntidades,
         filters, setFilters, clearFilters, hasActiveFilters, filteredEntidades,
+        iniciativaId, setIniciativaId,
       }}
     >
       {children}

@@ -182,6 +182,12 @@ const ADMINISTRACION_NAV: NavSection[] = [
     ],
   },
   {
+    label: "MECANISMO A",
+    items: [
+      { label: "Pagos Pendientes Mec A", path: "/mec-a/pagos-pendientes", icon: Banknote },
+    ],
+  },
+  {
     label: "REPORTES",
     items: [
       { label: "Reportes Financieros", path: "/reportes-financieros", icon: BarChart3 },
@@ -229,6 +235,13 @@ const ASESORA_POLITICAS_NAV: NavSection[] = [
     ],
   },
   {
+    label: "MECANISMO A",
+    items: [
+      { label: "Panel Iniciativas", path: "/mec-a/panel", icon: Briefcase },
+      { label: "Reasignaciones", path: "/mec-a/reasignaciones", icon: Shuffle },
+    ],
+  },
+  {
     label: "GESTIÓN",
     items: [
       { label: "Notificaciones", path: "/notificaciones", icon: Bell },
@@ -263,10 +276,40 @@ const GESTOR_NAV: NavSection[] = [
   },
 ];
 
+// ─── Gestor de Iniciativa Mec A ──────────────────────────────────────────────
+export const GESTOR_INICIATIVA_NAV_BASE = "/mec-a/iniciativa";
+
+const GESTOR_INICIATIVA_NAV: NavSection[] = [
+  {
+    items: [
+      { label: "Dashboard", path: "/mec-a/iniciativa/current", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "INGRESO DE DATA",
+    items: [
+      { label: "Avance Operativo", path: "/mec-a/iniciativa/current/avance-operativo", icon: BarChart3 },
+      { label: "Presupuesto", path: "/mec-a/iniciativa/current/presupuesto", icon: Banknote },
+      { label: "Entregables", path: "/mec-a/iniciativa/current/entregables", icon: ClipboardCheck },
+      { label: "Comprobantes", path: "/mec-a/iniciativa/current/comprobantes", icon: FileCheck },
+      { label: "Contrapartida Monetaria", path: "/mec-a/iniciativa/current/contrapartida-monetaria", icon: Banknote },
+      { label: "Contrapartida No Monet.", path: "/mec-a/iniciativa/current/contrapartida-no-monetaria", icon: Briefcase },
+    ],
+  },
+  {
+    label: "GESTIÓN",
+    items: [
+      { label: "Reasignaciones", path: "/mec-a/iniciativa/current/reasignaciones", icon: Shuffle },
+      { label: "Notificaciones", path: "/notificaciones", icon: Bell },
+    ],
+  },
+];
+
 const NAV_SECTIONS_BY_ROLE: Record<AppRole, NavSection[]> = {
   entidad_mec_a: ENTIDAD_NAV,
   entidad_mec_b: ENTIDAD_NAV,
   gestor: GESTOR_NAV,
+  gestor_iniciativa: GESTOR_INICIATIVA_NAV,
   coordinador_regional: COORDINADOR_REGIONAL_NAV,
   asesora_politicas: ASESORA_POLITICAS_NAV,
   coordinador_cadenas: COORDINADOR_CADENAS_NAV,
