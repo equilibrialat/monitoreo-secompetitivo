@@ -10,32 +10,56 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { useMecAIniciativa } from "@/hooks/useMecAIniciativa";
-import { fetchMecAContrapartidaNoMonetaria, insertMecAContrapartidaNoMonetaria, deleteMecAContrapartidaNoMonetaria, type MecAContrapartidaNoMonetaria } from "@/lib/mecA";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+
+interface ContrapartidaNoMonetariaRow {
+  id: string;
+  entidad_codigo: string;
+  actividad_codigo: string;
+  fecha: string;
+  funcionario_nombre: string;
+  funcionario_cargo: string | null;
+  concepto: string;
+  unidad: string | null;
+  cantidad: number;
+  costo_unitario_soles: number;
+  total_soles: number | null;
+  tipo_cambio: number | null;
+  total_usd: number | null;
+  created_at: string;
+}
 
 export default function ContrapartidaNoMonetariaPage() {
   const { id } = useParams<{ id: string }>();
   const { iniciativaId } = useRole();
   const resolvedId = id ?? iniciativaId ?? "";
-  const { actividades } = useMecAIniciativa(resolvedId);
+  const { iniciativa, actividades } = useMecAIniciativa(resolvedId);
+  const entidadCodigo = iniciativa?.entidad_codigo ?? null;
 
-  const [registros, setRegistros] = useState<MecAContrapartidaNoMonetaria[]>([]);
+  const [registros, setRegistros] = useState<ContrapartidaNoMonetariaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({
-    actividad_id: "", fecha_actividad: "", nombre_funcionario: "", cargo_funcionario: "",
-    concepto: "", unidad_medida: "Hora", cantidad: "", costo_unitario_soles: "", tipo_cambio: "",
+    actividad_codigo: "", fecha: "", funcionario_nombre: "", funcionario_cargo: "",
+    concepto: "", unidad: "Hora", cantidad: "", costo_unitario_soles: "", tipo_cambio: "",
   });
 
   const load = async () => {
+    if (!entidadCodigo) { setLoading(false); return; }
     setLoading(true);
-    const data = await fetchMecAContrapartidaNoMonetaria(resolvedId);
-    setRegistros(data);
+    const { data, error } = await (supabase as any)
+      .from("contrapartida_no_monetaria")
+      .select("*")
+      .eq("entidad_codigo", entidadCodigo)
+      .order("fecha", { ascending: false });
+    if (error) { console.error(error); toast.error("Error al cargar registros"); }
+    setRegistros((data as ContrapartidaNoMonetariaRow[]) || []);
     setLoading(false);
   };
 
-  useEffect(() => { if (resolvedId) load(); }, [resolvedId]);
+  useEffect(() => { if (entidadCodigo) load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [entidadCodigo]);
 
   const totalSoles = form.cantidad && form.costo_unitario_soles
     ? (Number(form.cantidad) * Number(form.costo_unitario_soles)).toFixed(2)
@@ -45,34 +69,46 @@ export default function ContrapartidaNoMonetariaPage() {
     : "—";
 
   async function handleSave() {
-    if (!form.fecha_actividad || !form.nombre_funcionario || !form.cargo_funcionario || !form.concepto || !form.cantidad || !form.costo_unitario_soles) {
+    if (!entidadCodigo) { toast.error("Iniciativa sin entidad asociada"); return; }
+    if (!form.actividad_codigo || !form.fecha || !form.funcionario_nombre || !form.funcionario_cargo || !form.concepto || !form.cantidad || !form.costo_unitario_soles) {
       toast.error("Completa todos los campos obligatorios");
       return;
     }
     setSaving(true);
-    const result = await insertMecAContrapartidaNoMonetaria({
-      actividad_id: form.actividad_id || null,
-      iniciativa_id: resolvedId,
-      fecha_actividad: form.fecha_actividad,
-      nombre_funcionario: form.nombre_funcionario,
-      cargo_funcionario: form.cargo_funcionario,
+    const cantidad = Number(form.cantidad);
+    const costo = Number(form.costo_unitario_soles);
+    const tc = form.tipo_cambio ? Number(form.tipo_cambio) : null;
+    const total_usd = tc && tc > 0 ? +((cantidad * costo) / tc).toFixed(2) : null;
+    const { error } = await (supabase as any).from("contrapartida_no_monetaria").insert({
+      entidad_codigo: entidadCodigo,
+      actividad_codigo: form.actividad_codigo,
+      fecha: form.fecha,
+      funcionario_nombre: form.funcionario_nombre,
+      funcionario_cargo: form.funcionario_cargo,
       concepto: form.concepto,
-      unidad_medida: form.unidad_medida || "Hora",
-      cantidad: Number(form.cantidad),
-      costo_unitario_soles: Number(form.costo_unitario_soles),
-      tipo_cambio: form.tipo_cambio ? Number(form.tipo_cambio) : null,
-      registrado_por: null,
+      unidad: form.unidad || "Hora",
+      cantidad,
+      costo_unitario_soles: costo,
+      tipo_cambio: tc,
+      total_usd,
     });
     setSaving(false);
-    if (!result.success) { toast.error(result.error); return; }
+    if (error) { toast.error(error.message); return; }
     toast.success("Horas registradas correctamente");
     setDialogOpen(false);
-    setForm({ actividad_id: "", fecha_actividad: "", nombre_funcionario: "", cargo_funcionario: "", concepto: "", unidad_medida: "Hora", cantidad: "", costo_unitario_soles: "", tipo_cambio: "" });
+    setForm({ actividad_codigo: "", fecha: "", funcionario_nombre: "", funcionario_cargo: "", concepto: "", unidad: "Hora", cantidad: "", costo_unitario_soles: "", tipo_cambio: "" });
     load();
   }
 
-  const grandTotalSoles = registros.reduce((s, r) => s + (r.total_soles ?? r.cantidad * r.costo_unitario_soles), 0);
-  const grandTotalUSD = registros.reduce((s, r) => s + (r.total_usd ?? 0), 0);
+  async function handleDelete(rid: string) {
+    const { error } = await (supabase as any).from("contrapartida_no_monetaria").delete().eq("id", rid);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Eliminado");
+    load();
+  }
+
+  const grandTotalSoles = registros.reduce((s, r) => s + (Number(r.total_soles) || (r.cantidad * r.costo_unitario_soles)), 0);
+  const grandTotalUSD = registros.reduce((s, r) => s + (Number(r.total_usd) || 0), 0);
 
   return (
     <div className="space-y-5 pb-8">
