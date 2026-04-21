@@ -293,6 +293,60 @@ export type Database = {
           },
         ]
       }
+      contrapartida_no_monetaria: {
+        Row: {
+          actividad_codigo: string
+          cantidad: number
+          concepto: string
+          costo_unitario_soles: number
+          created_at: string | null
+          entidad_codigo: string
+          fecha: string
+          funcionario_cargo: string | null
+          funcionario_nombre: string
+          id: string
+          mes: string | null
+          tipo_cambio: number | null
+          total_soles: number | null
+          total_usd: number | null
+          unidad: string | null
+        }
+        Insert: {
+          actividad_codigo: string
+          cantidad: number
+          concepto: string
+          costo_unitario_soles: number
+          created_at?: string | null
+          entidad_codigo: string
+          fecha: string
+          funcionario_cargo?: string | null
+          funcionario_nombre: string
+          id?: string
+          mes?: string | null
+          tipo_cambio?: number | null
+          total_soles?: number | null
+          total_usd?: number | null
+          unidad?: string | null
+        }
+        Update: {
+          actividad_codigo?: string
+          cantidad?: number
+          concepto?: string
+          costo_unitario_soles?: number
+          created_at?: string | null
+          entidad_codigo?: string
+          fecha?: string
+          funcionario_cargo?: string | null
+          funcionario_nombre?: string
+          id?: string
+          mes?: string | null
+          tipo_cambio?: number | null
+          total_soles?: number | null
+          total_usd?: number | null
+          unidad?: string | null
+        }
+        Relationships: []
+      }
       contratos: {
         Row: {
           actividad_id: string | null
@@ -718,6 +772,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      entregables: {
+        Row: {
+          actividad_codigo: string
+          contrato_id: string | null
+          created_at: string | null
+          descripcion: string | null
+          documento_url: string | null
+          entidad_codigo: string
+          estado: string | null
+          fecha_compromiso: string
+          fecha_entrega_real: string | null
+          id: string
+          mes: string | null
+          observaciones: string | null
+          presupuesto_vinculado_usd: number | null
+          responsable_nombre: string | null
+          responsable_rol: string | null
+          tipo: string | null
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          actividad_codigo: string
+          contrato_id?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          documento_url?: string | null
+          entidad_codigo: string
+          estado?: string | null
+          fecha_compromiso: string
+          fecha_entrega_real?: string | null
+          id?: string
+          mes?: string | null
+          observaciones?: string | null
+          presupuesto_vinculado_usd?: number | null
+          responsable_nombre?: string | null
+          responsable_rol?: string | null
+          tipo?: string | null
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          actividad_codigo?: string
+          contrato_id?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          documento_url?: string | null
+          entidad_codigo?: string
+          estado?: string | null
+          fecha_compromiso?: string
+          fecha_entrega_real?: string | null
+          id?: string
+          mes?: string | null
+          observaciones?: string | null
+          presupuesto_vinculado_usd?: number | null
+          responsable_nombre?: string | null
+          responsable_rol?: string | null
+          tipo?: string | null
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       escala_viaticos: {
         Row: {
