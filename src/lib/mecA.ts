@@ -16,6 +16,8 @@ export interface MecAIniciativa {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  entidad_codigo?: string | null;
+  titulo_proyecto?: string | null;
 }
 
 export interface MecAResultado {
@@ -104,6 +106,7 @@ export interface MecAEntregable {
   has_adjunto?: boolean;
   created_at: string;
   updated_at: string;
+  registrado_por?: string | null;
 }
 
 export interface MecAContrapartidaMonetaria {
@@ -119,6 +122,7 @@ export interface MecAContrapartidaMonetaria {
   tipo_cambio: number | null;
   monto_usd: number | null;
   created_at: string;
+  registrado_por?: string | null;
 }
 
 export interface MecAContrapartidaNoMonetaria {
@@ -136,6 +140,7 @@ export interface MecAContrapartidaNoMonetaria {
   tipo_cambio: number | null;
   total_usd: number | null;
   created_at: string;
+  registrado_por?: string | null;
 }
 
 export interface MecAReasignacion {
@@ -152,6 +157,8 @@ export interface MecAReasignacion {
   fecha_solicitud: string;
   fecha_resolucion: string | null;
   created_at: string;
+  solicitado_por?: string | null;
+  resuelto_por?: string | null;
 }
 
 // ─── Funciones de lectura ──────────────────────────────────────────────────────
