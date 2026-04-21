@@ -34,6 +34,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
     filteredEntidades,
     iniciativaId,
     setIniciativaId,
+    entidades,
   } = useRole();
   const location = useLocation();
   const navigate = useNavigate();
@@ -41,6 +42,22 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
 
   // When gestor_iniciativa has no iniciativaId yet, pick first available (demo mode)
   const resolvedIniciativaId = iniciativaId ?? "demo";
+
+  // Dynamic label for gestor_iniciativa: "Gestor de Iniciativa · {ENTIDAD}"
+  // Picks the active Mec A entity (entidadId) or the first Mec A entity available.
+  const gestorIniciativaEntidadNombre = (() => {
+    const isMecA = (m?: string) => m === "A" || m === "mec_a";
+    const fromActive = entidades.find((e) => e.id === entidadId && isMecA(e.mecanismo));
+    const fallback = entidades.find((e) => isMecA(e.mecanismo));
+    return (fromActive ?? fallback)?.nombre_corto ?? null;
+  })();
+
+  const renderRoleLabel = (r: AppRole) => {
+    if (r === "gestor_iniciativa" && gestorIniciativaEntidadNombre) {
+      return `Gestor de Iniciativa · ${gestorIniciativaEntidadNombre}`;
+    }
+    return ROLE_LABELS[r];
+  };
 
   const handleRoleChange = (r: AppRole) => {
     setRole(r);
@@ -76,7 +93,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center justify-between w-full rounded-md bg-sidebar-accent px-3 py-2.5 text-sm text-sidebar-active hover:bg-sidebar-accent/80 transition-colors min-h-[44px]">
-              <span className="truncate">{ROLE_LABELS[role]}</span>
+              <span className="truncate">{renderRoleLabel(role)}</span>
               <ChevronDown className="h-4 w-4 opacity-60 shrink-0 ml-1" />
             </button>
           </DropdownMenuTrigger>
@@ -87,7 +104,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
                 onSelect={() => handleRoleChange(r)}
                 className={`min-h-[44px] ${r === role ? "font-semibold" : ""}`}
               >
-                {ROLE_LABELS[r]}
+                {renderRoleLabel(r)}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
