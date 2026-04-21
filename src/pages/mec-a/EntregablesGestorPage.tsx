@@ -50,7 +50,7 @@ export default function EntregablesGestorPage() {
     try {
       const [eRes, cRes] = await Promise.all([
         (supabase as any).from("entregables").select("*").eq("entidad_codigo", entidadCodigo).order("created_at", { ascending: false }),
-        (supabase as any).from("comprobantes").select("id, numero_documento, clase_documento, entregable_id").eq("entidad_codigo", entidadCodigo).not("entregable_id", "is", null),
+        (supabase as any).from("comprobantes").select("id, numero_documento, clase_documento, actividad_codigo").eq("entidad_codigo", entidadCodigo),
       ]);
       setEntregables(eRes.data || []);
       setComprobantes(cRes.data || []);
@@ -75,9 +75,9 @@ export default function EntregablesGestorPage() {
     const { error } = await (supabase as any).from("entregables").insert({
       entidad_codigo: entidadCodigo,
       actividad_codigo: form.actividad_codigo,
-      nombre_producto: form.nombre_producto,
-      fecha_entrega: form.fecha_entrega,
-      estado: "pendiente"
+      titulo: form.nombre_producto,
+      fecha_compromiso: form.fecha_entrega,
+      estado: "pendiente",
     });
     setSaving(false);
 
@@ -91,8 +91,9 @@ export default function EntregablesGestorPage() {
     }
   };
 
-  const getComprobantesVinculados = (entregableId: string) => {
-    return comprobantes.filter(c => c.entregable_id === entregableId);
+  const getComprobantesVinculados = (entregable: any) => {
+    // Vinculación por código de actividad (no existe columna entregable_id en comprobantes)
+    return comprobantes.filter(c => c.actividad_codigo === entregable.actividad_codigo);
   };
 
   if (!entidadCodigo) {
@@ -181,7 +182,7 @@ export default function EntregablesGestorPage() {
           {entregables.map((entregable) => {
             const Conf = ESTADO_CONFIG[entregable.estado] || ESTADO_CONFIG.pendiente;
             const Icon = Conf.icon;
-            const vinculados = getComprobantesVinculados(entregable.id);
+            const vinculados = getComprobantesVinculados(entregable);
             return (
               <Card key={entregable.id} className="overflow-hidden transition-all hover:shadow-md">
                 <div className="flex flex-col md:flex-row gap-0 md:gap-6 p-5">
@@ -193,11 +194,11 @@ export default function EntregablesGestorPage() {
                             {entregable.actividad_codigo}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            Entregado el {entregable.fecha_entrega ? format(new Date(entregable.fecha_entrega + "T12:00:00"), "dd MMM yyyy", { locale: es }) : "—"}
+                            Compromiso: {entregable.fecha_compromiso ? format(new Date(entregable.fecha_compromiso + "T12:00:00"), "dd MMM yyyy", { locale: es }) : "—"}
                           </span>
                         </div>
                         <h3 className="text-base font-semibold text-foreground leading-tight">
-                          {entregable.nombre_producto}
+                          {entregable.titulo}
                         </h3>
                       </div>
                       <Badge variant="outline" className={`shrink-0 capitalize gap-1 ${Conf.cls}`}>
