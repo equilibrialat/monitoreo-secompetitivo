@@ -89,9 +89,9 @@ export function lsSet<T>(key: StoreKey, data: T[]): void {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-export function lsInsert<T extends { id?: string }>(key: StoreKey, item: T): T {
+export function lsInsert<T extends Record<string, any>>(key: StoreKey, item: T): T {
   const all = lsGet<T>(key);
-  const withId = { ...item, id: item.id ?? crypto.randomUUID(), created_at: new Date().toISOString() } as T;
+  const withId = { ...item, id: (item as any).id ?? crypto.randomUUID(), created_at: new Date().toISOString() } as T;
   lsSet(key, [...all, withId]);
   return withId;
 }

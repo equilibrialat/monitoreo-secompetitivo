@@ -16,6 +16,8 @@ export interface MecAIniciativa {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  entidad_codigo?: string | null;
+  titulo_proyecto?: string | null;
 }
 
 export interface MecAResultado {
