@@ -145,22 +145,21 @@ export default function ContrapartidaNoMonetariaPage() {
               </tr></thead>
               <tbody className="divide-y">
                 {registros.map(r => {
-                  const act = actividades.find(a => a.id === r.actividad_id);
-                  const totS = r.total_soles ?? r.cantidad * r.costo_unitario_soles;
+                  const totS = Number(r.total_soles) || (r.cantidad * r.costo_unitario_soles);
                   return (
                     <tr key={r.id} className="hover:bg-muted/20">
-                      <td className="px-3 py-2 text-xs">{format(new Date(r.fecha_actividad), "dd/MM/yyyy")}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{act?.codigo ?? "—"}</td>
-                      <td className="px-3 py-2 text-xs">{r.nombre_funcionario}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{r.cargo_funcionario}</td>
+                      <td className="px-3 py-2 text-xs">{format(new Date(r.fecha + "T12:00:00"), "dd/MM/yyyy")}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{r.actividad_codigo}</td>
+                      <td className="px-3 py-2 text-xs">{r.funcionario_nombre}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{r.funcionario_cargo ?? "—"}</td>
                       <td className="px-3 py-2 text-xs max-w-[160px]"><p className="line-clamp-1">{r.concepto}</p></td>
-                      <td className="px-3 py-2 text-xs">{r.unidad_medida}</td>
+                      <td className="px-3 py-2 text-xs">{r.unidad ?? "—"}</td>
                       <td className="px-3 py-2 text-xs text-right font-mono">{r.cantidad}</td>
                       <td className="px-3 py-2 text-xs text-right font-mono">{r.costo_unitario_soles.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</td>
                       <td className="px-3 py-2 text-xs text-right font-mono font-semibold">{totS.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</td>
                       <td className="px-3 py-2 text-xs text-right font-mono">{r.total_usd ? r.total_usd.toLocaleString("es-PE", { minimumFractionDigits: 2 }) : "—"}</td>
                       <td className="px-3 py-2">
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={async () => { await deleteMecAContrapartidaNoMonetaria(r.id); toast.success("Eliminado"); load(); }}><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDelete(r.id)}><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></Button>
                       </td>
                     </tr>
                   );
@@ -177,25 +176,25 @@ export default function ContrapartidaNoMonetariaPage() {
           <div className="grid gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Actividad</Label>
-                <Select value={form.actividad_id} onValueChange={v => setForm({...form, actividad_id: v})}>
+                <Label className="text-xs">Actividad *</Label>
+                <Select value={form.actividad_codigo} onValueChange={v => setForm({...form, actividad_codigo: v})}>
                   <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
-                  <SelectContent>{actividades.map(a => <SelectItem key={a.id} value={a.id}>{a.codigo}</SelectItem>)}</SelectContent>
+                  <SelectContent>{actividades.map(a => <SelectItem key={a.id} value={a.codigo}>{a.codigo}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs">Fecha de la actividad *</Label>
-                <Input type="date" className="h-8 mt-1" value={form.fecha_actividad} onChange={e => setForm({...form, fecha_actividad: e.target.value})} />
+                <Input type="date" className="h-8 mt-1" value={form.fecha} onChange={e => setForm({...form, fecha: e.target.value})} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Nombre del funcionario *</Label>
-                <Input className="h-8 mt-1" value={form.nombre_funcionario} onChange={e => setForm({...form, nombre_funcionario: e.target.value})} />
+                <Input className="h-8 mt-1" value={form.funcionario_nombre} onChange={e => setForm({...form, funcionario_nombre: e.target.value})} />
               </div>
               <div>
                 <Label className="text-xs">Cargo *</Label>
-                <Input className="h-8 mt-1" value={form.cargo_funcionario} onChange={e => setForm({...form, cargo_funcionario: e.target.value})} />
+                <Input className="h-8 mt-1" value={form.funcionario_cargo} onChange={e => setForm({...form, funcionario_cargo: e.target.value})} />
               </div>
             </div>
             <div>
@@ -205,7 +204,7 @@ export default function ContrapartidaNoMonetariaPage() {
             <div className="grid grid-cols-4 gap-3">
               <div>
                 <Label className="text-xs">Unidad</Label>
-                <Input className="h-8 mt-1" value={form.unidad_medida} onChange={e => setForm({...form, unidad_medida: e.target.value})} />
+                <Input className="h-8 mt-1" value={form.unidad} onChange={e => setForm({...form, unidad: e.target.value})} />
               </div>
               <div>
                 <Label className="text-xs">Cantidad *</Label>
