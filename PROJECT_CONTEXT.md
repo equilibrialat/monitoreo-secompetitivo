@@ -1,0 +1,639 @@
+# PROJECT_CONTEXT.md — SeCompetitivo Monitoring Platform
+
+> **Audience:** an external AI assistant (Claude) onboarding cold to this codebase.
+> **Source of truth:** the actual files in this repository and the Lovable Cloud (Supabase) database `xbxxmqeskdaifhrzdzri` as inspected on generation.
+> Anything inferred or inconsistent is flagged with ⚠️.
+
+---
+
+## 1. PROJECT OVERVIEW
+
+### App
+- **Name (UI):** *SeCompetitivo* (logo splits as `Se` + accented `Competitivo`). Internal package name `vite_react_shadcn_ts` (default Lovable scaffold, never renamed in `package.json`).
+- **Footer label:** `SeCompetitivo v1.0`. App-layout footer says `MVP — Mecanismo B · 3 entidades activas` (hard-coded literal in `src/components/AppLayout.tsx:70`).
+- **Published URL:** `https://monitoreo-secompetitivo.lovable.app`
+- **Preview URL:** `https://id-preview--5fda50a8-751b-4037-9c45-a5aab01c6ad5.lovable.app`
+
+### Purpose / business context
+SeCompetitivo Fase III is a **Peruvian competitiveness program funded by SECO** (Swiss State Secretariat for Economic Affairs). It supports two parallel intervention tracks:
+
+- **Mecanismo A (Mec A)** — public entities working on policy/enabling conditions: COFIDE, MINCETUR, MTPE, SENASA.
+- **Mecanismo B (Mec B)** — value-chain organizations (cacao, coffee, tourism) executing field projects: APPCACAO, CANATUR, JNC, CEDEPAS, MARKAHUAMACHUCO, MDA.
+
+The platform replaces Excel-based reporting (Anexo B / Anexo 6 templates) with a structured monthly + quarterly monitoring system that feeds executive dashboards and SECO-bound reports.
+
+### Beneficiaries / users
+- **Implementing entities** (Mec A & Mec B) load monthly progress and financial execution.
+- **Regional coordinators** review and approve entity reports.
+- **Value-chain coordinator (Iván)** consolidates Mec B by chain.
+- **Politicas advisor (Claudia)** consolidates Mec A initiatives.
+- **MEL/Monitoring (Fabiola)** runs program-wide indicators and quarter activation.
+- **Administration** runs financial backbone (contracts, disbursements, IGV, viáticos).
+- **Direction** consumes executive briefings.
+
+Project end date target referenced in AI prompts: **December 2027**.
+
+### Stage
+**MVP / pilot**. Mec B (especially APPCACAO) has live data. Mec A is partially seeded (MINCETUR planning loaded, no quarterly reports yet). No real authentication — role is selected from a sidebar dropdown for demo purposes.
+
+### Tech stack
+- **Frontend:** React 18.3, TypeScript 5.8, Vite 5.4 + `@vitejs/plugin-react-swc`, Tailwind CSS 3.4, shadcn/ui (Radix primitives), `lucide-react` icons.
+- **Routing:** `react-router-dom@6.30`
+- **Data fetching:** `@tanstack/react-query@5.83`
+- **Forms:** `react-hook-form@7.61` + `zod@3.25` + `@hookform/resolvers`
+- **Charts:** `recharts@2.15`
+- **Date utils:** `date-fns@3.6`
+- **Excel:** `xlsx@0.18` (bulk participant upload + report export)
+- **Word:** `docx@9.6` + `file-saver@2.0` (DOCX report generation)
+- **Markdown:** `react-markdown@10` (AI narrative rendering)
+- **Backend:** Lovable Cloud = managed Supabase (PostgreSQL 15+, Auth, Storage, Edge Functions on Deno).
+- **AI:** Lovable AI Gateway via two Deno edge functions (`analyze`, `generate_narrative`). No user-supplied API keys.
+- **Tests:** Vitest 3.2 + Testing Library + jsdom; Playwright 1.57 configured but only an example test exists.
+- **Hosting:** Lovable (frontend + edge functions). Database on Supabase managed instance.
+
+---
+
+## 2. ARCHITECTURE
+
+### 2.1 Folder layout (root)
+
+```
+.
+├── public/                          static assets (placeholder.svg, robots.txt)
+├── src/
+│   ├── App.tsx                      router + global providers
+│   ├── main.tsx                     React entry
+│   ├── index.css                    Tailwind layers + HSL design tokens
+│   ├── App.css                      legacy file (mostly empty)
+│   ├── assets/                      generated images (not present yet)
+│   ├── components/
+│   │   ├── ui/                      shadcn primitives (~45 files)
+│   │   ├── dashboard/               role-specific dashboards + drill-down panels
+│   │   ├── finanzas/                Admin financial tabs (contracts, IGV, remesas)
+│   │   ├── indicadores/             impact-indicator sections (productivity, employment, etc.)
+│   │   ├── planificacion/           Mec B quarterly planning + reassignment flows
+│   │   ├── registro/                monthly registration form sub-sections
+│   │   ├── reportes/                quarterly/annual/semestral report renderers + AI cards
+│   │   └── *.tsx                    layout, sidebar, generic UI (~30 files)
+│   ├── config/
+│   │   └── navigation.ts            per-role sidebar definitions
+│   ├── contexts/
+│   │   └── RoleContext.tsx          global role + entity + filter state
+│   ├── data/
+│   │   └── mockActividades.ts       legacy mock data (still imported in some places)
+│   ├── hooks/                       react-query hooks + utility hooks
+│   ├── integrations/supabase/
+│   │   ├── client.ts                AUTOGENERATED — never edit
+│   │   └── types.ts                 AUTOGENERATED from DB schema — never edit
+│   ├── lib/                         business-logic helpers (DB queries, AI calls, exports)
+│   ├── pages/                       route components (~40 files)
+│   │   └── mec-a/                   Mec A "Gestor de Iniciativa" pages (isolated route tree)
+│   ├── test/                        vitest setup + sample test
+│   └── types/                       shared TS types (registroMensual)
+├── supabase/
+│   ├── config.toml                  project_id + per-function config
+│   ├── functions/
+│   │   ├── analyze/index.ts         executive/report/consistency/narrative AI generator
+│   │   └── generate_narrative/index.ts  contextual AI summaries (5 types)
+│   └── migrations/                  16 timestamped SQL files (read-only)
+├── .lovable/
+│   └── plan.md                      latest in-progress plan (entregables + contrapartida)
+├── tailwind.config.ts, postcss.config.js, vite.config.ts, vitest.config.ts, playwright.config.ts
+├── package.json, tsconfig*.json, eslint.config.js
+└── README.md, components.json, index.html
+```
+
+### 2.2 Frontend architecture
+
+- **Entry tree (`src/App.tsx`):**
+  `QueryClientProvider` → `TooltipProvider` → `Toaster` × 2 → `BrowserRouter` → `RoleProvider` → `TrimestreSeleccionadoProvider` → `AppLayout` → `<AppRoutes/>`.
+- **Layout:** `AppLayout.tsx` renders desktop sidebar always visible (≥md) or as overlay drawer on mobile, plus a header showing `TrimestreHeader` (only for non-entidad roles), `NotificationBell`, and a floating `StatusLegendFab` + `DevResetButton` in the footer.
+- **Routing:** flat `<Routes>` declaration; Mec A routes (`/mec-a/...`) are **conditionally registered** only when `role ∈ {gestor_iniciativa, gestor, asesora_politicas, administracion, entidad_mec_a}`.
+- **State:** all cross-cutting state lives in two React contexts (Role + Trimestre) plus React Query cache. There is **no Redux/Zustand**.
+- **Styling:** Tailwind with semantic HSL tokens declared in `src/index.css`. Sidebar uses dedicated tokens (`--sidebar-*`). Components reference shadcn `cva` variants.
+
+### 2.3 Backend architecture
+
+- **Database:** PostgreSQL on Supabase (project ref `xbxxmqeskdaifhrzdzri`). 54 tables in `public`, 3 views, 4 stored functions. RLS enabled everywhere with **fully open `public_*` policies** (`USING (true)` / `WITH CHECK (true)`).
+- **Edge functions (Deno on Supabase):**
+  - `analyze` — POST endpoint that branches on `tipo ∈ {ejecutivo, reporte, consistencia, narrativa}`; returns AI-generated markdown via Lovable AI Gateway.
+  - `generate_narrative` — POST endpoint with 5 narrative types (`resumen_entidad`, `alerta_actividad`, `briefing_director`, `resumen_para_informe`, `contexto_actividad`). Has in-memory cache (TTL 6h).
+- **Storage:** single public bucket `documentos`.
+- **Auth:** Supabase Auth is **not active in the UI**. `perfiles.id` has FK to `auth.users` so creating real profiles requires going through signup.
+
+### 2.4 Third-party integrations
+
+| Integration | Purpose | Config |
+|---|---|---|
+| Supabase JS SDK 2.100 | DB + Storage + Edge Functions | `src/integrations/supabase/client.ts` |
+| Lovable AI Gateway | LLM calls inside edge functions | secret `LOVABLE_API_KEY` |
+| Anthropic API | secret `ANTHROPIC_API_KEY` exists but ⚠️ not referenced in any committed source — likely vestigial |
+| `xlsx` | Excel import (participants) + export (reports) | client-side |
+| `docx` + `file-saver` | DOCX export of quarterly/annual reports | client-side |
+
+### 2.5 Auth/authz
+
+- **No authentication runs on the UI.** `RoleContext` initializes `role` to `"entidad_mec_b"` and lets the user switch to any of 10 roles via dropdown.
+- **No row-level security in practice.** All policies are `true`. Authorization is enforced **only by hiding routes/menu items in the frontend**.
+- ⚠️ Production deployment in this state means anyone visiting the URL has full read/write access to all data.
+
+### 2.6 Data flow (typical entidad monthly registration)
+
+1. User selects role `entidad_mec_b` and entity (e.g. APPCACAO) in `AppSidebar`.
+2. Navigates to `/registro-mensual` → `RegistroMensualPage` resolves entity + active trimester from contexts.
+3. `fetchActividadesByEntidad(entidadId)` (`src/lib/supabaseQueries.ts`) pulls `actividades` joined with `productos → resultados`, builds a tree.
+4. User opens `RegistroMensualDialog` for an activity → fills `SeccionAvanceOperativo`, `SeccionEjecucionFinanciera`, optional `SeccionIndicadoresContextuales`.
+5. `saveRegistroMensual` upserts `registros_mensuales` (PK `(actividad_id, anio, mes)`), then deletes + inserts `ejecucion_financiera` rows, then conditionally inserts `registro_capacitaciones` / `registro_innovaciones` / `registro_gei` / `registro_nuevos_productos` and their child tables (`participantes_capacitacion`).
+6. ⚠️ Trigger `fn_actualizar_acumulados_actividad` is defined but **not currently attached to any table** — accumulated totals on `actividades.ejecutado_*_acum` won't refresh automatically.
+7. Coordinator reviews via `RevisionPendientePage` and updates `estado_registro` (`borrador → enviado → en_revision_* → aprobado | observado`).
+8. AI-generated summaries are produced on-demand by calling the `analyze` or `generate_narrative` edge function (cached).
+
+---
+
+## 3. DATABASE SCHEMA
+
+> 54 tables, 3 views, 4 functions, 9 enums. All tables have RLS enabled with permissive `public_*` policies unless noted otherwise.
+
+### 3.1 Enums (`public`)
+
+| Enum | Values |
+|---|---|
+| `mecanismo_tipo` | `A`, `B`, `C` |
+| `tipo_entidad` | `mec_a`, `mec_b_agro`, `mec_b_turismo`, `mec_b_mixto` |
+| `rol_usuario` | `entidad`, `coordinador_regional`, `gestor_mec_a`, `coordinador_mec_b`, `monitoreo`, `administracion`, `direccion`, `admin_sistema`, `gestor` |
+| `estado_actividad` | `no_iniciada`, `iniciado_1_35`, `en_proceso_36_65`, `proceso_avanzado_66_99`, `culminado_100` |
+| `estado_registro` | `borrador`, `enviado`, `en_revision_coordinador`, `en_revision_tecnica`, `en_revision_financiera`, `observado`, `aprobado` |
+| `estado_contrato` | `en_proceso`, `adjudicado`, `vigente`, `finalizado`, `cancelado` |
+| `tipo_contrato` | `persona_natural`, `persona_juridica` |
+| `fuente_financiamiento` | `cofinanciamiento_seco`, `contrapartida_monetaria`, `contrapartida_no_monetaria` |
+| `frecuencia_indicador` | `mensual`, `trimestral`, `semestral`, `anual`, `por_evento`, `por_campana` |
+| `trimestre_status` | `cerrado`, `activo`, `planificacion`, `futuro` |
+
+### 3.2 Two coexisting data models
+
+The schema mixes **two identification strategies**:
+
+- **UUID-based (legacy / Mec B operational):** `entidades.id` referenced by FK in `actividades`, `contratos`, `registros_mensuales`, `ejecucion_financiera`, `plan_trimestral`, `metas_mensuales`, `desembolsos`, all `registro_*` contextual tables, `reporte_*` tables, etc.
+- **Code-based (newer / Mec A + quarterly):** plain `text` columns `entidad_codigo`, `actividad_codigo`, `mes`, `trimestre` used in `planificacion_actividades`, `reportes_trimestrales`, `comprobantes`, `contratos_financieros`, `entregables`, `contrapartida_no_monetaria`, `documentos`, `observaciones_coordinador`, `reasignaciones_presupuestales`. **No FK** to `entidades` — joining requires `entidades.codigo`.
+
+### 3.3 Core tables (selected; see `src/integrations/supabase/types.ts` for the full picture)
+
+#### `entidades` (10 rows)
+PK `id` (uuid). Unique `codigo`. Columns: `nombre_completo`, `nombre_corto`, `mecanismo` (enum), `tipo_entidad` (enum), `region`, `cadena_valor`, `coordinador_regional_id` (FK → `perfiles.id`), `titulo_proyecto`, `fecha_inicio`, `fecha_fin`, `activo`. **Referenced by 30+ tables.**
+
+Current rows:
+| codigo | nombre_corto | mecanismo | region | tipo_entidad |
+|---|---|---|---|---|
+| COFIDE | COFIDE | A | Nacional | mec_a |
+| MINCETUR | MINCETUR-RPE | A | Nacional | mec_a |
+| MTPE | MTPE | A | Nacional | mec_a |
+| SENASA | SENASA | A | Nacional | mec_a |
+| APPCACAO | App Cacao | B | San Martín | mec_b_agro |
+| CANATUR | CANATUR | B | San Martín | mec_b_turismo |
+| CEDEPAS | CEDEPAS | B | La Libertad | mec_b_agro |
+| JNC | JNC | B | San Martín | mec_b_agro |
+| MARKAHUAMACHUCO | Markahuamachuco | B | La Libertad | mec_b_turismo |
+| MDA | MDA | B | Piura | mec_b_agro |
+
+#### `perfiles` (0 rows)
+PK `id` (uuid) **FK → `auth.users.id` ON DELETE CASCADE**. Unique `email`. Columns: `nombre_completo`, `rol` (enum `rol_usuario`, default `entidad`), `entidad_id` (FK → `entidades`), `region`, `activo`. Read-only RLS.
+
+#### `actividades` (88 rows)
+PK `id`. Columns include `codigo`, `nombre`, `entidad_id`, `producto_id`, `meta_valor`, `meta_unidad_medida`, `medio_verificacion`, `supuestos`, `fecha_inicio_prog`, `fecha_fin_prog`, three `presupuesto_*` numerics, three `ejecutado_*_acum` numerics, `avance_operativo_pct`, `estado_actual` (enum), `tags` text[], `indicadores_vinculados` text[], `es_hito`, `orden`. Hierarchy: `actividad → producto → resultado → entidad`.
+
+#### `productos` (39) → `resultados` (16) → `indicadores_proyecto` (20)
+Marco lógico hierarchy. All read-only RLS.
+
+#### `registros_mensuales` (258 rows)
+PK `id`. Composite uniqueness `(actividad_id, anio, mes)`. Columns: `avance_valor`, `avance_unidad_medida`, `estado` (enum `estado_actividad`), `descripcion_avance`, `fecha_ejecucion`, `estado_registro` (enum default `borrador`), `registrado_por`/`revisado_por` (FK → perfiles), `observaciones_revision`, plus narrative fields (`limitaciones`, `prioridades_proximo_mes`, `compromisos`).
+
+#### `ejecucion_financiera`
+Per-line gasto. Columns: `registro_mensual_id`, `actividad_id`, `entidad_id`, `fuente` (enum), `monto`, `tipo_gasto`, `detalle_gasto`, `comprobante_ref`, `fecha_gasto`, `monto_usd`, `tipo_cambio`, `incluye_igv`, `monto_igv`, `entidad_aportante`, `tipo_valorizacion`. Trigger `fn_validar_presupuesto` raises an `historial_cambios` row when an insert would overspend.
+
+#### `contratos` (269 rows, UUID-based)
+Used by Mec B operational view (legacy contracts page). Tipo enum `persona_natural | persona_juridica`. Estado enum `estado_contrato`.
+
+#### `contratos_financieros` (0 rows, code-based)
+Newer Mec A finance-oriented contract table. Has columns: `entidad_codigo`, `actividad_codigo`, `proveedor_nombre`, `objeto_contrato`, `tipo`, `tipo_gasto`, `moneda`, `monto_contrato_moneda_origen`, `monto_contrato_usd`, `tipo_cambio`, `numero_contrato`, `ruc`, `fecha_inicio`, `fecha_fin`, `trimestre_inicio`, `estado`, `documento_url`. ⚠️ Duplicates `contratos` semantically.
+
+#### `comprobantes` (9 rows)
+Per-comprobante registry: `entidad_codigo`, `actividad_codigo`, `mes`, `trimestre`, `concepto`, `proveedor_nombre`, `ruc`, `tipo_gasto`, `clase_documento`, `numero_documento`, `fecha_documento`, `moneda`, `monto_moneda_origen`, `tipo_cambio`, `monto_usd`, `igv_usd`, `documento_url`, `enlace_producto`, `fuente` default `'seco'`, `contrato_id` (uuid).
+
+#### `planificacion_actividades` (39 rows)
+Mec A planning. Columns: `entidad_codigo`, `entidad_nombre`, `proyecto_codigo`, `proyecto_nombre`, `mecanismo`, `resultado_intermedio_codigo`, `resultado_intermedio`, `resultado_intermedio_descripcion`, `producto_codigo`, `producto`, `producto_descripcion`, `actividad_codigo`, `actividad_descripcion`, `unidad_medida`, `medio_verificacion`, `meta_total`, `presupuesto_seco_usd`, `presupuesto_contrapartida_usd`, `meses_programados` jsonb, `responsable`, `resultado_final`, `resultado_impacto`. Current data: APPCACAO 17, MINCETUR 22.
+
+#### `reportes_trimestrales` (77 rows)
+Mec A quarterly aggregate. **Unique `(entidad_codigo, actividad_codigo, trimestre)`**. Columns: `meses_incluidos` jsonb, `resumen_tecnico_ri`, `avance_tecnico_trimestre`, `avance_tecnico_acumulado`, `presupuesto_seco_programado`, `ejecutado_seco_consultorias`, `ejecutado_seco_terceros`, `ejecutado_seco_bienes`, `ejecutado_seco_viaticos`, **`ejecutado_seco_total` GENERATED column** (sum of the four above), `ejecutado_contrapartida`, `variacion_seco`, `justificacion_variacion`, `reportes_mensuales_origen` jsonb, `estado` default `'borrador'`, `enviado_at`, `fecha_desde`, `fecha_hasta`. Current data: APPCACAO 23, CANATUR 31, MARKAHUAMACHUCO 23.
+
+#### `entregables` (0 rows)
+Mec A deliverables. `mes` is a STORED generated column from `fecha_compromiso`. CHECK constraints on `tipo`, `responsable_rol`, `estado`.
+
+#### `contrapartida_no_monetaria` (0 rows)
+Mec A in-kind contribution. STORED generated columns: `total_soles = cantidad * costo_unitario_soles`, `mes = TO_CHAR(fecha,'YYYY-MM')`. Default `tipo_cambio = 3.75`. ⚠️ The page `src/pages/mec-a/ContrapartidaNoMonetariaPage.tsx` (via `src/lib/mecA.ts`) still references **old column names** (`iniciativa_id`, `fecha_actividad`, `nombre_funcionario`, `cargo_funcionario`, `unidad_medida`, `registrado_por`) that no longer exist — this page is broken until rewired.
+
+#### `plan_trimestral` (30 rows)
+Mec B quarterly planning per activity. Columns: `entidad_id`, `actividad_id`, `anio`, `trimestre`, three `meta_mes_*` and three `ejecutado_mes_*` numerics, `meta_trimestral`, `estado` text default `'borrador'`, `comentario_*`, `solicitudes_ajuste` jsonb, `propuesto_por`, `aprobado_at`.
+
+#### `metas_mensuales` (0 rows)
+`(entidad_id, actividad_id, anio, mes)` per-month targets with `estado` default `'sin_meta'`, `meta_valor`, `meta_unidad_medida`, `comentario_coordinador`, `propuesta_por`, `revisado_por`.
+
+#### `desembolsos` (5 rows)
+Tranche disbursements per entidad. Columns: `numero_remesa`, `monto_usd`, `monto_pen`, `tipo_cambio`, `fecha_desembolso`, `fecha_rendicion`, `trimestre_vinculado`, `estado` default `'pendiente'`.
+
+#### `igv_control`
+IGV reconciliation per entidad/trimestre with `igv_desembolsado_pen`, `igv_recuperado_pen`, `igv_pendiente_pen`.
+
+#### `viaticos` + `escala_viaticos`
+Per-trip viáticos and the official scale by city/department (read-only).
+
+#### `reasignaciones` + `reasignaciones_presupuestales`
+Two parallel reassignment workflows. The `_presupuestales` variant is code-based, has a 3-step approval (`pendiente_coordinador → pendiente_ivan → aprobado`) and tracks `alerta_nivel`, `alerta_mensaje`, `pct_variacion`.
+
+#### Contextual indicator tables
+`registro_capacitaciones` → `participantes_capacitacion`; `registro_innovaciones`, `registro_gei`, `registro_nuevos_productos`, `registro_normativo`, `registro_financiamiento`, `registro_certificacion_laboral`. Each ties back to `registro_mensual_id + actividad_id + entidad_id`.
+
+#### `reporte_*` impact tables
+`reporte_comercial`, `reporte_diversificacion`, `reporte_empleo`, `reporte_gobernanza`, `reporte_nuevos_mercados`, `reporte_productividad`, `reporte_turismo_atractivos`, `reporte_turismo_ventas`. Validation by `validado_por` (FK → perfiles) on three of them.
+
+#### Operational/meta tables
+- `trimestres` — cycle calendar (5 rows, currently `2026-T1` is `activo`).
+- `gestor_entidades` — many-to-many gestor↔entidad (0 rows).
+- `notificaciones` — `destinatarios` jsonb, `entidad_destino_id`, `remitente_id`.
+- `historial_cambios` — audit log written by `fn_registrar_historial`.
+- `documentos` — generic file index (`url_storage`, `tipo_documento`, `entidad_codigo`, `actividad_codigo`).
+- `observaciones_coordinador` — per `(entidad_codigo, actividad_codigo, mes)` notes.
+- `reuniones_seguimiento`, `resumenes_regionales`, `vouchers_gasto`, `remesas_proyecto`, `config_gatillos_actividad`, `config_indicadores_entidad`.
+
+### 3.4 Views
+
+- `v_dashboard_entidad` — per-entidad aggregates for dashboards.
+- `v_reporte_financiero_trimestral` — financial cross-view.
+- `v_trama_fisico_financiera` — physical-financial weave used by `TramaFisicoFinanciera`.
+
+### 3.5 Functions / triggers
+
+| Function | Purpose | Status |
+|---|---|---|
+| `update_updated_at_column()` | generic `updated_at = now()` trigger function | declared, ⚠️ not currently bound to any trigger |
+| `fn_registrar_historial()` | inserts row in `historial_cambios` on insert/update/delete | ⚠️ no triggers attached |
+| `fn_actualizar_acumulados_actividad()` | recomputes `actividades.ejecutado_*_acum` from approved `ejecucion_financiera` | ⚠️ no triggers attached — accumulated totals are stale |
+| `fn_validar_presupuesto()` | raises `ALERTA_SOBREGIRO` row in `historial_cambios` when expense exceeds budget | ⚠️ no triggers attached |
+
+`information_schema.triggers` for `public` returned **0 rows** at inspection time.
+
+### 3.6 RLS
+
+Every table has RLS **enabled**. Every policy is one of `Allow public read` (SELECT only) on read-only tables, or the `public_read` / `public_insert` / `public_update` / `public_delete` quartet with `USING (true)` / `WITH CHECK (true)`. There is no security boundary at the database level today.
+
+---
+
+## 4. USER ROLES & PERMISSIONS
+
+### 4.1 Frontend roles (`src/contexts/RoleContext.tsx`)
+
+```ts
+type AppRole =
+  | "entidad_mec_a" | "entidad_mec_b"
+  | "gestor" | "gestor_iniciativa"
+  | "coordinador_regional" | "asesora_politicas" | "coordinador_cadenas"
+  | "monitoreo" | "administracion" | "direccion";
+```
+
+| Role | Display label | Sees in sidebar |
+|---|---|---|
+| `entidad_mec_a` | Entidad Mecanismo A | Dashboard · Mi Planificación · Mi Ejecución Técnica · Mi Ejecución Presup. · Contratos y Comprobantes · Viáticos |
+| `entidad_mec_b` | Entidad Mecanismo B | (same as Mec A entidad) |
+| `gestor` | Gestor | Dashboard · Mis Iniciativas · Registro Mensual · Reportes · Notificaciones |
+| `gestor_iniciativa` | **Dynamic:** `Gestor de Iniciativa · {ENTIDAD_NOMBRE_CORTO}` (Mec A entity) | Mec A "iniciativa" tree: Avance Operativo · Presupuesto · Entregables · Comprobantes · Contrapartidas · Reasignaciones |
+| `coordinador_regional` | Coordinador Regional | Avance de Entidades (mensual) · Planificación / Aprobaciones / Consolidado Regional (trimestral) · Notificaciones |
+| `coordinador_cadenas` | Coordinador Cadenas de Valor | Avance Mec B · Consolidado Mec B · Reportes Trimestrales · Notificaciones |
+| `asesora_politicas` | Asesora Políticas Públicas | Panel Iniciativas · Reasignaciones · Notificaciones |
+| `monitoreo` | Monitoreo | Avance del Programa · Consolidado Programa · Gestión de Trimestres · Notificaciones |
+| `administracion` | Administración | Gestión Financiera · IGV · Desembolsos · Contratos · Viáticos · Pagos Pendientes Mec A · Reportes Financieros · Notificaciones |
+| `direccion` | Dirección | Cadenas de Valor · Informes ejecutivos · Notificaciones |
+
+### 4.2 Database role enum
+`rol_usuario` lists slightly different values (`entidad`, `coordinador_regional`, `gestor_mec_a`, `coordinador_mec_b`, `monitoreo`, `administracion`, `direccion`, `admin_sistema`, `gestor`). ⚠️ The frontend `AppRole` and the DB enum **do not match exactly** — the frontend names are the source of truth for UI; mapping to DB roles is informal (e.g. `gestor_iniciativa` reuses `gestor_mec_a` server-side per recent architectural decision).
+
+### 4.3 Role assignment
+- Today: **picked from a dropdown in the sidebar** (`AppSidebar.tsx`). No persistence beyond `RoleContext` state (resets on reload).
+- Designed: stored in `perfiles.rol` keyed to `auth.users.id`. Currently 0 profiles exist.
+
+### 4.4 Entity-visibility filtering
+`RoleContext.filteredEntidades` applies hard role restrictions:
+- `entidad_mec_a`, `asesora_politicas` → only entities with `mecanismo ∈ {mec_a, A}`.
+- `entidad_mec_b`, `coordinador_cadenas` → only entities with `mecanismo ∈ {mec_b, B}`.
+- Other roles → all entities.
+Plus user-applied filters (`mecanismo`, `entidadFiltro`, `region`).
+
+---
+
+## 5. VIEWS / PAGES / SCREENS
+
+> All routes registered in `src/App.tsx`. Access control = sidebar visibility (no route guards).
+
+| Path | Component | Purpose | Visible to (sidebar) |
+|---|---|---|---|
+| `/` | redirect → `/dashboard` | — | all |
+| `/dashboard` | `Index.tsx` | Role-aware dashboard router (renders `DashboardEntidad`, `DashboardCoordinadorRegional`, `DashboardCadenasValor`, `DashboardMonitoreoNew`, `DashboardAdministracion`, `DashboardDireccionNew` based on role) | all |
+| `/actividades` | redirect → `/mi-planificacion` | legacy alias | — |
+| `/mi-planificacion` | `MiPlanificacionPage` | Entity quarterly plan tree with progress | entidad_* |
+| `/ejecucion-tecnica` | `EjecucionTecnicaPage` | Technical execution table per activity | entidad_* |
+| `/ejecucion-presupuestaria` | `EjecucionPresupuestariaPage` | Budget execution table | entidad_* |
+| `/registro-mensual` | `RegistroMensualPage` | Monthly registration form (entity dialog) | gestor |
+| `/registro-rapido` | `RegistroRapidoPage` | Quick-entry alt | (not in sidebar) |
+| `/indicadores-impacto` | `IndicadoresImpactoPage` | Sectional impact indicators | (not in sidebar) |
+| `/avance-proyecto` | redirect → `/mi-planificacion` | — | — |
+| `/mis-iniciativas` | `MisIniciativasPage` | Gestor's portfolio of initiatives | gestor |
+| `/planificacion-trimestral` | `PlanificacionTrimestralPage` | Coordinator quarterly planning (Mec B) | coordinador_regional |
+| `/reportes` | `ReportesPage` | Quarterly/annual reports browser | gestor, coordinador_cadenas |
+| `/revision-pendiente` | `RevisionPendientePage` | Coordinator review queue | coordinador_regional, coordinador_cadenas |
+| `/notificaciones` | `NotificacionesPage` | Notification inbox | all |
+| `/indicadores` | `IndicadoresMonitoreoPage` | Program-wide monthly indicators | monitoreo |
+| `/verificacion` | `VerificacionPage` | Quarterly consolidation | monitoreo |
+| `/generar-reportes` | `GenerarReportesPage` | Report generator (hidden in sidebar) | — |
+| `/contratos` | `ContratosPage` | Legacy UUID-based contracts | administracion |
+| `/gestion-financiera` | `GestionFinancieraPage` | Tabs: Contratos / IGV / Remesas | administracion |
+| `/gestion-contratos` | `GestionContratosFinPage` | Code-based contracts + comprobantes for entidad | entidad_* |
+| `/desembolsos` | `DesembolsosPage` | Tranche tracking | administracion |
+| `/viaticos` | `ViaticosPage` | Travel allowances | administracion, entidad_* |
+| `/reasignaciones` | `ReasignacionesPage` | Legacy reassignment | (hidden) |
+| `/bandeja-reasignaciones` | `BandejaReasignacionesPage` | Coordinator inbox for reassignments | (hidden) |
+| `/reportes-financieros` | `ReportesFinancierosPage` | Admin financial reports | administracion |
+| `/aprobaciones` | `AprobacionesPage` | Coordinator approvals | coordinador_regional |
+| `/reportes-ejecutivos` | `ReportesEjecutivosPage` | Direction executive briefs | direccion |
+| `/reportes-mec-b` | `ReportesMecBPage` | Mec B consolidated | coordinador_cadenas, direccion |
+| `/reportes-mec-a` | `ReportesMecAPage` | Mec A consolidated | (hidden in current sidebar config) |
+| `/reportes-regionales` | `ReportesRegionalesPage` | Regional consolidation | coordinador_regional |
+| `/administracion` | `AdministracionPage` | Trimester management (Fabiola) | monitoreo |
+| **Mec A** routes (only registered when `isMecA`): | | | |
+| `/mec-a/iniciativa/:id` | `GestorDashboardPage` | Initiative dashboard | gestor_iniciativa |
+| `/mec-a/iniciativa/:id/avance-operativo` | `AvanceOperativoPage` | Operational progress entry | gestor_iniciativa |
+| `/mec-a/iniciativa/:id/presupuesto` | `PresupuestoMecAPage` | Budget entry | gestor_iniciativa |
+| `/mec-a/iniciativa/:id/entregables` | `EntregablesGestorPage` | Deliverables | gestor_iniciativa |
+| `/mec-a/iniciativa/:id/comprobantes` | `ComprobantesGestorPage` | Receipts | gestor_iniciativa |
+| `/mec-a/iniciativa/:id/contrapartida-monetaria` | `ContrapartidaMonetariaPage` | Cash counterpart | gestor_iniciativa |
+| `/mec-a/iniciativa/:id/contrapartida-no-monetaria` | `ContrapartidaNoMonetariaPage` | ⚠️ broken (column mismatch) | gestor_iniciativa |
+| `/mec-a/iniciativa/:id/configuracion` | `ConfiguracionAPEPage` | APE configuration | gestor_iniciativa |
+| `/mec-a/iniciativa/:id/reasignaciones` | `ReasignacionesMecAPage` | Reassignments per initiative | gestor_iniciativa |
+| `/mec-a/panel` | `ClaudiaPanelPage` | Asesora Políticas master panel | asesora_politicas |
+| `/mec-a/pagos-pendientes` | `PagosPendientesMecAPage` | Pending Mec A payments | administracion |
+| `/mec-a/reasignaciones` | `ReasignacionesMecAPage` | Mec A-wide reassignments | asesora_politicas |
+| `*` | `NotFound` | 404 fallback | — |
+
+### Navigation structure
+Defined in `src/config/navigation.ts` as `Record<AppRole, NavSection[]>`. Sidebar sections grouped by `MENSUAL`, `TRIMESTRAL`, `SEMESTRAL / ANUAL`, `GESTIÓN`, `FINANCIERO`, `CONTRATOS`, `MECANISMO A`, `REPORTES`, `INGRESO DE DATA`, `PROGRAMA`. Some legacy items kept commented as `coming_soon` placeholders.
+
+---
+
+## 6. FEATURES & FUNCTIONALITIES
+
+### Working / live features
+
+| Feature | Used by | Files | Status |
+|---|---|---|---|
+| Role + entity selector with hard filtering | All users | `RoleContext.tsx`, `AppSidebar.tsx` | ✅ |
+| Quarterly cycle context (selected vs active) | All non-entidad roles | `useTrimestreActivo.ts`, `TrimestreHeader.tsx` | ✅ |
+| Monthly registration form with contextual indicators | Entidades, gestores | `RegistroMensualDialog`, `Seccion*`, `supabaseQueries.ts` | ✅ |
+| Activity tree (resultado → producto → actividad) | Entidades | `TreeBranch.tsx`, `buildActivityTree` | ✅ |
+| Mec B planning tree + tabs | Entidades, coordinador regional | `planificacion/MiPlanificacion.tsx`, `MiEjecucionTecnica`, `MiEjecucionPresupuestaria` | ✅ |
+| Coordinator review/approve flow | Coordinador regional/cadenas | `RevisionPendientePage`, `AprobacionesPage`, `registroAprobacion.ts` | ✅ |
+| Trimestre activation (close current, open next) | Monitoreo (Fabiola) | `useActivarTrimestre`, `AdministracionPage`, `GestionTrimestres.tsx` | ✅ |
+| Quarterly reports (operational + financial + complete) | Coordinador, dirección | `ReporteTrimestralCompleto`, `ReporteTrimestralOperativo`, `ReporteTrimestralFinanciero`, `ReportShell` | ✅ |
+| Monthly report preview | Gestor | `ReporteMensualPreview` | ✅ |
+| Semestral / annual reports | Direction | `ReporteSemestral`, `ReporteAnual` | ✅ |
+| Trama físico-financiera (cross-view) | Direction, monitoreo | `TramaFisicoFinanciera.tsx` (uses `v_trama_fisico_financiera`) | ✅ |
+| Mapa Marco Lógico (5 levels) | Reports | `MapaMarcoLogico.tsx` | ✅ |
+| AI executive analysis (4 prompt types) | Direction, monitoreo | `analyze` edge function + `aiAnalysis.ts` + `AIAnalysisCard.tsx` | ✅ |
+| AI contextual narratives (5 types) | Multiple | `generate_narrative` edge function + `useNarrative.ts` + `NarrativeBlock.tsx` | ✅ |
+| Notifications inbox + bell | All | `NotificationBell.tsx`, `NotificacionesPage`, `notificaciones.ts` | ✅ |
+| Bulk participant upload (xlsx) | Entidades | `BulkUploadParticipantes.tsx` | ✅ |
+| DOCX report export | Coordinator/direction | `generateDocx.ts`, `ExcelDownloadButton.tsx` (also XLSX) | ✅ |
+| Status legend FAB | All | `StatusLegend.tsx` | ✅ |
+| Auto-save indicator | Forms | `AutoSaveIndicator.tsx`, `useAutoSave.ts` | ✅ |
+| Dev seeder + dev reset | Developer only | `DevSeeder.tsx`, `DevResetButton.tsx` | ✅ |
+| Mec A initiative dashboards (gestor view) | Gestor de Iniciativa | `GestorDashboardPage`, `useMecAIniciativa.ts`, `mecA.ts` | partial — some pages are wired, contrapartida-no-monetaria is broken |
+| Mec A asesora panel | Asesora políticas | `ClaudiaPanelPage` | ✅ |
+| Mec A pending payments | Administración | `PagosPendientesMecAPage` (+ Tab) | ✅ |
+| Mec A reassignment workflow (3-step) | Gestor + asesora + ivan | `reasignacionesPresupuestales.ts`, `ModalSolicitarReasignacion`, `BandejaReasignaciones`, `HistorialReasignaciones`, `DetalleSolicitudReasignacion` | ✅ |
+| Reuniones de seguimiento | Coordinador regional | `ReunionesSeguimiento.tsx` | ✅ |
+| Storage bucket for documentos | All | bucket `documentos` (public) | ✅ |
+
+### Partial / broken / known incomplete
+
+- ⚠️ **`ContrapartidaNoMonetariaPage`** (Mec A) references columns that no longer exist — page is broken (see `.lovable/plan.md` notes).
+- ⚠️ **DB triggers** (acumulados, validación, historial, updated_at) are defined but not bound; accumulators on `actividades.ejecutado_*_acum` are stale.
+- ⚠️ **`reportes_trimestrales` for MINCETUR T4-2025** — load was prepared in earlier sessions but the final insert was not executed; 0 rows for MINCETUR.
+- ⚠️ **Authentication is not implemented**; `perfiles` is empty.
+- ⚠️ **`/reportes-mec-a`** route exists but has no sidebar entry in current navigation config.
+- ⚠️ **`mockActividades.ts`** still imported in some places (legacy fallback).
+
+### Planned / not yet implemented (per `.lovable/plan.md` and sidebar `coming_soon` items)
+- Auto `update_updated_at_column` trigger on `entregables` (and others).
+- Wire `ContrapartidaNoMonetariaPage` to the new schema.
+- "Próximamente" items in sidebar: SEMESTRAL/ANUAL reports for `coordinador_cadenas`; "Reasignaciones" sections currently hidden across multiple roles.
+- Real auth (signup/login) flow.
+- "Informes a SECO" report bundle for monitoreo.
+
+---
+
+## 7. KEY COMPONENTS
+
+| Component | Path | Purpose |
+|---|---|---|
+| `AppLayout` | `src/components/AppLayout.tsx` | Shell: sidebar + header (NotificationBell, TrimestreHeader) + main + footer (StatusLegendFab, DevResetButton). |
+| `AppSidebar` | `src/components/AppSidebar.tsx` | Role dropdown + entity selector + grouped nav. Supports mobile drawer. Resolves Mec A `:id` placeholder via `iniciativaId`. |
+| `RegistroMensualDialog` | `src/components/RegistroMensualDialog.tsx` | Master modal for monthly registration; composes the 3 `Seccion*` blocks; calls `saveRegistroMensual`. |
+| `SeccionAvanceOperativo` | `src/components/registro/` | Operational progress + state + narrative. |
+| `SeccionEjecucionFinanciera` | same dir | Per-source expense lines (cofin/CM/CNM). |
+| `SeccionIndicadoresContextuales` | same dir | Capacitaciones, innovaciones, GEI, nuevos productos blocks. |
+| `BulkUploadParticipantes` | same dir | xlsx → participantes_capacitacion bulk insert. |
+| `TreeBranch` | `src/components/TreeBranch.tsx` | Recursive tree node renderer (resultado/producto/actividad). |
+| `FinanceBar` | `src/components/FinanceBar.tsx` | Ratio bar `Ejecutado / Presupuesto` with thresholds. |
+| `MetaStatusBadge` | same dir | Color-coded status badge. |
+| `StatusLegend` + `StatusLegendFab` | `src/components/StatusLegend.tsx` | Floating legend explaining all status colors. |
+| `TrimestreHeader` | `src/components/TrimestreHeader.tsx` | Header pill showing selected vs active trimester; switching via dropdown. |
+| `GestionTrimestres` | `src/components/GestionTrimestres.tsx` | Fabiola's trimester activation panel. |
+| `Dashboard*` | `src/components/dashboard/` | One per role; `Index.tsx` switches on `role`. |
+| `CascadingFilters`, `DashboardFilters` | dashboard/ | Mecanismo / entidad / región / periodo filters. |
+| `ArbolIndicadoresActividades` | dashboard/ | Tree linking indicators ↔ activities. |
+| `KpiDetailSheet`, `DetailPanel`, `SuccinctTreePanel` | dashboard/ | Drill-down side panels (read-only when accessed by national roles). |
+| `NarrativeBlock` | dashboard/ | Renders AI narrative via `useNarrative`. |
+| `AIAnalysisCard` | reportes/ | Calls `analyze` edge function and renders markdown via react-markdown. |
+| `MapaMarcoLogico`, `TramaFisicoFinanciera`, `IndicadoresImpactoReporte` | reportes/ | Heavy report renderers used inside `ReportShell`. |
+| `ReportShell` | reportes/ | Print-friendly wrapper for all quarterly reports. |
+| `MiPlanificacion`, `MiEjecucionTecnica`, `MiEjecucionPresupuestaria` | planificacion/ | Entity self-service tabs. |
+| `ModalAvanceTecnico`, `ModalAvancePresupuestario`, `ModalSolicitarReasignacion`, `RegistroAvancePlanificacionDialog` | planificacion/ | Modal forms wired to `plan_trimestral` and `reasignaciones_presupuestales`. |
+| `BandejaReasignaciones`, `HistorialReasignaciones`, `DetalleSolicitudReasignacion` | planificacion/ | Reassignment workflow UI. |
+| `EstadoReportesCoordinador` | planificacion/ | Coordinator status overview. |
+| `MesReportarSelect`, `PlanificacionFilters` | planificacion/ | Pickers. |
+| `TabContratos`, `TabIGV`, `TabRemesas` | finanzas/ | Tabs inside `GestionFinancieraPage`. |
+| `Seccion*` (indicadores) | indicadores/ | Atractivos, comercialización, empleo, gobernanza, productividad, ventas turismo — mounted in `IndicadoresImpactoPage`. |
+| `NavLink` | components/ | Sidebar item primitive. |
+| `FileOrUrlInput` | ui/ | Custom input accepting upload OR URL. |
+| `ExcelDownloadButton` | components/ | xlsx export trigger. |
+
+---
+
+## 8. STATE MANAGEMENT
+
+### 8.1 Global contexts
+
+- **`RoleProvider`** (`src/contexts/RoleContext.tsx`) — exposes:
+  - `role` (`AppRole`), `setRole`
+  - `entidadId`, `setEntidadId`
+  - `entidades` (raw list), `loadingEntidades`
+  - `filteredEntidades` (after role + user filters)
+  - `filters: { mecanismo, entidadFiltro, region, periodo }`, `setFilters`, `clearFilters`, `hasActiveFilters`
+  - `iniciativaId`, `setIniciativaId` (Mec A "current initiative")
+  - On mount: parallel fetch of `entidades`, `actividades.entidad_id` set, `reportes_trimestrales.entidad_codigo` set; merges entities that are referenced in either to populate the visible list. Defaults selected entity to one whose name contains "cacao" if available.
+  - ⚠️ Two consecutive `entidades` fetches happen in `fetchEntidades` because the first didn't request `codigo`; should be cleaned up.
+
+- **`TrimestreSeleccionadoProvider`** (`src/hooks/useTrimestreActivo.ts`) — exposes:
+  - `seleccionado`, `activo`, `trimestres`, `isHistorical`, `setSeleccionadoId`, `isLoading`
+  - Default selected = active trimester (`estado='activo'`).
+
+### 8.2 React Query
+
+- Single `QueryClient` instantiated in `App.tsx` (no overridden defaults).
+- Used by `useTrimestres`, `useDashboardData`, `useDashboardActividades`, `useIndicadoresActividades`, `useMecAIniciativa`, `useNarrative`.
+
+### 8.3 Local state
+
+- Form state via `react-hook-form` + `zod` resolvers in modals.
+- Auto-save via `useAutoSave` (debounced).
+- Persistence helpers for Mec A demo data: `mecALocalStore.ts` uses `localStorage`.
+
+---
+
+## 9. API / BACKEND ENDPOINTS
+
+### 9.1 Supabase (REST + RPC via JS SDK)
+
+All access goes through `supabase.from(...).select/insert/update/delete/upsert`. Important call sites:
+
+| Function (lib) | Tables touched | Purpose |
+|---|---|---|
+| `fetchActividadesByEntidad(entidadId)` | `actividades` ⨝ `productos` ⨝ `resultados` | Activity tree for an entity. |
+| `buildActivityTree(actividades)` | client-side | Resultado→Producto→Actividad. |
+| `fetchRegistroExistente(actividadId, anio, mes)` | `registros_mensuales` | Load for editing. |
+| `fetchAcumuladoAnterior(actividadId, anio, mesActual)` | `registros_mensuales` | Sum prior months excluding current. |
+| `saveRegistroMensual(registro, gastos, contextual)` | `registros_mensuales` (upsert), `ejecucion_financiera`, `registro_capacitaciones`, `participantes_capacitacion`, `registro_innovaciones`, `registro_gei`, `registro_nuevos_productos` | Atomic-ish save of a monthly report. |
+| `mecA.ts` (multiple functions) | `planificacion_actividades`, `reportes_trimestrales`, `comprobantes`, `contratos_financieros`, `entregables`, `contrapartida_no_monetaria` | Mec A reads/writes. |
+| `metasMensuales.ts` | `metas_mensuales` | Coordinator monthly target proposals. |
+| `planTrimestral.ts` | `plan_trimestral` | Mec B quarterly plan CRUD. |
+| `reasignacionesPresupuestales.ts` | `reasignaciones_presupuestales` | Reassignment lifecycle. |
+| `notificaciones.ts` | `notificaciones` | Send + mark read. |
+| `registroAprobacion.ts` | `registros_mensuales` | Coordinator approve / observe. |
+| `indicadoresImpacto.ts` | `reporte_*` tables | Sectional impact KPIs. |
+| `aiAnalysis.ts` | edge function `analyze` | Calls supabase.functions.invoke('analyze', { body: { tipo, contexto } }). |
+| `useNarrative.ts` | edge function `generate_narrative` | Cached calls per (tipo, params). |
+
+### 9.2 Edge functions
+
+| Endpoint | Method | Body | Returns |
+|---|---|---|---|
+| `/functions/v1/analyze` | POST | `{ tipo: "ejecutivo" \| "reporte" \| "consistencia" \| "narrativa", contexto: { ... payload } }` | `{ resultado: string }` (markdown). System prompts per tipo defined in `supabase/functions/analyze/index.ts:7-58`. |
+| `/functions/v1/generate_narrative` | POST | `{ tipo: NarrativeTipo, params: Record<string, any> }` where `NarrativeTipo` ∈ `resumen_entidad`, `alerta_actividad`, `briefing_director`, `resumen_para_informe`, `contexto_actividad` | `{ resultado: string, cached: boolean }`. Auto-fetches DB context for the entity/activity, then calls Lovable AI Gateway. In-memory cache 6h. |
+
+Both functions use permissive CORS (`Access-Control-Allow-Origin: *`) and are configured with `verify_jwt = false` (default for Lovable). No role checks in code.
+
+---
+
+## 10. KNOWN ISSUES & TECHNICAL DEBT
+
+1. **Two parallel data models** (UUID vs code) cause duplication: `contratos` vs `contratos_financieros`, `registros_mensuales` vs `reportes_trimestrales`. New Mec A code is text-based; old Mec B code is UUID-based. Joining requires looking up `entidades.codigo`.
+2. **All RLS policies are open** — no real security. Anyone with the published URL can write to every table.
+3. **No authentication in UI.** `perfiles` is empty; `auth.users` has no users.
+4. **DB triggers exist but are not bound.** `fn_actualizar_acumulados_actividad`, `fn_validar_presupuesto`, `fn_registrar_historial`, `update_updated_at_column` will not run; `actividades.ejecutado_*_acum` and `historial_cambios` are not maintained automatically.
+5. **`ContrapartidaNoMonetariaPage`** uses old column names (`iniciativa_id`, `fecha_actividad`, etc.) that don't exist — page is broken.
+6. **Footer literal** says `MVP — Mecanismo B · 3 entidades activas` (hard-coded in `AppLayout.tsx`); not data-driven.
+7. **Double fetch of `entidades`** in `RoleContext.fetchEntidades` (the first query forgets `codigo` and a second one is fired immediately).
+8. **`AppRole` (frontend) ≠ `rol_usuario` (DB enum).** Mapping is informal; some frontend roles (`gestor_iniciativa`, `coordinador_cadenas`, `asesora_politicas`) have no exact DB counterpart.
+9. **`/reportes-mec-a` route exists** but no sidebar entry surfaces it in current `navigation.ts`.
+10. **MINCETUR T4-2025 quarterly reports** were prepared but the final insert never ran — `reportes_trimestrales` has 0 rows for MINCETUR.
+11. **`mockActividades.ts`** legacy data still bundled.
+12. **`ANTHROPIC_API_KEY`** secret is provisioned but not used by any committed code.
+13. **No real test coverage**: only `src/test/example.test.ts` exists. Playwright scaffold is unused.
+14. **Indexes**: only PK + a few unique constraints; no indexes on hot columns like `entidad_codigo`, `actividad_codigo`, `mes` used by dashboard queries.
+15. **`reportes_trimestrales.ejecutado_seco_total`** is a generated column; trying to write to it will fail (one earlier session hit this).
+16. **`LovableTagger` build plugin** is included in dev deps; harmless but not always desired.
+
+---
+
+## 11. ENVIRONMENT & CONFIGURATION
+
+### 11.1 Frontend env (`.env`, auto-managed by Lovable)
+
+| Variable | Purpose |
+|---|---|
+| `VITE_SUPABASE_PROJECT_ID` | Lovable Cloud project ref (`xbxxmqeskdaifhrzdzri`). |
+| `VITE_SUPABASE_URL` | `https://xbxxmqeskdaifhrzdzri.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Public anon key (safe in client bundle). |
+
+### 11.2 Edge function secrets (Supabase secrets)
+
+| Secret | Purpose |
+|---|---|
+| `SUPABASE_URL` | Used by `generate_narrative` to instantiate a server-side client. |
+| `SUPABASE_ANON_KEY` | Same. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Available, used for elevated reads if needed. |
+| `SUPABASE_DB_URL` | Direct PG connection string (not used by edge code committed). |
+| `SUPABASE_PUBLISHABLE_KEY` | Same as anon. |
+| `LOVABLE_API_KEY` | Lovable AI Gateway calls inside `analyze` and `generate_narrative`. |
+| `ANTHROPIC_API_KEY` | ⚠️ provisioned, not referenced in code. |
+
+### 11.3 Feature flags
+
+None implemented. "Coming soon" items are simply commented-out / `disabled: true` entries in `src/config/navigation.ts`.
+
+### 11.4 Environments
+
+Lovable provides a **Preview** environment (`id-preview-...`) and a **Published** environment (`monitoreo-secompetitivo.lovable.app`). Both point to the **same** Supabase project — there is no staging DB. ⚠️ Any write from preview hits production data.
+
+### 11.5 Storage
+
+- Bucket `documentos` (public). Used for uploaded comprobantes, contracts, and generic deliverables (`documentos.url_storage`, `entregables.documento_url`, `contratos_financieros.documento_url`).
+
+### 11.6 `supabase/config.toml`
+
+Contains `project_id = "xbxxmqeskdaifhrzdzri"` and per-function overrides (verify_jwt off for both edge functions, default for the rest).
+
+---
+
+## 12. RECENT CHANGES (last 10 migrations + sessions)
+
+Migrations in `supabase/migrations/` (chronological):
+
+1. `20260414174041_*.sql` — initial baseline.
+2. `20260414180107_*.sql` / `181804_*.sql` / `212935_*.sql` / `212957_*.sql` — early schema iterations.
+3. `20260415003928_*.sql`, `014359_*.sql`, `023248_*.sql` — extending tables (capacitación, indicadores).
+4. `20260418150848_*.sql`, `232222_*.sql`, `232528_*.sql` — operational refinements.
+5. **`20260420210000_mec_a_tables.sql`** — introduced the code-based Mec A model: `planificacion_actividades`, `reportes_trimestrales` (with unique `(entidad_codigo, actividad_codigo, trimestre)` and generated `ejecutado_seco_total`), `comprobantes`, `contratos_financieros`, `documentos`, `observaciones_coordinador`, `reasignaciones_presupuestales`.
+6. **`20260420210001_notif_destinatario_rol.sql`** — added role-based notification routing fields.
+7. **`20260420230001_mec_a_entregables.sql`** — added `entregables` and `contrapartida_no_monetaria` (per `.lovable/plan.md`).
+8. **`20260421171959_*.sql`** — most recent migration (latest schema tweak).
+
+### Recent session-level changes (from chat history)
+
+- **MINCETUR onboarding (Mec A):**
+  - Renamed `MINCETUR-RPE` → kept `codigo='MINCETUR'`, added entity in Mec A nacional.
+  - Loaded **22 planning activities** (A111…A323) from `MINCETUR_reporte_T4_2025.json` into `planificacion_actividades`.
+  - Loaded **7 contracts** into `contratos` for MINCETUR (mapping `tipo` from RUC length).
+  - ⚠️ Final `reportes_trimestrales` insert for MINCETUR T4-2025 prepared but **not executed**.
+- **Sidebar dynamic label**: `Gestor de Iniciativa · {ENTIDAD}` now resolves entity name from active selection. Implemented in `AppSidebar.tsx`.
+- **Demo-only role**: `gestor_iniciativa` reuses backend role `gestor_mec_a`; no profile/auth created.
+
+---
+
+## Appendix A — Cheat sheet for an external AI
+
+- ✅ **Use the Supabase JS client** (`@/integrations/supabase/client`). Never edit `client.ts` or `types.ts`.
+- ✅ **Database migrations** must go through new timestamped files in `supabase/migrations/` — never edit existing ones.
+- ⚠️ **Do not store roles in `perfiles.rol`** for any future privilege check; use a `user_roles` table with a `has_role()` SECURITY DEFINER function.
+- ⚠️ **When writing to `reportes_trimestrales`**, never set `ejecutado_seco_total` (generated). Set the four `ejecutado_seco_*` granular columns instead.
+- ⚠️ **When inserting into `entregables` or `contrapartida_no_monetaria`**, never set `mes` (generated from date columns).
+- ⚠️ **Mec A pages use the code-based model** (`entidad_codigo` text). Mec B operational pages use the UUID model. Pick the right model based on the feature surface.
+- ⚠️ **`fn_actualizar_acumulados_actividad` is not wired** — if you rely on `actividades.ejecutado_*_acum`, recompute it on read or attach the trigger.
+- ⚠️ **Authentication is mock**: never assume `auth.uid()` returns a real user. All RLS is `true`.
+
